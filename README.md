@@ -30,6 +30,7 @@ Türkçe dilinde okuma analizi yapan uygulama için monorepo. Backend API, worke
 - **Frontend** (`./frontend`): Port 3000'de Next.js frontend
 - **MongoDB**: Port 27017'de veritabanı servisi
 - **Redis**: Port 6379'da cache ve mesaj kuyruğu
+- **Google Cloud Storage**: Ses dosyaları için bulut depolama
 
 ## Kullanılabilir Komutlar
 
@@ -78,7 +79,7 @@ okuma-analizi/
 ├── frontend/         # Next.js frontend
 ├── infra/           # Altyapı konfigürasyonları
 ├── scripts/         # Geliştirme scriptleri
-├── media/           # Yüklenen ses dosyaları
+├── gcs-service-account.json  # GCS kimlik doğrulama
 ├── docker-compose.yml
 ├── .env.example
 └── Makefile
@@ -100,4 +101,27 @@ Detaylı test rehberi için `scripts/test-audio.md` dosyasına bakın.
 - **Backend**: FastAPI, MongoDB, Redis, Whisper
 - **Worker**: Python, RQ, Faster-Whisper
 - **Frontend**: Next.js 14, React, TypeScript, Tailwind CSS
+- **Storage**: Google Cloud Storage (GCS)
 - **Infrastructure**: Docker, Docker Compose
+
+## GCS Kurulumu
+
+Ses dosyaları Google Cloud Storage'da saklanır. Kurulum için:
+
+1. **GCS Bucket Oluştur:**
+   ```bash
+   gsutil mb gs://doky_ai_audio_storage
+   ```
+
+2. **Service Account Oluştur:**
+   - Google Cloud Console'da service account oluştur
+   - Storage Admin rolü ver
+   - JSON key dosyasını indir ve `gcs-service-account.json` olarak kaydet
+
+3. **Environment Variables:**
+   ```bash
+   STORAGE_BACKEND=gcs
+   GCS_BUCKET=doky_ai_audio_storage
+   GCS_CREDENTIALS_PATH=./gcs-service-account.json
+   GCS_PUBLIC_BASE=https://storage.googleapis.com
+   ```

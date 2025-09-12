@@ -1,10 +1,16 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Form, Request
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from typing import Union
-from app.models.documents import AnalysisDoc, TextDoc, AudioFileDoc, WordEventDoc, PauseEventDoc
-from app.config import settings
+import tempfile
 import os
+from datetime import datetime
+import soundfile as sf
+# from app.models.documents import AnalysisDoc, TextDoc, AudioFileDoc, WordEventDoc, PauseEventDoc
+from app.config import settings
+from app.storage import upload_audio_file
+from app.crud import insert_audio
+from app.logging_config import app_logger
 
 router = APIRouter()
 
@@ -19,6 +25,9 @@ class AnalysisSummary(BaseModel):
     wpm: Optional[float] = None
     counts: Optional[Dict[str, int]] = None
     audio_id: str
+    audio_name: Optional[str] = None
+    audio_duration_sec: Optional[float] = None
+    audio_size_bytes: Optional[int] = None
     # DEBUG fields
     timings: Optional[Dict[str, Any]] = None
     counts_direct: Optional[Dict[str, int]] = None
@@ -39,6 +48,14 @@ class AnalysisDetail(BaseModel):
     # DEBUG fields
     timings: Optional[Dict[str, Any]] = None
     counts_direct: Optional[Dict[str, int]] = None
+
+
+class AnalyzeResponse(BaseModel):
+    analysis_id: str
+    audio_id: str
+    gcs_url: Optional[str] = None
+    status: str
+    message: str
 
 
 @router.get("/", response_model=List[AnalysisSummary])
@@ -83,7 +100,10 @@ async def get_analyses(limit: int = Query(20, ge=1, le=100)):
             "accuracy": summary.get("accuracy"),
             "wpm": summary.get("wpm"),
             "counts": counts,
-            "audio_id": str(analysis.audio_id)
+            "audio_id": str(analysis.audio_id),
+            "audio_name": audio.original_name if audio else None,
+            "audio_duration_sec": getattr(audio, 'duration_sec', None) if audio else None,
+            "audio_size_bytes": getattr(audio, 'size_bytes', None) if audio else None
         }
         
         # Add DEBUG fields if enabled
@@ -137,14 +157,12 @@ async def get_analysis(analysis_id: str):
         raise HTTPException(status_code=404, detail="Related audio not found")
     
     # Build audio public URL
-    # Convert absolute path to relative path for media URL
-    audio_path = audio.path
-    if audio_path.startswith(settings.media_root):
-        relative_path = os.path.relpath(audio_path, settings.media_root)
-        audio_url = f"/media/{relative_path}"
+    # All audio files are now stored in GCS
+    if hasattr(audio, 'gcs_url') and audio.gcs_url:
+        audio_url = audio.gcs_url
     else:
-        # Fallback if path doesn't start with media_root
-        audio_url = f"/media/{os.path.basename(audio_path)}"
+        # Fallback for legacy data - use GCS URI as URL
+        audio_url = audio.path if audio.path.startswith('gs://') else f"gs://{settings.gcs_bucket}/{audio.path}"
     
     # Get word events
     word_events = await WordEventDoc.find({"analysis_id": analysis.id}).sort("idx").to_list()
@@ -219,6 +237,224 @@ async def get_analysis(analysis_id: str):
         }
     
     return AnalysisDetail(**response_data)
+
+
+@router.post("/file", response_model=AnalyzeResponse)
+async def analyze_file(
+    request: Request,
+    file: UploadFile = File(...),
+    text_id: Optional[str] = Form(None),
+    custom_text: Optional[str] = Form(None),
+    uploaded_by: Optional[str] = Form(None)
+):
+    """
+    Analyze audio file directly with optional text.
+    
+    - **file**: Audio file (mp3, wav, m4a, etc.)
+    - **text_id**: Optional text ID to analyze against existing text
+    - **custom_text**: Optional custom text to analyze against
+    - **uploaded_by**: Optional user identifier
+    
+    Note: Either text_id or custom_text must be provided.
+    """
+    
+    request_id = getattr(request.state, 'request_id', None)
+    app_logger.bind(
+        request_id=request_id,
+        filename=file.filename,
+        text_id=text_id,
+        has_custom_text=bool(custom_text),
+        uploaded_by=uploaded_by,
+        content_type=file.content_type
+    ).info("File analysis started")
+    
+    # Validate inputs
+    if not text_id and not custom_text:
+        raise HTTPException(status_code=400, detail="Either text_id or custom_text must be provided")
+    
+    if text_id and custom_text:
+        raise HTTPException(status_code=400, detail="Cannot provide both text_id and custom_text")
+    
+    # Validate file
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No filename provided")
+    
+    if not file.content_type or not file.content_type.startswith('audio/'):
+        raise HTTPException(status_code=400, detail="File must be an audio file")
+    
+    # Check file size (10MB limit)
+    MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail="File too large. Maximum size is 10MB")
+    
+    if len(content) == 0:
+        raise HTTPException(status_code=400, detail="Empty file not allowed")
+    
+    # Handle text validation and creation
+    text_obj_id = None
+    if text_id:
+        # Validate existing text
+        try:
+            text = await TextDoc.find_one(TextDoc.text_id == text_id)
+            if not text:
+                raise HTTPException(status_code=404, detail="Text not found")
+            text_obj_id = str(text.id)
+        except Exception as e:
+            app_logger.bind(
+                request_id=request_id,
+                text_id=text_id,
+                error=str(e)
+            ).error("Text validation failed")
+            raise HTTPException(status_code=400, detail="Invalid text ID")
+    else:
+        # Create custom text document
+        try:
+            custom_text_doc = TextDoc(
+                text_id=f"custom_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
+                grade=0,  # Custom texts have grade 0
+                title="Custom Text",
+                body=custom_text,
+                comment="Generated from analyze/file endpoint",
+                active=True
+            )
+            await custom_text_doc.insert()
+            text_obj_id = str(custom_text_doc.id)
+            
+            app_logger.bind(
+                request_id=request_id,
+                custom_text_id=custom_text_doc.text_id
+            ).info("Custom text document created")
+            
+        except Exception as e:
+            app_logger.bind(
+                request_id=request_id,
+                error=str(e)
+            ).error("Failed to create custom text document")
+            raise HTTPException(status_code=500, detail="Failed to create custom text document")
+    
+    # Save file temporarily for processing
+    temp_file_path = None
+    try:
+        # Create temporary file for processing
+        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
+            temp_file.write(content)
+            temp_file_path = temp_file.name
+        
+        # Calculate duration (optional)
+        duration_sec = None
+        try:
+            data, sr = sf.read(temp_file_path)
+            duration_sec = len(data) / sr
+        except Exception as e:
+            app_logger.bind(
+                request_id=request_id,
+                error=str(e)
+            ).warning("Could not calculate audio duration")
+        
+        # Upload to GCS
+        try:
+            gcs_result = upload_audio_file(
+                text_id=text_id,  # Use text_id for blob naming, None for custom
+                original_name=file.filename,
+                file_path=temp_file_path,
+                content_type=file.content_type
+            )
+            
+            app_logger.bind(
+                request_id=request_id,
+                text_id=text_id,
+                original_filename=file.filename,
+                gcs_url=gcs_result["public_url"],
+                size_bytes=gcs_result["size_bytes"]
+            ).info("Audio file uploaded to GCS successfully")
+            
+        except Exception as e:
+            app_logger.bind(
+                request_id=request_id,
+                error=str(e)
+            ).error("Failed to upload to GCS")
+            raise HTTPException(status_code=500, detail=f"Failed to upload to cloud storage: {str(e)}")
+        
+    except Exception as e:
+        app_logger.bind(
+            request_id=request_id,
+            error=str(e)
+        ).error("Failed to process file")
+        raise HTTPException(status_code=500, detail=f"Failed to process file: {str(e)}")
+    
+    finally:
+        # Clean up temporary file
+        if temp_file_path and os.path.exists(temp_file_path):
+            try:
+                os.unlink(temp_file_path)
+            except Exception as e:
+                app_logger.bind(
+                    request_id=request_id,
+                    error=str(e)
+                ).warning("Failed to clean up temporary file")
+    
+    # Create audio document
+    try:
+        audio_payload = {
+            "text_id": text_id,  # None for custom texts
+            "original_name": file.filename,
+            "path": gcs_result["gs_uri"],  # Store GCS URI as path for backward compatibility
+            "storage_name": gcs_result["blob_name"],
+            "gcs_url": gcs_result["public_url"],
+            "gcs_uri": gcs_result["gs_uri"],
+            "content_type": file.content_type,
+            "size_bytes": gcs_result["size_bytes"],
+            "md5_hash": gcs_result["md5"],
+            "duration_sec": duration_sec,
+            "uploaded_at": datetime.utcnow(),
+            "uploaded_by": uploaded_by
+        }
+        
+        audio_doc = await insert_audio(audio_payload)
+        
+        app_logger.bind(
+            request_id=request_id,
+            audio_id=str(audio_doc.id),
+            text_id=text_id
+        ).info("Audio document saved to MongoDB successfully")
+        
+    except Exception as e:
+        app_logger.bind(
+            request_id=request_id,
+            error=str(e)
+        ).error("Failed to save audio document to MongoDB")
+        raise HTTPException(status_code=500, detail=f"Failed to save audio metadata: {str(e)}")
+    
+    # Create analysis document
+    try:
+        analysis_doc = AnalysisDoc(
+            text_id=text_obj_id,
+            audio_id=str(audio_doc.id),
+            status="queued"
+        )
+        await analysis_doc.insert()
+        
+        app_logger.bind(
+            request_id=request_id,
+            analysis_id=str(analysis_doc.id),
+            audio_id=str(audio_doc.id)
+        ).info("Analysis document created successfully")
+        
+        return AnalyzeResponse(
+            analysis_id=str(analysis_doc.id),
+            audio_id=str(audio_doc.id),
+            gcs_url=gcs_result["public_url"],
+            status="queued",
+            message="Analysis queued successfully"
+        )
+        
+    except Exception as e:
+        app_logger.bind(
+            request_id=request_id,
+            error=str(e)
+        ).error("Failed to create analysis document")
+        raise HTTPException(status_code=500, detail=f"Failed to create analysis: {str(e)}")
 
 
 @router.post("/")

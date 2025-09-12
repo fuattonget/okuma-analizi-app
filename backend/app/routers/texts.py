@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
-from app.models.documents import TextDoc
+# from app.models.documents import TextDoc
 from typing import Union
 from loguru import logger
 import hashlib

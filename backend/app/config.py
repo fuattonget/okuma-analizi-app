@@ -3,8 +3,11 @@ from typing import Optional
 
 
 class Settings(BaseSettings):
-    # Media settings
-    media_root: str = "./media"
+    # Storage settings (GCS is the default and only supported backend)
+    storage_backend: str = "gcs"
+    gcs_bucket: str = "doky_ai_audio_storage"
+    gcs_credentials_path: Optional[str] = "./gcs-service-account.json"
+    gcs_public_base: str = "https://storage.googleapis.com"
     
     # Whisper settings
     long_pause_ms: int = 800

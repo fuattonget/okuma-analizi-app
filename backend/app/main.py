@@ -13,7 +13,7 @@ from datetime import datetime
 from loguru import logger
 from app.config import settings
 from app.db import connect_to_mongo, close_mongo_connection, connect_to_redis, redis_conn
-from app.routers import texts, analyses, upload
+from app.routers import texts, analyses, upload, audio
 
 
 # Configure loguru based on settings
@@ -132,15 +132,29 @@ async def global_exception_handler(request: Request, exc: Exception):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    logger.info("Starting application")
-    await connect_to_mongo()
-    connect_to_redis()
-    logger.info("Application started successfully")
+    logger.info("🚀 Starting application")
+    try:
+        logger.info("📊 Connecting to MongoDB...")
+        await connect_to_mongo()
+        logger.info("✅ MongoDB connected successfully")
+    except Exception as e:
+        logger.error(f"❌ MongoDB connection failed: {e}")
+        raise
+    
+    try:
+        logger.info("📊 Connecting to Redis...")
+        connect_to_redis()
+        logger.info("✅ Redis connected successfully")
+    except Exception as e:
+        logger.error(f"❌ Redis connection failed: {e}")
+        raise
+    
+    logger.info("🎉 Application started successfully")
     yield
     # Shutdown
-    logger.info("Shutting down application")
+    logger.info("🛑 Shutting down application")
     await close_mongo_connection()
-    logger.info("Application shutdown complete")
+    logger.info("✅ Application shutdown complete")
 
 
 app = FastAPI(
@@ -221,8 +235,7 @@ async def debug_info():
     }
 
 
-# Mount static files for media
-app.mount("/media", StaticFiles(directory=settings.media_root), name="media")
+# Note: Media files are now served from GCS, no local static file mounting needed
 
 # Include routers
 app.include_router(
@@ -250,6 +263,15 @@ app.include_router(
     responses={
         400: {"description": "Invalid file format"},
         413: {"description": "File too large"}
+    }
+)
+app.include_router(
+    audio.router, 
+    prefix="/v1/audio", 
+    tags=["audio"],
+    responses={
+        404: {"description": "Audio file not found"},
+        400: {"description": "Invalid audio ID"}
     }
 )
 
