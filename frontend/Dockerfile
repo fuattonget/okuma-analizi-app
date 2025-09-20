@@ -4,20 +4,13 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Copy package files
-COPY package.json pnpm-lock.yaml* ./
+COPY frontend/package.json frontend/package-lock.json* ./
 
 # Install dependencies
-RUN if [ -f pnpm-lock.yaml ]; then \
-        npm install -g pnpm && pnpm install; \
-    else \
-        npm install; \
-    fi
-
-# Install additional packages
-RUN npm install next@latest react@latest react-dom@latest axios zustand classnames
+RUN npm install
 
 # Copy source code
-COPY . .
+COPY frontend/ .
 
 # Set environment variable
 ENV NEXT_PUBLIC_API_BASE=http://localhost:8000

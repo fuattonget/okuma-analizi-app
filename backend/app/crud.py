@@ -1,7 +1,9 @@
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+from bson import ObjectId
 from app.models.documents import AudioFileDoc
 from app.schemas import AudioCreate, AudioUpdate
+from loguru import logger
 
 
 async def insert_audio(payload: Dict[str, Any]) -> AudioFileDoc:
@@ -14,10 +16,35 @@ async def insert_audio(payload: Dict[str, Any]) -> AudioFileDoc:
     Returns:
         AudioFileDoc: The created audio file document
     """
-    # Create AudioFileDoc with all provided fields
-    audio_doc = AudioFileDoc(**payload)
-    await audio_doc.insert()
-    return audio_doc
+    try:
+        logger.info(f"Starting audio document insertion with payload keys: {list(payload.keys())}")
+        
+        try:
+            # Convert text_id to ObjectId if it's a string
+            if 'text_id' in payload and isinstance(payload['text_id'], str):
+                logger.info(f"Converting text_id from string to ObjectId: {payload['text_id']}")
+                payload['text_id'] = ObjectId(payload['text_id'])
+                logger.info(f"text_id converted to ObjectId: {payload['text_id']}")
+            
+            # Create AudioFileDoc with all provided fields
+            audio_doc = AudioFileDoc(**payload)
+            logger.info(f"AudioFileDoc object created successfully")
+        except Exception as e:
+            logger.error(f"Failed to create AudioFileDoc object: {e}")
+            logger.error(f"Payload: {payload}")
+            raise
+        
+        try:
+            await audio_doc.insert()
+            logger.info(f"AudioFileDoc inserted successfully with ID: {audio_doc.id}")
+            return audio_doc
+        except Exception as e:
+            logger.error(f"Failed to insert AudioFileDoc: {e}")
+            raise
+            
+    except Exception as e:
+        logger.error(f"Critical error in insert_audio: {e}")
+        raise
 
 
 async def get_audio_by_id(audio_id: str) -> Optional[AudioFileDoc]:
@@ -142,7 +169,6 @@ def audio_doc_to_response(audio_doc: AudioFileDoc) -> Dict[str, Any]:
         "original_name": audio_doc.original_name,
         "path": audio_doc.path,
         "storage_name": audio_doc.storage_name,
-        "gcs_url": audio_doc.gcs_url,
         "gcs_uri": audio_doc.gcs_uri,
         "content_type": audio_doc.content_type,
         "size_bytes": audio_doc.size_bytes,

@@ -123,6 +123,13 @@ export interface TextUpdate {
   comment?: string;
 }
 
+export interface TextCopyCreate {
+  title: string;
+  body: string;
+  grade?: number;
+  comment?: string;
+}
+
 export interface AnalysisSummary {
   id: string;
   created_at: string;
@@ -167,23 +174,6 @@ export interface AnalysisDetail {
     title: string;
     body: string;
   };
-  audio_url: string;
-  word_events: Array<{
-    idx: number;
-    ref_token?: string;
-    hyp_token?: string;
-    start_ms?: number;
-    end_ms?: number;
-    type: string;
-    subtype?: string;
-    details: Record<string, any>;
-  }>;
-  pause_events: Array<{
-    after_word_idx: number;
-    start_ms: number;
-    end_ms: number;
-    duration_ms: number;
-  }>;
   // DEBUG fields
   timings?: {
     queued_at?: string;
@@ -196,6 +186,88 @@ export interface AnalysisDetail {
     missing: number;
     extra: number;
     diff: number;
+  };
+}
+
+// Session types
+export interface SessionSummary {
+  id: string;
+  text_id: string;
+  audio_id: string;
+  reader_id?: string;
+  status: string;
+  created_at: string;
+  completed_at?: string;
+}
+
+export interface SessionDetail {
+  id: string;
+  text_id: string;
+  audio_id: string;
+  reader_id?: string;
+  status: string;
+  created_at: string;
+  completed_at?: string;
+  text: {
+    title: string;
+    body: string;
+  };
+  audio: {
+    id: string;
+    original_name: string;
+    storage_name: string;
+    content_type?: string;
+    size_bytes?: number;
+    duration_sec?: number;
+    uploaded_at: string;
+  };
+}
+
+// Event types
+export interface WordEvent {
+  id: string;
+  analysis_id: string;
+  position: number;
+  ref_token?: string;
+  hyp_token?: string;
+  type: string;
+  sub_type?: string;
+  timing?: Record<string, number>;
+  char_diff?: number;
+}
+
+export interface PauseEvent {
+  id: string;
+  analysis_id: string;
+  after_position: number;
+  duration_ms: number;
+  class_: string;
+  start_ms: number;
+  end_ms: number;
+}
+
+// Metrics type
+export interface Metrics {
+  analysis_id: string;
+  counts: {
+    correct: number;
+    missing: number;
+    extra: number;
+    diff: number;
+    total_words: number;
+  };
+  wer: number;
+  accuracy: number;
+  wpm: number;
+  long_pauses: {
+    count: number;
+    threshold_ms: number;
+  };
+  error_types: {
+    missing: number;
+    extra: number;
+    substitution: number;
+    pause_long: number;
   };
 }
 
@@ -213,6 +285,11 @@ export const apiClient = {
 
   async createText(text: TextCreate): Promise<Text> {
     const response = await api.post('/v1/texts', text);
+    return response.data;
+  },
+
+  async copyText(text: TextCopyCreate): Promise<Text> {
+    const response = await api.post('/v1/texts/copy', text);
     return response.data;
   },
 
@@ -239,6 +316,20 @@ export const apiClient = {
     return response.data;
   },
 
+  // Audio URL
+  async getAnalysisAudioUrl(analysisId: string, expirationHours: number = 1): Promise<{
+    analysis_id: string;
+    audio_id: string;
+    signed_url: string;
+    expiration_hours: number;
+    expires_at: string;
+  }> {
+    const response = await api.get(`/v1/analyses/${analysisId}/audio-url`, {
+      params: { expiration_hours: expirationHours }
+    });
+    return response.data;
+  },
+
   // Analyses
   async getAnalyses(limit: number = 20): Promise<AnalysisSummary[]> {
     const response = await api.get(`/v1/analyses?limit=${limit}`);
@@ -252,6 +343,53 @@ export const apiClient = {
 
   async getAnalysisStatus(id: string): Promise<{ status: string }> {
     const response = await api.get(`/v1/upload/status/${id}`);
+    return response.data;
+  },
+
+  // Sessions
+  async getSessions(limit: number = 20, status?: string, reader_id?: string): Promise<SessionSummary[]> {
+    const params = new URLSearchParams({ limit: limit.toString() });
+    if (status) params.append('status', status);
+    if (reader_id) params.append('reader_id', reader_id);
+    
+    const response = await api.get(`/v1/sessions?${params.toString()}`);
+    return response.data;
+  },
+
+  async getSession(sessionId: string): Promise<SessionDetail> {
+    const response = await api.get(`/v1/sessions/${sessionId}`);
+    return response.data;
+  },
+
+  async getSessionAnalyses(sessionId: string, limit: number = 20): Promise<AnalysisSummary[]> {
+    const response = await api.get(`/v1/sessions/${sessionId}/analyses?limit=${limit}`);
+    return response.data;
+  },
+
+  async updateSessionStatus(sessionId: string, status: string): Promise<{ message: string; session_id: string }> {
+    const response = await api.put(`/v1/sessions/${sessionId}/status?status=${status}`);
+    return response.data;
+  },
+
+  // Analysis Events
+  async getWordEvents(analysisId: string): Promise<WordEvent[]> {
+    const response = await api.get(`/v1/analyses/${analysisId}/word-events`);
+    return response.data;
+  },
+
+  async getPauseEvents(analysisId: string): Promise<PauseEvent[]> {
+    const response = await api.get(`/v1/analyses/${analysisId}/pause-events`);
+    return response.data;
+  },
+
+  async getMetrics(analysisId: string): Promise<Metrics> {
+    const response = await api.get(`/v1/analyses/${analysisId}/metrics`);
+    return response.data;
+  },
+
+  // Analysis Export
+  async getAnalysisExport(id: string): Promise<any> {
+    const response = await api.get(`/v1/analyses/${id}/export`);
     return response.data;
   },
 };

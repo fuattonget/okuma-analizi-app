@@ -13,7 +13,7 @@ from datetime import datetime
 from loguru import logger
 from app.config import settings
 from app.db import connect_to_mongo, close_mongo_connection, connect_to_redis, redis_conn
-from app.routers import texts, analyses, upload, audio
+from app.routers import texts, analyses, upload, audio, sessions
 
 
 # Configure loguru based on settings
@@ -122,7 +122,7 @@ class RequestTimingMiddleware:
 # Global exception handler
 async def global_exception_handler(request: Request, exc: Exception):
     request_id = getattr(request.state, 'request_id', 'unknown')
-    logger.bind(request_id=request_id).error(f"Unhandled exception: {exc}", exc_info=True)
+    logger.bind(request_id=request_id).error("Unhandled exception: {}", exc, exc_info=True)
     return JSONResponse(
         status_code=500,
         content={"detail": "Internal server error", "request_id": request_id}
@@ -132,29 +132,58 @@ async def global_exception_handler(request: Request, exc: Exception):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    logger.info("🚀 Starting application")
     try:
-        logger.info("📊 Connecting to MongoDB...")
-        await connect_to_mongo()
-        logger.info("✅ MongoDB connected successfully")
+        logger.info("🚀 Starting application")
+        
+        # MongoDB connection
+        try:
+            logger.info("📊 Connecting to MongoDB...")
+            await connect_to_mongo()
+            logger.info("✅ MongoDB connected successfully")
+        except Exception as e:
+            logger.error(f"❌ MongoDB connection failed: {e}")
+            logger.error(f"MongoDB error type: {type(e).__name__}")
+            logger.error(f"MongoDB error details: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            raise
+        
+        # Redis connection
+        try:
+            logger.info("📊 Connecting to Redis...")
+            connect_to_redis()
+            logger.info("✅ Redis connected successfully")
+        except Exception as e:
+            logger.error(f"❌ Redis connection failed: {e}")
+            logger.error(f"Redis error type: {type(e).__name__}")
+            logger.error(f"Redis error details: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            raise
+        
+        logger.info("🎉 Application started successfully")
+        
     except Exception as e:
-        logger.error(f"❌ MongoDB connection failed: {e}")
+        logger.error(f"Critical error during application startup: {e}")
+        logger.error(f"Startup error type: {type(e).__name__}")
+        logger.error(f"Startup error details: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise
     
-    try:
-        logger.info("📊 Connecting to Redis...")
-        connect_to_redis()
-        logger.info("✅ Redis connected successfully")
-    except Exception as e:
-        logger.error(f"❌ Redis connection failed: {e}")
-        raise
-    
-    logger.info("🎉 Application started successfully")
     yield
+    
     # Shutdown
-    logger.info("🛑 Shutting down application")
-    await close_mongo_connection()
-    logger.info("✅ Application shutdown complete")
+    try:
+        logger.info("🛑 Shutting down application")
+        await close_mongo_connection()
+        logger.info("✅ Application shutdown complete")
+    except Exception as e:
+        logger.error(f"Error during application shutdown: {e}")
+        logger.error(f"Shutdown error type: {type(e).__name__}")
+        logger.error(f"Shutdown error details: {str(e)}")
+        import traceback
+        traceback.print_exc()
 
 
 app = FastAPI(
@@ -176,7 +205,7 @@ app.add_exception_handler(Exception, global_exception_handler)
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -272,6 +301,15 @@ app.include_router(
     responses={
         404: {"description": "Audio file not found"},
         400: {"description": "Invalid audio ID"}
+    }
+)
+app.include_router(
+    sessions.router, 
+    prefix="/v1/sessions", 
+    tags=["sessions"],
+    responses={
+        404: {"description": "Session not found"},
+        400: {"description": "Invalid session ID"}
     }
 )
 

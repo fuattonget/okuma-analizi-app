@@ -16,7 +16,7 @@ export default function HomePage() {
   const [filteredTexts, setFilteredTexts] = useState<Text[]>([]);
   const [selectedTextId, setSelectedTextId] = useState<string>('');
   const [customText, setCustomText] = useState('');
-  const [grade, setGrade] = useState<number | ''>('');
+  const [grade, setGrade] = useState<number>(1);
   const [isUploading, setIsUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -108,7 +108,7 @@ export default function HomePage() {
       if (!selectedTextId && customText.trim()) {
         const tempText = await apiClient.createText({
           title: `Geçici Metin - ${new Date().toLocaleString('tr-TR')}`,
-          grade: grade as number,
+          grade: grade,
           body: customText.trim(),
         });
         textId = tempText.text_id; // Use text_id for upload
@@ -156,15 +156,27 @@ export default function HomePage() {
       setSelectedFile(null);
       setSelectedTextId('');
       setCustomText('');
-      setGrade('');
+      setGrade(1);
       
       // Show success message
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 5000);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to start analysis:', error);
-      alert('Analiz başlatılırken hata oluştu. Lütfen tekrar deneyin.');
+      
+      // More specific error messages
+      let errorMessage = 'Analiz başlatılırken hata oluştu.';
+      
+      if (error.response?.status === 422) {
+        errorMessage = 'Metin bilgileri eksik veya hatalı. Lütfen tüm alanları doldurun.';
+      } else if (error.response?.status === 400) {
+        errorMessage = 'Ses dosyası veya metin formatı desteklenmiyor.';
+      } else if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      }
+      
+      alert(errorMessage);
     } finally {
       setIsUploading(false);
     }
@@ -242,12 +254,12 @@ export default function HomePage() {
               <select
                 value={grade}
                 onChange={(e) => {
-                  setGrade(e.target.value ? parseInt(e.target.value) : '');
+                  setGrade(e.target.value ? parseInt(e.target.value) : 1);
                   setSelectedTextId(''); // Reset selection when grade changes
                 }}
                 className="select text-lg py-3"
               >
-                <option value="">Sınıf seçiniz</option>
+                <option value="1">Sınıf seçiniz</option>
                 <option value="1">1. Sınıf</option>
                 <option value="2">2. Sınıf</option>
                 <option value="3">3. Sınıf</option>

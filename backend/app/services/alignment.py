@@ -1,12 +1,21 @@
 from typing import List, Dict, Any, Tuple
 import re
+import unicodedata
+
+
+def _norm_token(tok: str) -> str:
+    """Normalize token for case-insensitive comparison while preserving apostrophes"""
+    if not tok:
+        return ""
+    # Normalize Unicode and convert to lowercase for comparison
+    t = unicodedata.normalize("NFC", tok).lower()
+    return t
 
 
 def tokenize_tr(text: str) -> List[str]:
     """Turkish tokenization using regex pattern"""
-    # Convert to lowercase and extract words using Turkish character pattern
-    text = text.lower()
-    words = re.findall(r"[a-zA-Zçğıöşüâîû]+", text)
+    # Keep original casing and extract words and punctuation
+    words = re.findall(r"[a-zA-ZçğıöşüâîûÇĞIİÖŞÜÂÎÛ']+|[.,!?;:\"\"„…]+", text)
     return words
 
 
@@ -29,7 +38,8 @@ def levenshtein_align(ref_tokens: List[str], hyp_tokens: List[str]) -> List[Tupl
     # Fill DP table
     for i in range(1, m + 1):
         for j in range(1, n + 1):
-            if ref_tokens[i-1] == hyp_tokens[j-1]:
+            # Use normalized comparison for case-insensitive matching
+            if _norm_token(ref_tokens[i-1]) == _norm_token(hyp_tokens[j-1]):
                 dp[i][j] = dp[i-1][j-1]
             else:
                 dp[i][j] = 1 + min(
@@ -43,8 +53,8 @@ def levenshtein_align(ref_tokens: List[str], hyp_tokens: List[str]) -> List[Tupl
     i, j = m, n
     
     while i > 0 or j > 0:
-        if i > 0 and j > 0 and ref_tokens[i-1] == hyp_tokens[j-1]:
-            # Equal
+        if i > 0 and j > 0 and _norm_token(ref_tokens[i-1]) == _norm_token(hyp_tokens[j-1]):
+            # Equal (normalized)
             alignment.append(("equal", ref_tokens[i-1], hyp_tokens[j-1], i-1, j-1))
             i -= 1
             j -= 1
@@ -145,10 +155,10 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
             event_type = "extra"
             subtype = None
         elif op == "replace":
-            event_type = "diff"
+            event_type = "substitution"
             subtype = classify_replace(ref_token, hyp_token)
         else:
-            event_type = "unknown"
+            event_type = "substitution"  # fallback for unknown operations
             subtype = None
         
         # Get timing data

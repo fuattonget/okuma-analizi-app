@@ -1,54 +1,97 @@
 version: '3.8'
 
 services:
+  mongodb:
+    image: mongo:7.0
+    container_name: okuma-analizi-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: okuma_analizi
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - okuma-network
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: okuma-analizi-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - okuma-network
+
   api:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: okuma-analizi-api
+    restart: unless-stopped
     ports:
       - "8000:8000"
-    env_file: .env
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017
+      - MONGO_DB=okuma_analizi
+      - REDIS_URL=redis://redis:6379
+      - GCS_CREDENTIALS_PATH=./gcs-service-account.json
+      - GCS_BUCKET=doky_ai_audio_storage
+      - ELEVENLABS_API_KEY=sk_b3f8dd913a905ad2d0bd615b85043b5bc03c41c48465594c
+      - ELEVENLABS_MODEL=scribe_v1
+      - ELEVENLABS_LANGUAGE=tr
     depends_on:
-      - mongo
+      - mongodb
       - redis
     volumes:
-      - ./media:/app/media
-    restart: unless-stopped
+      - ./gcs-service-account.json:/app/gcs-service-account.json
+      - ./logs:/app/logs
+    networks:
+      - okuma-network
 
   worker:
     build:
       context: .
-      dockerfile: ./worker/Dockerfile
-    env_file: .env
-    depends_on:
-      - api
-      - mongo
-      - redis
-    volumes:
-      - ./media:/app/media
+      dockerfile: worker/Dockerfile
+    container_name: okuma-analizi-worker
     restart: unless-stopped
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017
+      - MONGO_DB=okuma_analizi
+      - REDIS_URL=redis://redis:6379
+      - ELEVENLABS_API_KEY=sk_b3f8dd913a905ad2d0bd615b85043b5bc03c41c48465594c
+      - ELEVENLABS_MODEL=scribe_v1
+      - ELEVENLABS_LANGUAGE=tr
+    depends_on:
+      - mongodb
+      - redis
+      - api
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - okuma-network
 
   frontend:
-    build: ./frontend
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: okuma-analizi-frontend
+    restart: unless-stopped
     ports:
       - "3000:3000"
-    env_file: .env
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
     depends_on:
       - api
-    restart: unless-stopped
-
-  mongo:
-    image: mongo:6
-    ports:
-      - "27018:27017"
-    volumes:
-      - mongo-data:/data/db
-    restart: unless-stopped
-
-  redis:
-    image: redis:7
-    ports:
-      - "6379:6379"
-    restart: unless-stopped
+    networks:
+      - okuma-network
 
 volumes:
-  mongo-data:
+  mongodb_data:
+  redis_data:
 
+networks:
+  okuma-network:
+    driver: bridge
