@@ -461,11 +461,24 @@ async def analyze_file(
     else:
         # Create custom text document
         try:
+            from app.utils.text_tokenizer import normalize_turkish_text, tokenize_turkish_text
+            from app.models.documents import CanonicalTokens
+            
+            # Normalize and tokenize the custom text
+            normalized_body = normalize_turkish_text(custom_text)
+            tokenized_words = tokenize_turkish_text(normalized_body)
+            
+            # Generate unique slug for custom text
+            custom_slug = f"custom-{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
+            
             custom_text_doc = TextDoc(
-                text_id=f"custom_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
+                slug=custom_slug,
                 grade=0,  # Custom texts have grade 0
                 title="Custom Text",
-                body=custom_text,
+                body=normalized_body,  # Use normalized body
+                canonical=CanonicalTokens(
+                    tokens=tokenized_words
+                ),
                 comment="Generated from analyze/file endpoint",
                 active=True
             )
@@ -474,8 +487,8 @@ async def analyze_file(
             
             app_logger.bind(
                 request_id=request_id,
-                custom_text_id=custom_text_doc.text_id
-            ).info("Custom text document created")
+                custom_text_id=str(custom_text_doc.id)
+            ).info("Custom text document created with proper tokenization")
             
         except Exception as e:
             app_logger.bind(

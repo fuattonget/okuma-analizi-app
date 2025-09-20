@@ -208,7 +208,9 @@ async def _analyze_audio_async(analysis_id: str):
         logger.debug("Starting text tokenization and alignment")
         align_start = time.time()
         
-        ref_tokens = alignment.tokenize_tr(text.body)
+        # Use the worker's own tokenizer
+        from services.alignment import tokenize_tr
+        ref_tokens = tokenize_tr(text.body)
         # Use raw words directly - NO TOKENIZATION of hypothesis
         hyp_tokens = [w['word'] for w in words]
         

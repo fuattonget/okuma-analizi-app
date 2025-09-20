@@ -22,26 +22,25 @@ class TestAlignmentNoMerge(unittest.TestCase):
     
     def test_alignment_preserves_individual_words(self):
         """Test that alignment preserves individual words"""
-        # Reference tokens (canonical) - punctuation separated
+        # Reference tokens (canonical) - no punctuation after tokenization
         ref_tokens = ["öğretmen", "atatürk", "bir", "yurt", "severdi"]
         
-        # Hypothesis tokens (from STT - punctuation separated)
-        hyp_tokens = ["Öğretmen", ",", "Atatürk", "bir", "yurt", "severdi"]
+        # Hypothesis tokens (from STT - no punctuation after tokenization)
+        hyp_tokens = ["Öğretmen", "Atatürk", "bir", "yurt", "severdi"]
         
         # Perform alignment
         alignment_result = alignment.levenshtein_align(ref_tokens, hyp_tokens)
         
         # Verify alignment result
-        self.assertEqual(len(alignment_result), 6)
+        self.assertEqual(len(alignment_result), 5)
         
         # Check each alignment operation
         expected_operations = [
             ("equal", "öğretmen", "Öğretmen", 0, 0),     # case difference - now equal due to normalization
-            ("insert", "", ",", -1, 1),                   # punctuation inserted
-            ("equal", "atatürk", "Atatürk", 1, 2),       # case difference - now equal due to normalization
-            ("equal", "bir", "bir", 2, 3),               # exact match
-            ("equal", "yurt", "yurt", 3, 4),             # exact match
-            ("equal", "severdi", "severdi", 4, 5),       # exact match
+            ("equal", "atatürk", "Atatürk", 1, 1),       # case difference - now equal due to normalization
+            ("equal", "bir", "bir", 2, 2),               # exact match
+            ("equal", "yurt", "yurt", 3, 3),             # exact match
+            ("equal", "severdi", "severdi", 4, 4),       # exact match
         ]
         
         for i, (op, ref, hyp, ref_idx, hyp_idx) in enumerate(expected_operations):
@@ -194,11 +193,21 @@ class TestAlignmentNoMerge(unittest.TestCase):
     
     def test_turkish_apostrophe_preservation(self):
         """Test that Turkish apostrophes are preserved correctly"""
-        # Reference tokens with apostrophes
-        ref_tokens = ["Atatürk'ün", "Türkiye'nin", "okulları,", "öğrencileri"]
+        # Test tokenization with apostrophes
+        text_with_apostrophes = "Atatürk'ün Türkiye'nin okulları öğrencileri"
+        tokens = alignment.tokenize_tr(text_with_apostrophes)
         
-        # Hypothesis tokens (from STT - should match with case differences)
-        hyp_tokens = ["Atatürk'ün", "Türkiye'nin", "okulları,", "öğrencileri"]
+        # Verify apostrophes are preserved in tokens
+        expected_tokens = ["Atatürk'ün", "Türkiye'nin", "okulları", "öğrencileri"]
+        self.assertEqual(tokens, expected_tokens)
+        
+        # Test that apostrophes don't split words
+        self.assertEqual(tokens[0], "Atatürk'ün")
+        self.assertEqual(tokens[1], "Türkiye'nin")
+        
+        # Test alignment with apostrophe tokens
+        ref_tokens = ["Atatürk'ün", "Türkiye'nin", "okulları", "öğrencileri"]
+        hyp_tokens = ["Atatürk'ün", "Türkiye'nin", "okulları", "öğrencileri"]
         
         # Perform alignment
         alignment_result = alignment.levenshtein_align(ref_tokens, hyp_tokens)
@@ -214,13 +223,23 @@ class TestAlignmentNoMerge(unittest.TestCase):
             self.assertEqual(ref_idx, i)
             self.assertEqual(hyp_idx, i)
     
-    def test_turkish_punctuation_preservation(self):
-        """Test that Turkish punctuation is preserved correctly"""
-        # Reference tokens with punctuation
-        ref_tokens = ["Okulları,", "öğrencileri", "güzel", "bir", "gün."]
+    def test_turkish_punctuation_removal(self):
+        """Test that Turkish punctuation is removed from tokens"""
+        # Test tokenization with punctuation
+        text_with_punctuation = "Okulları, öğrencileri güzel bir gün."
+        tokens = alignment.tokenize_tr(text_with_punctuation)
         
-        # Hypothesis tokens with different casing but same punctuation
-        hyp_tokens = ["Okulları,", "öğrencileri", "Güzel", "bir", "gün."]
+        # Verify punctuation is removed from tokens
+        expected_tokens = ["Okulları", "öğrencileri", "güzel", "bir", "gün"]
+        self.assertEqual(tokens, expected_tokens)
+        
+        # Test that punctuation doesn't appear as separate tokens
+        self.assertNotIn(",", tokens)
+        self.assertNotIn(".", tokens)
+        
+        # Test alignment with punctuation-removed tokens
+        ref_tokens = ["Okulları", "öğrencileri", "güzel", "bir", "gün"]
+        hyp_tokens = ["Okulları", "öğrencileri", "Güzel", "bir", "gün"]
         
         # Perform alignment
         alignment_result = alignment.levenshtein_align(ref_tokens, hyp_tokens)
@@ -230,11 +249,11 @@ class TestAlignmentNoMerge(unittest.TestCase):
         
         # Check specific cases
         expected_operations = [
-            ("equal", "Okulları,", "Okulları,", 0, 0),  # exact match with comma
+            ("equal", "Okulları", "Okulları", 0, 0),  # exact match
             ("equal", "öğrencileri", "öğrencileri", 1, 1),  # exact match
             ("equal", "güzel", "Güzel", 2, 2),  # case difference but normalized equal
             ("equal", "bir", "bir", 3, 3),  # exact match
-            ("equal", "gün.", "gün.", 4, 4),  # exact match with period
+            ("equal", "gün", "gün", 4, 4),  # exact match
         ]
         
         for i, (op, ref, hyp, ref_idx, hyp_idx) in enumerate(expected_operations):
@@ -266,6 +285,44 @@ class TestAlignmentNoMerge(unittest.TestCase):
             self.assertEqual(hyp, hyp_tokens[i])  # Original casing preserved
             self.assertEqual(ref_idx, i)
             self.assertEqual(hyp_idx, i)
+    
+    def test_tokenization_requirements(self):
+        """Test specific tokenization requirements from user query"""
+        # Test 1: Apostrophes must be preserved inside tokens
+        text1 = "Atatürk'ün"
+        tokens1 = alignment.tokenize_tr(text1)
+        self.assertEqual(tokens1, ["Atatürk'ün"])
+        
+        # Test 2: Multiple words with apostrophes
+        text2 = "Türkiye'nin eğitimi"
+        tokens2 = alignment.tokenize_tr(text2)
+        self.assertEqual(tokens2, ["Türkiye'nin", "eğitimi"])
+        
+        # Test 3: Punctuation must be removed
+        text3 = "Okulu, öğrencileri ve öğretmenleri."
+        tokens3 = alignment.tokenize_tr(text3)
+        self.assertEqual(tokens3, ["Okulu", "öğrencileri", "ve", "öğretmenleri"])
+        
+        # Test 4: Complex text with quotes and punctuation
+        text4 = 'Atatürk: "Öğretmen" dedi.'
+        tokens4 = alignment.tokenize_tr(text4)
+        self.assertEqual(tokens4, ["Atatürk", "Öğretmen", "dedi"])
+        
+        # Test 5: Apostrophes must NOT split tokens
+        text5 = "Ali'ye"
+        tokens5 = alignment.tokenize_tr(text5)
+        self.assertEqual(tokens5, ["Ali'ye"])
+        # Verify it's not split
+        self.assertNotIn("Ali", tokens5)
+        self.assertNotIn("ye", tokens5)
+        
+        # Test 6: Preserve original casing and diacritics
+        text6 = "Atatürk'ün Türkiye'nin"
+        tokens6 = alignment.tokenize_tr(text6)
+        self.assertEqual(tokens6, ["Atatürk'ün", "Türkiye'nin"])
+        # Verify casing is preserved
+        self.assertTrue(tokens6[0].startswith("A"))  # Capital A
+        self.assertTrue(tokens6[1].startswith("T"))  # Capital T
 
 
 if __name__ == "__main__":

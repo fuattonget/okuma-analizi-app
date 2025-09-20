@@ -20,6 +20,10 @@ echo "-----------------------------------"
 # Docker servislerini başlat
 docker-compose up -d --build
 
+# Worker'ın başlatıldığından emin ol
+echo "🔧 Ensuring worker is started..."
+docker-compose up -d worker
+
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✅ Services started successfully${NC}"
 else

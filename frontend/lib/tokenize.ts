@@ -1,8 +1,18 @@
-// Turkish tokenization function
+// Turkish tokenization function - preserves apostrophes, removes punctuation
 export function tokenize_tr(text: string): string[] {
-  // Keep original casing and extract words and punctuation
-  const tokens = text.match(/[a-zA-ZçğıöşüâîûÇĞIİÖŞÜÂÎÛ']+|[.,!?;:""„…]+/g) || [];
-  return tokens;
+  // Keep original casing and extract words only (no punctuation)
+  // This pattern matches Turkish words including çğıöşüâîû characters and apostrophes
+  // but excludes punctuation marks like .,!?;: " " , etc.
+  // Includes all apostrophe-like characters: ' ' ` ` ´ ´
+  const tokens = text.match(/[a-zA-ZçğıöşüâîûÇĞIİÖŞÜÂÎÛ''`´]+/g) || [];
+  
+  // Filter out empty strings and very short words (1 char) unless they are common
+  const commonSingleChars = new Set(['a', 'e', 'i', 'ı', 'o', 'ö', 'u', 'ü']);
+  const filteredTokens = tokens.filter(token => 
+    token.length > 1 || commonSingleChars.has(token)
+  );
+  
+  return filteredTokens;
 }
 
 // Split text into tokens and separators

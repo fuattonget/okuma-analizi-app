@@ -131,9 +131,23 @@ async def create_text(text_data: TextCreate):
 async def copy_text(text_data: TextCopyCreate):
     """Copy external text for analysis"""
     try:
-        # Generate unique text_id for copied text
-        import uuid
-        text_id = str(uuid.uuid4())[:12]
+        # Generate slug for uniqueness check
+        slug = f"{text_data.grade}-{text_data.title.lower().replace(' ', '-')}-copy"
+        
+        # Check if text already exists by slug
+        existing_text = await TextDoc.find_one(TextDoc.slug == slug)
+        if existing_text:
+            logger.info(f"Text already exists with slug: {slug}")
+            return TextResponse(
+                id=str(existing_text.id),
+                text_id=str(existing_text.id),  # Use _id as text_id for compatibility
+                title=existing_text.title,
+                grade=existing_text.grade,
+                body=existing_text.body,
+                comment=existing_text.comment,
+                created_at=existing_text.created_at.isoformat(),
+                active=existing_text.active
+            )
         
         # Normalize and tokenize the text
         normalized_body = normalize_turkish_text(text_data.body)
@@ -141,20 +155,22 @@ async def copy_text(text_data: TextCopyCreate):
         
         # Create text document
         text_doc = TextDoc(
-            text_id=text_id,
+            slug=slug,
             title=text_data.title,
             grade=text_data.grade,
-            body=text_data.body,
-            tokenized_words=tokenized_words,
+            body=normalized_body,  # Use normalized body
+            canonical=CanonicalTokens(
+                tokens=tokenized_words
+            ),
             comment=text_data.comment,
             active=True
         )
         await text_doc.insert()
         
-        logger.info(f"Copied external text with text_id: {text_id}, title: {text_data.title}")
+        logger.info(f"Copied external text with slug: {slug}, title: {text_data.title}")
         return TextResponse(
             id=str(text_doc.id),
-            text_id=text_doc.text_id,
+            text_id=str(text_doc.id),  # Use _id as text_id for compatibility
             title=text_doc.title,
             grade=text_doc.grade,
             body=text_doc.body,
@@ -202,13 +218,17 @@ async def update_text(text_id: str, text_data: TextUpdate):
         # Update fields
         text.title = text_data.title
         text.grade = text_data.grade
-        text.body = text_data.body
         text.comment = text_data.comment
         
-        # Update canonical tokens if body changed
+        # Update body and canonical tokens if body changed
         if text.body != text_data.body:
+            # Normalize and tokenize the new body
+            normalized_body = normalize_turkish_text(text_data.body)
+            tokenized_words = tokenize_turkish_text(normalized_body)
+            
+            text.body = normalized_body  # Store normalized body
             text.canonical = CanonicalTokens(
-                tokens=tokenize_turkish_text(text_data.body)
+                tokens=tokenized_words
             )
         
         await text.save()

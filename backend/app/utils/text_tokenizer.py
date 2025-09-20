@@ -7,31 +7,32 @@ from typing import List
 
 def tokenize_turkish_text(text: str) -> List[str]:
     """
-    Tokenize Turkish text into words using regex pattern
+    Tokenize Turkish text into words, preserving apostrophes and removing punctuation
     
     Args:
         text: Input text to tokenize
         
     Returns:
-        List of tokens (words and punctuation)
+        List of word tokens (no punctuation)
     """
     if not text or not text.strip():
         return []
     
-    # Keep original casing and extract words and punctuation
+    # Keep original casing and extract words only (no punctuation)
     text = text.strip()
     
-    # Turkish word pattern: includes Turkish characters, apostrophes, and punctuation
-    # This pattern matches Turkish words including çğıöşüâîû characters, apostrophes, and punctuation
-    tokens = re.findall(r"[a-zA-ZçğıöşüâîûÇĞIİÖŞÜÂÎÛ']+|[.,!?;:\"\"„…]+", text)
+    # Turkish word pattern: includes Turkish characters and apostrophes, excludes punctuation
+    # This pattern matches Turkish words including çğıöşüâîû characters and apostrophes
+    # but excludes punctuation marks like .,!?;: " " , etc.
+    # Includes all apostrophe-like characters: ' ' ` ` ´ ´
+    tokens = re.findall(r"[a-zA-ZçğıöşüâîûÇĞIİÖŞÜÂÎÛ''`´]+", text)
     
-    # Filter out empty strings and very short words (1 char) unless they are common or punctuation
+    # Filter out empty strings and very short words (1 char) unless they are common
     common_single_chars = {"a", "e", "i", "ı", "o", "ö", "u", "ü"}
-    punctuation_chars = {",", ".", "!", "?", ";", ":", '"', '"', "„", "…"}
     filtered_tokens = []
     
     for token in tokens:
-        if len(token) > 1 or token in common_single_chars or token in punctuation_chars:
+        if len(token) > 1 or token in common_single_chars:
             filtered_tokens.append(token)
     
     return filtered_tokens
