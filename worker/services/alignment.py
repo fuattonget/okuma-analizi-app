@@ -11,6 +11,20 @@ def _is_punctuation(tok: str) -> bool:
     """Check if token is punctuation"""
     return tok in _PUNCTUATION
 
+def normalize_sub_type(sub_type: str) -> str:
+    """Normalize sub_type labels to standard format"""
+    if not sub_type:
+        return sub_type
+    
+    # Mapping for sub_type normalization
+    normalization_map = {
+        "hece_ek": "hece_ekleme",
+        "hece_cik": "hece_eksiltme", 
+        "degistirme": "harf_değiştirme"
+    }
+    
+    return normalization_map.get(sub_type, sub_type)
+
 def _norm_token(tok: str) -> str:
     """Normalize token: NFC + casefold + remove leading/trailing punctuation"""
     t = unicodedata.normalize("NFC", tok or "").casefold()
@@ -216,6 +230,8 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
         elif op == "replace":
             event_type = "substitution"
             subtype = classify_replace(ref_token, hyp_token)
+            # Normalize sub_type
+            subtype = normalize_sub_type(subtype)
             
             # Calculate char_diff and cer_local for substitutions
             char_diff = char_edit_stats(ref_token, hyp_token)[0]
@@ -238,7 +254,7 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
             "start_ms": start_ms,
             "end_ms": end_ms,
             "type": event_type,
-            "subtype": subtype,
+            "sub_type": subtype,  # Changed from "subtype" to "sub_type"
             "ref_idx": ref_idx,
             "hyp_idx": hyp_idx
         }

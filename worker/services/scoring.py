@@ -68,7 +68,7 @@ def recompute_counts(word_events: List[Any]) -> Dict[str, int]:
         "correct": 0,
         "missing": 0,
         "extra": 0,
-        "diff": 0,
+        "substitution": 0,  # Changed from "diff" to "substitution"
         "total_words": 0
     }
     
@@ -89,8 +89,11 @@ def recompute_counts(word_events: List[Any]) -> Dict[str, int]:
             counts["missing"] += 1
         elif event_type == "extra":
             counts["extra"] += 1
-        elif event_type == "diff":
-            counts["diff"] += 1
+        elif event_type == "substitution":  # Changed from "diff" to "substitution"
+            counts["substitution"] += 1
+    
+    # Add backward compatibility for "diff" field
+    counts["diff"] = counts["substitution"]
     
     logger.debug(f"Recomputed counts from {len(word_events)} word events: {counts}")
     return counts

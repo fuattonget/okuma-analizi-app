@@ -301,7 +301,7 @@ async def _analyze_audio_async(analysis_id: str):
             "error_types": {
                 "missing": counts.get("missing", 0),
                 "extra": counts.get("extra", 0),
-                "substitution": counts.get("diff", 0),
+                "substitution": counts.get("substitution", 0),  # Use "substitution" instead of "diff"
                 "pause_long": len(pause_events)
             }
         }

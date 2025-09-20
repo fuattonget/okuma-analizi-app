@@ -73,6 +73,24 @@ async def export_analysis(analysis_id: str):
         for we in word_events:
             event_dict = we.dict()
             event_dict["analysis_id"] = str(event_dict["analysis_id"])
+            
+            # Normalize sub_type if present
+            if "sub_type" in event_dict and event_dict["sub_type"]:
+                from app.services.alignment import normalize_sub_type
+                event_dict["sub_type"] = normalize_sub_type(event_dict["sub_type"])
+            
+            # Ensure char_diff and cer_local are included for substitution events
+            if event_dict.get("type") == "substitution":
+                if "char_diff" not in event_dict or event_dict["char_diff"] is None:
+                    # Calculate char_diff if missing
+                    ref_token = event_dict.get("ref_token", "")
+                    hyp_token = event_dict.get("hyp_token", "")
+                    if ref_token and hyp_token:
+                        from app.services.alignment import char_edit_stats
+                        char_diff = char_edit_stats(ref_token, hyp_token)[0]
+                        event_dict["char_diff"] = char_diff
+                        event_dict["cer_local"] = char_diff / max(len(ref_token), 1)
+            
             events_data.append(event_dict)
         
         pauses_data = []
@@ -81,13 +99,22 @@ async def export_analysis(analysis_id: str):
             pause_dict["analysis_id"] = str(pause_dict["analysis_id"])
             pauses_data.append(pause_dict)
         
+        # Validate summary consistency
+        from app.services.scoring import validate_summary_consistency
+        is_consistent = validate_summary_consistency(analysis.summary, word_events)
+        if not is_consistent:
+            app_logger.warning(f"Summary consistency validation failed for analysis {analysis_id}")
+        
         result = {
             "analysis_id": str(analysis.id),
             "text_id": str(analysis.session_id),
             "events": events_data,
             "pauses": pauses_data,
             "summary": analysis.summary or {},
-            "metrics": analysis.summary.get("metrics", {}) if analysis.summary else {}
+            "metrics": analysis.summary.get("metrics", {}) if analysis.summary else {},
+            "validation": {
+                "summary_consistent": is_consistent
+            }
         }
         app_logger.info("Response built successfully")
         return JSONResponse(content=result)
