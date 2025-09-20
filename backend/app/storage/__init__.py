@@ -10,7 +10,7 @@ class GCSStorage:
         self.bucket_name = bucket_name
     
     def upload(self, text_id: str, original_name: str, file_path: str, 
-               content_type: Optional[str] = None, make_public: bool = True) -> Dict[str, Any]:
+               content_type: Optional[str] = None, make_public: bool = False) -> Dict[str, Any]:
         """Upload file with automatic naming."""
         blob_name = build_blob_name(text_id, original_name)
         return upload_file(
@@ -57,4 +57,4 @@ def upload_file_with_custom_name(blob_name: str, file_path: str,
                                 content_type: Optional[str] = None) -> Dict[str, Any]:
     """Upload file with custom blob name."""
     bucket_name = os.getenv("GCS_BUCKET", "doky_ai_audio_storage")
-    return upload_file(bucket_name, blob_name, file_path, content_type)
+    return upload_file(bucket_name, blob_name, file_path, content_type, make_public=False)

@@ -1,18 +1,102 @@
 from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Form, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from typing import Union
 import tempfile
 import os
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import soundfile as sf
-# from app.models.documents import AnalysisDoc, TextDoc, AudioFileDoc, WordEventDoc, PauseEventDoc
+from bson import ObjectId
+from app.models.documents import AnalysisDoc, TextDoc, AudioFileDoc, WordEventDoc, PauseEventDoc, ReadingSessionDoc
 from app.config import settings
 from app.storage import upload_audio_file
+from app.storage.gcs import generate_signed_url
 from app.crud import insert_audio
 from app.logging_config import app_logger
+from app.schemas import WordEventResponse, PauseEventResponse, MetricsResponse
 
 router = APIRouter()
+
+
+@router.get("/test-export")
+async def test_export():
+    """Test export endpoint"""
+    return {"message": "Export test endpoint working"}
+
+
+@router.get("/{analysis_id}/export")
+async def export_analysis(analysis_id: str):
+    """Export complete analysis data as JSON"""
+    app_logger.info(f"Export analysis called with ID: {analysis_id}")
+    
+    try:
+        # Validate ObjectId
+        try:
+            oid = ObjectId(analysis_id)
+            app_logger.info(f"ObjectId created successfully: {oid}")
+        except Exception as e:
+            app_logger.error(f"Invalid ObjectId: {e}")
+            raise HTTPException(status_code=400, detail="Invalid analysis id")
+
+        # Fetch analysis
+        app_logger.info(f"Fetching analysis with ObjectId: {oid}")
+        analysis = await AnalysisDoc.get(oid)
+        if not analysis:
+            app_logger.warning(f"Analysis not found: {oid}")
+            raise HTTPException(status_code=404, detail="Analysis not found")
+        
+        app_logger.info(f"Analysis found: {analysis.id}")
+
+        # Fetch related events
+        app_logger.info("Fetching word events...")
+        try:
+            word_events = await WordEventDoc.find(WordEventDoc.analysis_id == analysis.id).to_list()
+            app_logger.info(f"Found {len(word_events)} word events")
+        except Exception as e:
+            app_logger.error(f"Error fetching word events: {e}")
+            word_events = []
+        
+        app_logger.info("Fetching pause events...")
+        try:
+            pause_events = await PauseEventDoc.find(PauseEventDoc.analysis_id == analysis.id).to_list()
+            app_logger.info(f"Found {len(pause_events)} pause events")
+        except Exception as e:
+            app_logger.error(f"Error fetching pause events: {e}")
+            pause_events = []
+
+        # Build response
+        app_logger.info("Building response...")
+        
+        # Convert documents to dicts and ensure ObjectId fields are strings
+        events_data = []
+        for we in word_events:
+            event_dict = we.dict()
+            event_dict["analysis_id"] = str(event_dict["analysis_id"])
+            events_data.append(event_dict)
+        
+        pauses_data = []
+        for pe in pause_events:
+            pause_dict = pe.dict()
+            pause_dict["analysis_id"] = str(pause_dict["analysis_id"])
+            pauses_data.append(pause_dict)
+        
+        result = {
+            "analysis_id": str(analysis.id),
+            "text_id": str(analysis.session_id),
+            "events": events_data,
+            "pauses": pauses_data,
+            "summary": analysis.summary or {},
+            "metrics": analysis.summary.get("metrics", {}) if analysis.summary else {}
+        }
+        app_logger.info("Response built successfully")
+        return JSONResponse(content=result)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        app_logger.error(f"Failed to export analysis {analysis_id}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to export analysis: {str(e)}")
 
 
 class AnalysisSummary(BaseModel):
@@ -42,9 +126,6 @@ class AnalysisDetail(BaseModel):
     error: Optional[str] = None
     summary: Dict[str, Any]
     text: Dict[str, str]  # {title, body}
-    audio_url: str
-    word_events: List[Dict[str, Any]]
-    pause_events: List[Dict[str, Any]]
     # DEBUG fields
     timings: Optional[Dict[str, Any]] = None
     counts_direct: Optional[Dict[str, int]] = None
@@ -53,7 +134,6 @@ class AnalysisDetail(BaseModel):
 class AnalyzeResponse(BaseModel):
     analysis_id: str
     audio_id: str
-    gcs_url: Optional[str] = None
     status: str
     message: str
 
@@ -62,29 +142,61 @@ class AnalyzeResponse(BaseModel):
 async def get_analyses(limit: int = Query(20, ge=1, le=100)):
     """Get analyses list with pagination and lookups"""
     
+    from app.logging_config import app_logger
+    app_logger.info(f"DEBUG: GET /analyses called with limit={limit}")
+    
     # Get analyses ordered by created_at desc
     analyses = await AnalysisDoc.find_all().sort("-created_at").limit(limit).to_list()
     
+    app_logger.info(f"DEBUG: Found {len(analyses)} analyses")
+    print(f"STDOUT DEBUG: Found {len(analyses)} analyses")
+    
     if not analyses:
+        app_logger.info("DEBUG: No analyses found, returning empty list")
+        print("STDOUT DEBUG: No analyses found, returning empty list")
         return []
     
-    # Get unique text and audio IDs for batch lookup
-    text_ids = list(set(str(analysis.text_id) for analysis in analyses))
-    audio_ids = list(set(str(analysis.audio_id) for analysis in analyses))
+    # Get unique session IDs for batch lookup
+    session_ids = list(set(str(analysis.session_id) for analysis in analyses))
+    app_logger.info(f"DEBUG: Found {len(session_ids)} unique session IDs: {session_ids[:3]}...")
     
-    # Batch fetch texts and audios
-    texts = await TextDoc.find({"_id": {"$in": text_ids}}).to_list()
-    audios = await AudioFileDoc.find({"_id": {"$in": audio_ids}}).to_list()
+    # Convert session IDs to ObjectId for MongoDB query
+    from bson import ObjectId
+    session_object_ids = [ObjectId(sid) for sid in session_ids]
+    app_logger.info(f"DEBUG: Converted to ObjectIds: {session_object_ids[:3]}...")
+    
+    # Batch fetch sessions, texts and audios
+    sessions = await ReadingSessionDoc.find({"_id": {"$in": session_object_ids}}).to_list()
+    app_logger.info(f"DEBUG: Found {len(sessions)} sessions")
+    
+    text_ids = list(set(str(session.text_id) for session in sessions))
+    audio_ids = list(set(str(session.audio_id) for session in sessions))
+    app_logger.info(f"DEBUG: Found {len(text_ids)} text IDs, {len(audio_ids)} audio IDs")
+    
+    # Convert text and audio IDs to ObjectId for MongoDB query
+    text_object_ids = [ObjectId(tid) for tid in text_ids]
+    audio_object_ids = [ObjectId(aid) for aid in audio_ids]
+    
+    texts = await TextDoc.find({"_id": {"$in": text_object_ids}}).to_list()
+    audios = await AudioFileDoc.find({"_id": {"$in": audio_object_ids}}).to_list()
+    app_logger.info(f"DEBUG: Found {len(texts)} texts, {len(audios)} audios")
     
     # Create lookup dictionaries
+    session_lookup = {str(session.id): session for session in sessions}
     text_lookup = {str(text.id): text for text in texts}
     audio_lookup = {str(audio.id): audio for audio in audios}
     
     # Build response
     result = []
+    skipped_count = 0
     for analysis in analyses:
-        text = text_lookup.get(str(analysis.text_id))
-        audio = audio_lookup.get(str(analysis.audio_id))
+        session = session_lookup.get(str(analysis.session_id))
+        if not session:
+            skipped_count += 1
+            continue  # Skip if session not found
+            
+        text = text_lookup.get(str(session.text_id))
+        audio = audio_lookup.get(str(session.audio_id))
         
         # Extract summary data
         summary = analysis.summary or {}
@@ -93,14 +205,14 @@ async def get_analyses(limit: int = Query(20, ge=1, le=100)):
         # Build base response
         response_data = {
             "id": str(analysis.id),
-            "created_at": analysis.created_at.isoformat(),
+            "created_at": analysis.created_at.replace(tzinfo=timezone(timedelta(hours=3))).isoformat(),
             "status": analysis.status,
             "text_title": text.title if text else "Unknown",
             "wer": summary.get("wer"),
             "accuracy": summary.get("accuracy"),
             "wpm": summary.get("wpm"),
             "counts": counts,
-            "audio_id": str(analysis.audio_id),
+            "audio_id": str(session.audio_id),
             "audio_name": audio.original_name if audio else None,
             "audio_duration_sec": getattr(audio, 'duration_sec', None) if audio else None,
             "audio_size_bytes": getattr(audio, 'size_bytes', None) if audio else None
@@ -111,11 +223,11 @@ async def get_analyses(limit: int = Query(20, ge=1, le=100)):
             # Add timings
             timings = {}
             if analysis.created_at:
-                timings["queued_at"] = analysis.created_at.isoformat()
+                timings["queued_at"] = analysis.created_at.replace(tzinfo=timezone(timedelta(hours=3))).isoformat()
             if analysis.started_at:
                 timings["started_at"] = analysis.started_at.isoformat()
             if analysis.finished_at:
-                timings["finished_at"] = analysis.finished_at.isoformat()
+                timings["finished_at"] = analysis.finished_at.replace(tzinfo=timezone(timedelta(hours=3))).isoformat()
                 if analysis.started_at:
                     total_ms = (analysis.finished_at - analysis.started_at).total_seconds() * 1000
                     timings["total_ms"] = round(total_ms, 2)
@@ -132,111 +244,123 @@ async def get_analyses(limit: int = Query(20, ge=1, le=100)):
         
         result.append(AnalysisSummary(**response_data))
     
+    app_logger.info(f"DEBUG: Built {len(result)} results, skipped {skipped_count} analyses")
     return result
 
 
-@router.get("/{analysis_id}", response_model=AnalysisDetail)
-async def get_analysis(analysis_id: str):
-    """Get detailed analysis by ID"""
+@router.get("/{analysis_id}/word-events", response_model=List[WordEventResponse])
+async def get_analysis_word_events(analysis_id: str):
+    """Get word events for a specific analysis"""
     
     try:
         analysis = await AnalysisDoc.get(analysis_id)
         if not analysis:
             raise HTTPException(status_code=404, detail="Analysis not found")
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid analysis ID")
-    
-    # Get related text
-    text = await TextDoc.get(analysis.text_id)
-    if not text:
-        raise HTTPException(status_code=404, detail="Related text not found")
-    
-    # Get related audio
-    audio = await AudioFileDoc.get(analysis.audio_id)
-    if not audio:
-        raise HTTPException(status_code=404, detail="Related audio not found")
-    
-    # Build audio public URL
-    # All audio files are now stored in GCS
-    if hasattr(audio, 'gcs_url') and audio.gcs_url:
-        audio_url = audio.gcs_url
-    else:
-        # Fallback for legacy data - use GCS URI as URL
-        audio_url = audio.path if audio.path.startswith('gs://') else f"gs://{settings.gcs_bucket}/{audio.path}"
-    
-    # Get word events
-    word_events = await WordEventDoc.find({"analysis_id": analysis.id}).sort("idx").to_list()
-    word_events_data = [
-        {
-            "idx": event.idx,
-            "ref_token": event.ref_token,
-            "hyp_token": event.hyp_token,
-            "start_ms": event.start_ms,
-            "end_ms": event.end_ms,
-            "type": event.type,
-            "subtype": event.subtype,
-            "details": event.details
-        }
-        for event in word_events
-    ]
-    
-    # Get pause events
-    pause_events = await PauseEventDoc.find({"analysis_id": analysis.id}).sort("after_word_idx").to_list()
-    pause_events_data = [
-        {
-            "after_word_idx": event.after_word_idx,
-            "start_ms": event.start_ms,
-            "end_ms": event.end_ms,
-            "duration_ms": event.duration_ms
-        }
-        for event in pause_events
-    ]
-    
-    # Build base response
-    response_data = {
-        "id": str(analysis.id),
-        "created_at": analysis.created_at.isoformat(),
-        "status": analysis.status,
-        "started_at": analysis.started_at.isoformat() if analysis.started_at else None,
-        "finished_at": analysis.finished_at.isoformat() if analysis.finished_at else None,
-        "error": analysis.error,
-        "summary": analysis.summary or {},
-        "text": {
-            "title": text.title,
-            "body": text.body
-        },
-        "audio_url": audio_url,
-        "word_events": word_events_data,
-        "pause_events": pause_events_data
-    }
-    
-    # Add DEBUG fields if enabled
-    if settings.debug:
-        # Add timings
-        timings = {}
-        if analysis.created_at:
-            timings["queued_at"] = analysis.created_at.isoformat()
-        if analysis.started_at:
-            timings["started_at"] = analysis.started_at.isoformat()
-        if analysis.finished_at:
-            timings["finished_at"] = analysis.finished_at.isoformat()
-            if analysis.started_at:
-                total_ms = (analysis.finished_at - analysis.started_at).total_seconds() * 1000
-                timings["total_ms"] = round(total_ms, 2)
         
-        response_data["timings"] = timings if timings else None
+        word_events = await WordEventDoc.find(WordEventDoc.analysis_id == analysis_id).to_list()
         
-        # Add direct counts
-        summary = analysis.summary or {}
-        counts = summary.get("counts", {})
-        response_data["counts_direct"] = {
-            "correct": counts.get("correct", 0),
-            "missing": counts.get("missing", 0),
-            "extra": counts.get("extra", 0),
-            "diff": counts.get("diff", 0)
-        }
+        app_logger.info(f"Retrieved {len(word_events)} word events for analysis {analysis_id}")
+        return word_events
+        
+    except Exception as e:
+        app_logger.error(f"Failed to get word events for analysis {analysis_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get word events: {str(e)}")
+
+
+@router.get("/{analysis_id}/pause-events", response_model=List[PauseEventResponse])
+async def get_analysis_pause_events(analysis_id: str):
+    """Get pause events for a specific analysis"""
     
-    return AnalysisDetail(**response_data)
+    try:
+        analysis = await AnalysisDoc.get(analysis_id)
+        if not analysis:
+            raise HTTPException(status_code=404, detail="Analysis not found")
+        
+        pause_events = await PauseEventDoc.find(PauseEventDoc.analysis_id == analysis_id).to_list()
+        
+        app_logger.info(f"Retrieved {len(pause_events)} pause events for analysis {analysis_id}")
+        return pause_events
+        
+    except Exception as e:
+        app_logger.error(f"Failed to get pause events for analysis {analysis_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get pause events: {str(e)}")
+
+
+@router.get("/{analysis_id}/metrics", response_model=MetricsResponse)
+async def get_analysis_metrics(analysis_id: str):
+    """Get aggregated metrics for a specific analysis"""
+    
+    try:
+        analysis = await AnalysisDoc.get(analysis_id)
+        if not analysis:
+            raise HTTPException(status_code=404, detail="Analysis not found")
+        
+        # Get word events
+        word_events = await WordEventDoc.find(WordEventDoc.analysis_id == analysis_id).to_list()
+        
+        # Get pause events
+        pause_events = await PauseEventDoc.find(PauseEventDoc.analysis_id == analysis_id).to_list()
+        
+        # Calculate counts
+        counts = {
+            "correct": 0,
+            "missing": 0,
+            "extra": 0,
+            "diff": 0,
+            "total_words": len(word_events)
+        }
+        
+        for event in word_events:
+            if event.type == "correct":
+                counts["correct"] += 1
+            elif event.type == "missing":
+                counts["missing"] += 1
+            elif event.type == "extra":
+                counts["extra"] += 1
+            elif event.type in ["substitution", "diff"]:
+                counts["diff"] += 1
+        
+        # Calculate WER and accuracy
+        total_ref = counts["correct"] + counts["missing"] + counts["diff"]
+        if total_ref > 0:
+            wer = (counts["missing"] + counts["extra"] + counts["diff"]) / total_ref
+            accuracy = (counts["correct"] / total_ref) * 100
+        else:
+            wer = 0.0
+            accuracy = 0.0
+        
+        # Calculate WPM (words per minute)
+        wpm = 0.0
+        if analysis.summary and "wpm" in analysis.summary:
+            wpm = analysis.summary["wpm"]
+        
+        # Count long pauses
+        long_pauses = len([p for p in pause_events if p.class_ in ["long", "very_long"]])
+        
+        metrics_data = {
+            "analysis_id": analysis_id,
+            "counts": counts,
+            "wer": wer,
+            "accuracy": accuracy,
+            "wpm": wpm,
+            "long_pauses": {
+                "count": long_pauses,
+                "threshold_ms": 500
+            },
+            "error_types": {
+                "missing": counts["missing"],
+                "extra": counts["extra"],
+                "substitution": counts["diff"],
+                "pause_long": long_pauses
+            }
+        }
+        
+        app_logger.info(f"Retrieved metrics for analysis {analysis_id}")
+        return MetricsResponse(**metrics_data)
+        
+    except Exception as e:
+        app_logger.error(f"Failed to get metrics for analysis {analysis_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get metrics: {str(e)}")
 
 
 @router.post("/file", response_model=AnalyzeResponse)
@@ -296,7 +420,7 @@ async def analyze_file(
     if text_id:
         # Validate existing text
         try:
-            text = await TextDoc.find_one(TextDoc.text_id == text_id)
+            text = await TextDoc.find_one({"text_id": text_id})
             if not text:
                 raise HTTPException(status_code=404, detail="Text not found")
             text_obj_id = str(text.id)
@@ -365,7 +489,6 @@ async def analyze_file(
                 request_id=request_id,
                 text_id=text_id,
                 original_filename=file.filename,
-                gcs_url=gcs_result["public_url"],
                 size_bytes=gcs_result["size_bytes"]
             ).info("Audio file uploaded to GCS successfully")
             
@@ -401,7 +524,6 @@ async def analyze_file(
             "original_name": file.filename,
             "path": gcs_result["gs_uri"],  # Store GCS URI as path for backward compatibility
             "storage_name": gcs_result["blob_name"],
-            "gcs_url": gcs_result["public_url"],
             "gcs_uri": gcs_result["gs_uri"],
             "content_type": file.content_type,
             "size_bytes": gcs_result["size_bytes"],
@@ -426,11 +548,34 @@ async def analyze_file(
         ).error("Failed to save audio document to MongoDB")
         raise HTTPException(status_code=500, detail=f"Failed to save audio metadata: {str(e)}")
     
+    # Create reading session first
+    try:
+        session_doc = ReadingSessionDoc(
+            text_id=ObjectId(text_obj_id),
+            audio_id=ObjectId(str(audio_doc.id)),
+            reader_id=uploaded_by,
+            status="active"
+        )
+        await session_doc.insert()
+        
+        app_logger.bind(
+            request_id=request_id,
+            session_id=str(session_doc.id),
+            text_id=text_obj_id,
+            audio_id=str(audio_doc.id)
+        ).info("Reading session created successfully")
+        
+    except Exception as e:
+        app_logger.bind(
+            request_id=request_id,
+            error=str(e)
+        ).error("Failed to create reading session")
+        raise HTTPException(status_code=500, detail=f"Failed to create reading session: {str(e)}")
+    
     # Create analysis document
     try:
         analysis_doc = AnalysisDoc(
-            text_id=text_obj_id,
-            audio_id=str(audio_doc.id),
+            session_id=ObjectId(str(session_doc.id)),
             status="queued"
         )
         await analysis_doc.insert()
@@ -444,7 +589,6 @@ async def analyze_file(
         return AnalyzeResponse(
             analysis_id=str(analysis_doc.id),
             audio_id=str(audio_doc.id),
-            gcs_url=gcs_result["public_url"],
             status="queued",
             message="Analysis queued successfully"
         )
@@ -469,7 +613,116 @@ async def update_analysis(analysis_id: str):
     return {"message": f"Update analysis {analysis_id} - to be implemented"}
 
 
+@router.get("/{analysis_id}/audio-url")
+async def get_analysis_audio_url(analysis_id: str, expiration_hours: int = Query(1, ge=1, le=24)):
+    """Get signed URL for analysis audio file"""
+    try:
+        # Get analysis
+        analysis = await AnalysisDoc.get(analysis_id)
+        if not analysis:
+            raise HTTPException(status_code=404, detail="Analysis not found")
+        
+        # Get session first
+        session = await ReadingSessionDoc.get(analysis.session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail="Related session not found")
+        
+        # Get audio file
+        audio = await AudioFileDoc.get(session.audio_id)
+        if not audio:
+            raise HTTPException(status_code=404, detail="Audio file not found")
+        
+        # Generate signed URL
+        signed_url = generate_signed_url(
+            bucket_name=settings.gcs_bucket_name,
+            blob_name=audio.storage_name,
+            expiration_hours=expiration_hours
+        )
+        
+        return {
+            "analysis_id": analysis_id,
+            "audio_id": str(session.audio_id),
+            "signed_url": signed_url,
+            "expiration_hours": expiration_hours,
+            "expires_at": (datetime.utcnow() + timedelta(hours=expiration_hours)).isoformat() + "Z"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        app_logger.error(f"Failed to generate signed URL for analysis {analysis_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate audio URL: {str(e)}")
+
+
 @router.delete("/{analysis_id}")
 async def delete_analysis(analysis_id: str):
     """Delete a specific analysis by ID"""
     return {"message": f"Delete analysis {analysis_id} - to be implemented"}
+
+
+@router.get("/{analysis_id}", response_model=AnalysisDetail)
+async def get_analysis(analysis_id: str):
+    """Get detailed analysis by ID"""
+    
+    try:
+        analysis = await AnalysisDoc.get(analysis_id)
+        if not analysis:
+            raise HTTPException(status_code=404, detail="Analysis not found")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid analysis ID")
+    
+    # Get related session
+    session = await ReadingSessionDoc.get(analysis.session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Related session not found")
+    
+    # Get related text
+    text = await TextDoc.get(session.text_id)
+    if not text:
+        raise HTTPException(status_code=404, detail="Related text not found")
+    
+    # Get related audio
+    audio = await AudioFileDoc.get(session.audio_id)
+    if not audio:
+        raise HTTPException(status_code=404, detail="Related audio not found")
+    
+    # Audio files are now private - use signed URLs instead of direct access
+    
+    
+    # Build base response
+    response_data = {
+        "id": str(analysis.id),
+        "created_at": analysis.created_at.replace(tzinfo=timezone(timedelta(hours=3))).isoformat(),
+        "status": analysis.status,
+        "started_at": analysis.started_at.isoformat() if analysis.started_at else None,
+        "finished_at": analysis.finished_at.replace(tzinfo=timezone(timedelta(hours=3))).isoformat() if analysis.finished_at else None,
+        "error": analysis.error,
+        "summary": analysis.summary or {},
+        "text": {
+            "title": text.title,
+            "body": text.body
+        }
+    }
+    
+    # Add DEBUG fields if enabled
+    if settings.debug:
+        # Add timings
+        timings = {}
+        if analysis.created_at:
+            timings["queued_at"] = analysis.created_at.replace(tzinfo=timezone(timedelta(hours=3))).isoformat()
+        if analysis.started_at:
+            timings["started_at"] = analysis.started_at.isoformat()
+        if analysis.finished_at:
+            timings["finished_at"] = analysis.finished_at.replace(tzinfo=timezone(timedelta(hours=3))).isoformat()
+        
+        response_data["debug"] = {
+            "timings": timings,
+            "session_id": str(session.id),
+            "text_id": str(text.id),
+            "audio_id": str(audio.id),
+            "audio_filename": audio.filename,
+            "audio_size": audio.size,
+            "audio_duration": audio.duration
+        }
+    
+    return AnalysisDetail(**response_data)

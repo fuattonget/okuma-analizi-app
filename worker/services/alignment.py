@@ -1,12 +1,42 @@
 from typing import List, Dict, Any, Tuple
 import re
+import unicodedata
+
+# Normalization and stopword helpers
+_PUNCT = r"[.,!?;:\"\"„…]+"
+_STOPWORDS = {"ve", "de", "da", "ile", "mi", "mı", "mu", "mü", "ki"}
+
+def _norm_token(tok: str) -> str:
+    """Normalize token: NFC + casefold + remove leading/trailing punctuation"""
+    t = unicodedata.normalize("NFC", tok or "").casefold()
+    # Remove leading and trailing punctuation (but keep apostrophes)
+    t = re.sub(rf"^{_PUNCT}", "", t)
+    t = re.sub(rf"{_PUNCT}$", "", t)
+    # Keep internal apostrophes (like Atatürk'ün) - they are part of the word
+    return t
+
+def _is_stop(tok: str) -> bool:
+    """Check if token is a stopword"""
+    return _norm_token(tok) in _STOPWORDS
+
+def _get_operation_cost(ref_token: str, hyp_token: str, operation: str) -> float:
+    """Get cost for specific operation considering stopwords"""
+    if operation == "equal":
+        return 0.0
+    elif operation in ["insert", "delete"]:
+        # Lower cost for stopwords
+        token = ref_token if operation == "delete" else hyp_token
+        return 0.4 if _is_stop(token) else 1.0
+    elif operation == "replace":
+        # Higher cost for stopword substitutions
+        return 1.2 if (_is_stop(ref_token) or _is_stop(hyp_token)) else 1.0
+    return 1.0
 
 
 def tokenize_tr(text: str) -> List[str]:
     """Turkish tokenization using regex pattern"""
-    # Convert to lowercase and extract words using Turkish character pattern
-    text = text.lower()
-    words = re.findall(r"[a-zA-Zçğıöşüâîû]+", text)
+    # Keep original casing and extract words and punctuation
+    words = re.findall(r"[a-zA-ZçğıöşüâîûÇĞIİÖŞÜÂÎÛ']+|[.,!?;:\"\"„…]+", text)
     return words
 
 
@@ -18,47 +48,63 @@ def levenshtein_align(ref_tokens: List[str], hyp_tokens: List[str]) -> List[Tupl
     m, n = len(ref_tokens), len(hyp_tokens)
     
     # Create DP table
-    dp = [[0] * (n + 1) for _ in range(m + 1)]
+    dp = [[0.0] * (n + 1) for _ in range(m + 1)]
     
-    # Initialize base cases
+    # Initialize base cases with stopword-aware costs
     for i in range(m + 1):
-        dp[i][0] = i
+        if i == 0:
+            dp[i][0] = 0
+        else:
+            dp[i][0] = dp[i-1][0] + _get_operation_cost(ref_tokens[i-1], "", "delete")
+    
     for j in range(n + 1):
-        dp[0][j] = j
+        if j == 0:
+            dp[0][j] = 0
+        else:
+            dp[0][j] = dp[0][j-1] + _get_operation_cost("", hyp_tokens[j-1], "insert")
     
     # Fill DP table
     for i in range(1, m + 1):
         for j in range(1, n + 1):
-            if ref_tokens[i-1] == hyp_tokens[j-1]:
+            ref_token = ref_tokens[i-1]
+            hyp_token = hyp_tokens[j-1]
+            
+            # Check for normalized equality first
+            if _norm_token(ref_token) == _norm_token(hyp_token):
                 dp[i][j] = dp[i-1][j-1]
             else:
-                dp[i][j] = 1 + min(
-                    dp[i-1][j],    # delete
-                    dp[i][j-1],    # insert
-                    dp[i-1][j-1]   # replace
-                )
+                # Calculate costs for each operation
+                del_cost = dp[i-1][j] + _get_operation_cost(ref_token, "", "delete")
+                ins_cost = dp[i][j-1] + _get_operation_cost("", hyp_token, "insert")
+                rep_cost = dp[i-1][j-1] + _get_operation_cost(ref_token, hyp_token, "replace")
+                
+                dp[i][j] = min(del_cost, ins_cost, rep_cost)
     
     # Backtrack to find alignment
     alignment = []
     i, j = m, n
     
     while i > 0 or j > 0:
-        if i > 0 and j > 0 and ref_tokens[i-1] == hyp_tokens[j-1]:
-            # Equal
-            alignment.append(("equal", ref_tokens[i-1], hyp_tokens[j-1], i-1, j-1))
+        ref_token = ref_tokens[i-1] if i > 0 else ""
+        hyp_token = hyp_tokens[j-1] if j > 0 else ""
+        
+        # Check for normalized equality first
+        if i > 0 and j > 0 and _norm_token(ref_token) == _norm_token(hyp_token):
+            # Equal (normalized)
+            alignment.append(("equal", ref_token, hyp_token, i-1, j-1))
             i -= 1
             j -= 1
         elif i > 0 and (j == 0 or dp[i-1][j] < dp[i][j-1]):
             # Delete
-            alignment.append(("delete", ref_tokens[i-1], "", i-1, -1))
+            alignment.append(("delete", ref_token, "", i-1, -1))
             i -= 1
         elif j > 0 and (i == 0 or dp[i][j-1] < dp[i-1][j]):
             # Insert
-            alignment.append(("insert", "", hyp_tokens[j-1], -1, j-1))
+            alignment.append(("insert", "", hyp_token, -1, j-1))
             j -= 1
         else:
             # Replace
-            alignment.append(("replace", ref_tokens[i-1], hyp_tokens[j-1], i-1, j-1))
+            alignment.append(("replace", ref_token, hyp_token, i-1, j-1))
             i -= 1
             j -= 1
     
@@ -134,8 +180,12 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
     word_events = []
     
     for op, ref_token, hyp_token, ref_idx, hyp_idx in alignment:
-        # Map operation to event type
-        if op == "equal":
+        # Check for normalized equality even if operation is replace
+        if op == "replace" and _norm_token(ref_token) == _norm_token(hyp_token):
+            # Only case/punctuation difference - treat as correct
+            event_type = "correct"
+            subtype = "case_punct_only"
+        elif op == "equal":
             event_type = "correct"
             subtype = None
         elif op == "delete":
@@ -145,10 +195,10 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
             event_type = "extra"
             subtype = None
         elif op == "replace":
-            event_type = "diff"
+            event_type = "substitution"
             subtype = classify_replace(ref_token, hyp_token)
         else:
-            event_type = "unknown"
+            event_type = "substitution"  # fallback for unknown operations
             subtype = None
         
         # Get timing data
@@ -171,3 +221,100 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
         })
     
     return word_events
+
+
+def test_case_punct_alignment():
+    """Test case and punctuation normalization"""
+    ref = ["bu", "güzel", "bir", "gün", "güneş", "parlıyor", "ve", "kuşlar", "şarkı", "söylüyor", "çocuklar", "parkta", "oynuyor"]
+    hyp = ["Bu", "güzel", "bir", "günler.", "Güneş", "parlıyordu.", "Kuşlar", "şarkı", "söylüyor.", "Çocukların", "parkta", "çok", "oynuyorlardı."]
+    
+    alignment = levenshtein_align(ref, hyp)
+    events = build_word_events(alignment, [])
+    
+    # Count event types
+    correct = sum(1 for e in events if e["type"] == "correct")
+    missing = sum(1 for e in events if e["type"] == "missing")
+    extra = sum(1 for e in events if e["type"] == "extra")
+    substitution = sum(1 for e in events if e["type"] == "substitution")
+    
+    print(f"Case/Punct Test Results:")
+    print(f"  Correct: {correct}, Missing: {missing}, Extra: {extra}, Substitution: {substitution}")
+    
+    # Check specific cases
+    for i, event in enumerate(events):
+        if event["ref_token"] == "bu" and event["hyp_token"] == "Bu":
+            print(f"  ✓ 'bu' vs 'Bu' -> {event['type']} (should be correct)")
+        elif event["ref_token"] == "söylüyor" and event["hyp_token"] == "söylüyor.":
+            print(f"  ✓ 'söylüyor' vs 'söylüyor.' -> {event['type']} (should be correct)")
+    
+    return events
+
+
+def test_stopword_alignment():
+    """Test stopword handling"""
+    ref = ["ve", "kuşlar", "şarkı"]
+    hyp = ["Kuşlar", "şarkı"]
+    
+    alignment = levenshtein_align(ref, hyp)
+    events = build_word_events(alignment, [])
+    
+    # Count event types
+    correct = sum(1 for e in events if e["type"] == "correct")
+    missing = sum(1 for e in events if e["type"] == "missing")
+    extra = sum(1 for e in events if e["type"] == "extra")
+    substitution = sum(1 for e in events if e["type"] == "substitution")
+    
+    print(f"Stopword Test Results:")
+    print(f"  Correct: {correct}, Missing: {missing}, Extra: {extra}, Substitution: {substitution}")
+    
+    # Check specific cases
+    for i, event in enumerate(events):
+        if event["ref_token"] == "ve":
+            print(f"  ✓ 've' -> {event['type']} (should be missing)")
+        elif event["ref_token"] == "kuşlar" and event["hyp_token"] == "Kuşlar":
+            print(f"  ✓ 'kuşlar' vs 'Kuşlar' -> {event['type']} (should be correct)")
+        elif event["ref_token"] == "şarkı" and event["hyp_token"] == "şarkı":
+            print(f"  ✓ 'şarkı' vs 'şarkı' -> {event['type']} (should be correct)")
+    
+    return events
+
+
+def test_apostrophe_alignment():
+    """Test apostrophe handling"""
+    ref = ["atatürk", "ün", "yanındakiler"]
+    hyp = ["Atatürk'ün", "yanındakiler"]
+    
+    alignment = levenshtein_align(ref, hyp)
+    events = build_word_events(alignment, [])
+    
+    # Count event types
+    correct = sum(1 for e in events if e["type"] == "correct")
+    missing = sum(1 for e in events if e["type"] == "missing")
+    extra = sum(1 for e in events if e["type"] == "extra")
+    substitution = sum(1 for e in events if e["type"] == "substitution")
+    
+    print(f"Apostrophe Test Results:")
+    print(f"  Correct: {correct}, Missing: {missing}, Extra: {extra}, Substitution: {substitution}")
+    
+    # Check specific cases
+    for i, event in enumerate(events):
+        if event["ref_token"] == "atatürk" and event["hyp_token"] == "Atatürk'ün":
+            print(f"  ✓ 'atatürk' vs 'Atatürk'ün' -> {event['type']} (should be substitution)")
+        elif event["ref_token"] == "ün":
+            print(f"  ✓ 'ün' -> {event['type']} (should be missing)")
+        elif event["ref_token"] == "yanındakiler" and event["hyp_token"] == "yanındakiler":
+            print(f"  ✓ 'yanındakiler' vs 'yanındakiler' -> {event['type']} (should be correct)")
+    
+    return events
+
+
+if __name__ == "__main__":
+    print("Testing alignment improvements...")
+    print("=" * 50)
+    test_case_punct_alignment()
+    print()
+    test_stopword_alignment()
+    print()
+    test_apostrophe_alignment()
+    print("=" * 50)
+    print("Tests completed!")

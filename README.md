@@ -2,21 +2,31 @@
 
 Türkçe dilinde okuma analizi yapan uygulama için monorepo. Backend API, worker servisi ve frontend içerir.
 
-## Hızlı Kurulum
+## 🚀 Hızlı Başlangıç
 
-1. **Ortam Değişkenlerini Ayarla:**
-   ```bash
-   cp .env.example .env
-   ```
-2. **Tüm servisleri başlat:**
-   ```bash
-   docker compose up -d --build
-   ```
+### Otomatik Kurulum
+```bash
+# Sistemi başlat ve test et
+./start.sh
+```
 
-3. **Örnek verileri yükle:**
-   ```bash
-   docker compose exec api python -m scripts.seed_texts
-   ```
+### Manuel Kurulum
+```bash
+# 1. Environment dosyalarını ayarla
+make setup-env
+
+# 2. Servisleri başlat
+make start
+
+# 3. Sistemi test et
+make test
+```
+
+### Erişim URL'leri
+- **Frontend:** http://localhost:3000
+- **Backend API:** http://localhost:8000
+- **API Docs:** http://localhost:8000/docs
+- **Health Check:** http://localhost:8000/health
 
 4. **Uygulamaya eriş:**
    - Frontend: http://localhost:3000
@@ -44,7 +54,7 @@ Türkçe dilinde okuma analizi yapan uygulama için monorepo. Backend API, worke
 ## Özellikler
 
 ### Türkçe Dil Desteği
-- **Whisper Modeli**: Türkçe konuşma tanıma
+- **ElevenLabs STT**: Yüksek kaliteli Türkçe konuşma tanıma
 - **Tokenizasyon**: Türkçe karakter desteği (ç, ğ, ı, ö, ş, ü)
 - **Hata Analizi**: Türkçe okuma hatalarının detaylı analizi
 - **Hece Analizi**: Türkçe hece yapısına uygun hata sınıflandırması
@@ -98,8 +108,8 @@ Detaylı test rehberi için `scripts/test-audio.md` dosyasına bakın.
 
 ## Teknoloji Stack
 
-- **Backend**: FastAPI, MongoDB, Redis, Whisper
-- **Worker**: Python, RQ, Faster-Whisper
+- **Backend**: FastAPI, MongoDB, Redis, ElevenLabs STT
+- **Worker**: Python, RQ, ElevenLabs API
 - **Frontend**: Next.js 14, React, TypeScript, Tailwind CSS
 - **Storage**: Google Cloud Storage (GCS)
 - **Infrastructure**: Docker, Docker Compose

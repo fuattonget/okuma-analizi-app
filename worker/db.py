@@ -1,7 +1,10 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 from beanie import init_beanie
-from worker.config import settings
-from backend.app.models.documents import TextDoc, AudioFileDoc, AnalysisDoc, WordEventDoc, PauseEventDoc
+from config import settings
+from app.models.documents import (
+    TextDoc, AudioFileDoc, AnalysisDoc, ReadingSessionDoc,
+    WordEventDoc, PauseEventDoc, SttResultDoc
+)
 
 
 class Database:
@@ -24,8 +27,10 @@ async def connect_to_mongo():
             TextDoc,
             AudioFileDoc,
             AnalysisDoc,
+            ReadingSessionDoc,
             WordEventDoc,
-            PauseEventDoc
+            PauseEventDoc,
+            SttResultDoc
         ]
     )
 

@@ -1,8 +1,8 @@
 // Turkish tokenization function
 export function tokenize_tr(text: string): string[] {
-  // Convert to lowercase and extract words using Turkish character pattern
-  const words = text.toLowerCase().match(/[a-zA-Zçğıöşüâîû]+/g) || [];
-  return words;
+  // Keep original casing and extract words and punctuation
+  const tokens = text.match(/[a-zA-ZçğıöşüâîûÇĞIİÖŞÜÂÎÛ']+|[.,!?;:""„…]+/g) || [];
+  return tokens;
 }
 
 // Split text into tokens and separators

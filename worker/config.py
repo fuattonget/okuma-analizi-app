@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 from typing import Optional
 
 
@@ -6,26 +7,41 @@ class Settings(BaseSettings):
     # Media settings
     media_root: str = "./media"
     
-    # Whisper settings
-    long_pause_ms: int = 800
-    whisper_model: str = "medium"
-    whisper_device: str = "cpu"
-    whisper_compute_type: str = "int8"
+    # ElevenLabs Speech-to-Text settings
+    long_pause_ms: int = 500
+    elevenlabs_api_key: str = ""
+    elevenlabs_model: str = "scribe_v1"
+    elevenlabs_language: str = "tr"  # Turkish
+    elevenlabs_temperature: float = 0.0
     
     # Database settings
-    mongo_uri: str = "mongodb://mongo:27017"
+    mongo_uri: str = "mongodb://mongodb:27017"
     mongo_db: str = "okuma_analizi"
     
+    # GCS settings
+    gcs_credentials_path: str = "./gcs-service-account.json"
+    gcs_bucket: str = "doky_ai_audio_storage"
+    
     # DEBUG settings
-    debug: bool = False
-    log_level: str = "INFO"
+    debug: bool = True
+    log_level: str = "DEBUG"
     log_format: str = "pretty"
     log_file: str = "./logs/worker.log"
     trace_slow_ms: int = 250
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+    # Environment variables from docker-compose
+    mongo_url: Optional[str] = None
+    redis_url: Optional[str] = None
+    gcs_bucket_name: Optional[str] = None
+    gcs_project_id: Optional[str] = None
+    google_application_credentials: Optional[str] = None
+    environment: Optional[str] = None
+    
+    model_config = ConfigDict(
+        env_file=".env",
+        case_sensitive=False,
+        extra="ignore"
+    )
 
 
 settings = Settings()

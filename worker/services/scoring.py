@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, List
 from loguru import logger
 
 
@@ -52,3 +52,45 @@ def compute_wpm(hyp_count: int, first_ms: float, last_ms: float) -> float:
     logger.info(f"WPM calculated: hyp_count={hyp_count}, first_ms={first_ms:.1f}, last_ms={last_ms:.1f}, wpm={wpm:.1f}")
     
     return wpm
+
+
+def recompute_counts(word_events: List[Any]) -> Dict[str, int]:
+    """
+    Recompute counts from WordEventDoc list
+    
+    Args:
+        word_events: List of WordEventDoc objects or dicts with 'type' field
+    
+    Returns:
+        Dictionary with aggregated counts
+    """
+    counts = {
+        "correct": 0,
+        "missing": 0,
+        "extra": 0,
+        "diff": 0,
+        "total_words": 0
+    }
+    
+    for event in word_events:
+        # Handle both dict and object access
+        if hasattr(event, 'type'):
+            event_type = event.type
+        elif isinstance(event, dict):
+            event_type = event.get('type', 'unknown')
+        else:
+            continue
+        
+        counts["total_words"] += 1
+        
+        if event_type == "correct":
+            counts["correct"] += 1
+        elif event_type == "missing":
+            counts["missing"] += 1
+        elif event_type == "extra":
+            counts["extra"] += 1
+        elif event_type == "diff":
+            counts["diff"] += 1
+    
+    logger.debug(f"Recomputed counts from {len(word_events)} word events: {counts}")
+    return counts

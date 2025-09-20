@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { apiClient, Text } from '@/lib/api';
+import { formatTurkishDateOnly } from '@/lib/dateUtils';
 import classNames from 'classnames';
 import DebugButton from '@/components/DebugButton';
 import DebugPanel from '@/components/DebugPanel';
@@ -11,6 +12,7 @@ export default function TextsPage() {
   const [loading, setLoading] = useState(true);
   const [editingText, setEditingText] = useState<Text | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [showCopyForm, setShowCopyForm] = useState(false);
   const [deletingText, setDeletingText] = useState<Text | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [formData, setFormData] = useState({
@@ -18,6 +20,10 @@ export default function TextsPage() {
     grade: '',
     body: '',
     comment: ''
+  });
+  const [copyFormData, setCopyFormData] = useState({
+    title: '',
+    body: ''
   });
 
   useEffect(() => {
@@ -40,6 +46,11 @@ export default function TextsPage() {
     setEditingText(null);
     setFormData({ title: '', grade: '', body: '', comment: '' });
     setShowForm(true);
+  };
+
+  const handleCopy = () => {
+    setCopyFormData({ title: '', body: '' });
+    setShowCopyForm(true);
   };
 
   const handleEdit = (text: Text) => {
@@ -110,6 +121,24 @@ export default function TextsPage() {
     }
   };
 
+  const handleCopySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!copyFormData.title.trim() || !copyFormData.body.trim()) return;
+
+    try {
+      const newText = await apiClient.copyText({
+        title: copyFormData.title,
+        body: copyFormData.body
+      });
+      setTexts([newText, ...texts]);
+      setShowCopyForm(false);
+      setCopyFormData({ title: '', body: '' });
+    } catch (error) {
+      console.error('Failed to copy text:', error);
+      alert('Metin kopyalanırken hata oluştu');
+    }
+  };
+
   const handleCancel = () => {
     setShowForm(false);
     setEditingText(null);
@@ -129,12 +158,20 @@ export default function TextsPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Metin Yönetimi</h1>
-        <button
-          onClick={handleCreate}
-          className="btn btn-primary"
-        >
-          Yeni Metin Ekle
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleCopy}
+            className="btn btn-secondary"
+          >
+            Dışardan Metin Kopyala
+          </button>
+          <button
+            onClick={handleCreate}
+            className="btn btn-primary"
+          >
+            Yeni Metin Ekle
+          </button>
+        </div>
       </div>
 
       {/* Form Modal */}
@@ -222,6 +259,62 @@ export default function TextsPage() {
         </div>
       )}
 
+      {/* Copy Form Modal */}
+      {showCopyForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-semibold mb-4">
+              Dışardan Metin Kopyala
+            </h2>
+            
+            <form onSubmit={handleCopySubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Metin Başlığı
+                </label>
+                <input
+                  type="text"
+                  value={copyFormData.title}
+                  onChange={(e) => setCopyFormData({ ...copyFormData, title: e.target.value })}
+                  className="input w-full"
+                  placeholder="Metin başlığını girin..."
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Metin İçeriği
+                </label>
+                <textarea
+                  value={copyFormData.body}
+                  onChange={(e) => setCopyFormData({ ...copyFormData, body: e.target.value })}
+                  className="textarea w-full h-32"
+                  placeholder="Kopyaladığınız metni buraya yapıştırın..."
+                  required
+                />
+              </div>
+              
+              <div className="flex gap-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowCopyForm(false)}
+                  className="btn btn-secondary"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                >
+                  Kopyala ve Kaydet
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Delete Confirmation Modal */}
       {showDeleteModal && deletingText && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 animate-fadeIn">
@@ -251,7 +344,7 @@ export default function TextsPage() {
                     {deletingText.grade}. Sınıf
                   </span>
                   <span className="ml-2 text-xs text-gray-500">
-                    {new Date(deletingText.created_at).toLocaleDateString('tr-TR')}
+                    {formatTurkishDateOnly(deletingText.created_at)}
                   </span>
                 </div>
                 <p className="text-sm text-gray-700 line-clamp-3 text-left">

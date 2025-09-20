@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 from typing import Optional
 
 
@@ -9,11 +10,12 @@ class Settings(BaseSettings):
     gcs_credentials_path: Optional[str] = "./gcs-service-account.json"
     gcs_public_base: str = "https://storage.googleapis.com"
     
-    # Whisper settings
-    long_pause_ms: int = 800
-    whisper_model: str = "medium"
-    whisper_device: str = "cpu"
-    whisper_compute_type: str = "int8"
+    # ElevenLabs Speech-to-Text settings
+    long_pause_ms: int = 500
+    elevenlabs_api_key: str = ""
+    elevenlabs_model: str = "scribe_v1"
+    elevenlabs_language: str = "tr"  # Turkish
+    elevenlabs_temperature: float = 0.0
     
     # Database settings
     mongo_uri: str = "mongodb://localhost:27017"
@@ -30,9 +32,27 @@ class Settings(BaseSettings):
     log_file: str = "./logs/app.log"
     trace_slow_ms: int = 250
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+    # Additional environment variables that might be passed
+    mongo_url: Optional[str] = None
+    redis_url: Optional[str] = None
+    api_debug: Optional[bool] = None
+    gcs_bucket_name: Optional[str] = None
+    gcs_project_id: Optional[str] = None
+    google_application_credentials: Optional[str] = None
+    secret_key: Optional[str] = None
+    environment: Optional[str] = None
+    
+    # Docker-compose environment variables
+    gcs_credentials_path: Optional[str] = None
+    gcs_bucket: Optional[str] = None
+    elevenlabs_model: Optional[str] = None
+    elevenlabs_language: Optional[str] = None
+    
+    model_config = ConfigDict(
+        env_file=".env",
+        case_sensitive=False,
+        extra="ignore"
+    )
 
 
 settings = Settings()

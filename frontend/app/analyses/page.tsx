@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient, AnalysisSummary } from '@/lib/api';
+import { formatTurkishDate } from '@/lib/dateUtils';
 import { useAnalysisStore } from '@/lib/store';
 import classNames from 'classnames';
 import DebugButton from '@/components/DebugButton';
@@ -22,7 +23,9 @@ export default function AnalysesPage() {
   const loadAnalyses = async () => {
     try {
       setLoading(true);
+      console.log('Loading analyses...');
       const analysesData = await apiClient.getAnalyses(50); // Load more analyses
+      console.log('Analyses loaded:', analysesData);
       setAnalyses(analysesData);
     } catch (error) {
       console.error('Failed to load analyses:', error);
@@ -141,13 +144,7 @@ export default function AnalysesPage() {
                 
                 <div className="space-y-3">
                   <p className="text-sm text-gray-500">
-                    <span className="font-medium">Tarih:</span> {new Date(analysis.created_at).toLocaleDateString('tr-TR', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
+                    <span className="font-medium">Tarih:</span> {formatTurkishDate(analysis.created_at)}
                   </p>
                   
                   {analysis.status === 'done' && (
