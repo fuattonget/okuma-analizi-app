@@ -31,3 +31,4 @@ logs/*
 dist/
 build/
 .next/
+gcs-service-account.json
