@@ -12,6 +12,7 @@ help:
 	@echo "  make start     - Sistemi başlat"
 	@echo "  make stop      - Sistemi durdur"
 	@echo "  make restart   - Sistemi yeniden başlat"
+	@echo "  make restart-worker - Sadece worker'ı yeniden başlat"
 	@echo "  make build     - Servisleri build et"
 	@echo ""
 	@echo "🧪 Test ve Debug:"
@@ -34,6 +35,8 @@ help:
 start:
 	@echo "🚀 Starting Okuma Analizi..."
 	./start.sh
+	@echo "🔧 Ensuring worker is running..."
+	@docker-compose up -d worker
 
 stop:
 	@echo "🛑 Stopping services..."
@@ -42,6 +45,12 @@ stop:
 restart:
 	@echo "🔄 Restarting services..."
 	docker-compose restart
+	@echo "🔧 Restarting worker..."
+	docker-compose restart worker
+
+restart-worker:
+	@echo "🔧 Restarting worker only..."
+	docker-compose restart worker
 
 build:
 	@echo "🔨 Building services..."
@@ -107,6 +116,14 @@ dev:
 status:
 	@echo "📊 System Status:"
 	@docker-compose ps
+	@echo ""
+	@echo "🔧 Worker Status:"
+	@if docker-compose ps worker | grep -q "Up"; then \
+		echo "✅ Worker is running"; \
+	else \
+		echo "❌ Worker is not running - starting it..."; \
+		docker-compose up -d worker; \
+	fi
 
 # Hızlı test
 quick-test:
