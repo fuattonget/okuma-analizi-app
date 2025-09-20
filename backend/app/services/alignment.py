@@ -2,6 +2,12 @@ from typing import List, Dict, Any, Tuple
 import re
 import unicodedata
 
+# Punctuation characters that should not be substituted
+_PUNCTUATION = {'.', ',', '!', '?', ';', ':', '"', '"', '"', "'"}
+
+def _is_punctuation(tok: str) -> bool:
+    """Check if token is punctuation"""
+    return tok in _PUNCTUATION
 
 def _norm_token(tok: str) -> str:
     """Normalize token for case-insensitive comparison while preserving apostrophes"""
@@ -38,39 +44,60 @@ def levenshtein_align(ref_tokens: List[str], hyp_tokens: List[str]) -> List[Tupl
     # Fill DP table
     for i in range(1, m + 1):
         for j in range(1, n + 1):
+            ref_token = ref_tokens[i-1]
+            hyp_token = hyp_tokens[j-1]
+            
             # Use normalized comparison for case-insensitive matching
-            if _norm_token(ref_tokens[i-1]) == _norm_token(hyp_tokens[j-1]):
+            if _norm_token(ref_token) == _norm_token(hyp_token):
                 dp[i][j] = dp[i-1][j-1]
             else:
-                dp[i][j] = 1 + min(
-                    dp[i-1][j],    # delete
-                    dp[i][j-1],    # insert
-                    dp[i-1][j-1]   # replace
-                )
+                # Calculate costs for each operation
+                del_cost = dp[i-1][j] + 1
+                ins_cost = dp[i][j-1] + 1
+                
+                # For punctuation tokens, disallow substitution (set cost to infinity)
+                if _is_punctuation(ref_token) or _is_punctuation(hyp_token):
+                    rep_cost = float('inf')
+                else:
+                    rep_cost = dp[i-1][j-1] + 1
+                
+                dp[i][j] = min(del_cost, ins_cost, rep_cost)
     
     # Backtrack to find alignment
     alignment = []
     i, j = m, n
     
     while i > 0 or j > 0:
-        if i > 0 and j > 0 and _norm_token(ref_tokens[i-1]) == _norm_token(hyp_tokens[j-1]):
+        ref_token = ref_tokens[i-1] if i > 0 else ""
+        hyp_token = hyp_tokens[j-1] if j > 0 else ""
+        
+        if i > 0 and j > 0 and _norm_token(ref_token) == _norm_token(hyp_token):
             # Equal (normalized)
-            alignment.append(("equal", ref_tokens[i-1], hyp_tokens[j-1], i-1, j-1))
+            alignment.append(("equal", ref_token, hyp_token, i-1, j-1))
             i -= 1
             j -= 1
         elif i > 0 and (j == 0 or dp[i-1][j] < dp[i][j-1]):
             # Delete
-            alignment.append(("delete", ref_tokens[i-1], "", i-1, -1))
+            alignment.append(("delete", ref_token, "", i-1, -1))
             i -= 1
         elif j > 0 and (i == 0 or dp[i][j-1] < dp[i-1][j]):
             # Insert
-            alignment.append(("insert", "", hyp_tokens[j-1], -1, j-1))
+            alignment.append(("insert", "", hyp_token, -1, j-1))
             j -= 1
         else:
-            # Replace
-            alignment.append(("replace", ref_tokens[i-1], hyp_tokens[j-1], i-1, j-1))
-            i -= 1
-            j -= 1
+            # Replace (only if not punctuation)
+            if not (_is_punctuation(ref_token) or _is_punctuation(hyp_token)):
+                alignment.append(("replace", ref_token, hyp_token, i-1, j-1))
+                i -= 1
+                j -= 1
+            else:
+                # Force delete/insert for punctuation
+                if i > 0:
+                    alignment.append(("delete", ref_token, "", i-1, -1))
+                    i -= 1
+                elif j > 0:
+                    alignment.append(("insert", "", hyp_token, -1, j-1))
+                    j -= 1
     
     return list(reversed(alignment))
 
@@ -157,6 +184,10 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
         elif op == "replace":
             event_type = "substitution"
             subtype = classify_replace(ref_token, hyp_token)
+            
+            # Calculate char_diff and cer_local for substitutions
+            char_diff = char_edit_stats(ref_token, hyp_token)[0]
+            cer_local = char_diff / max(len(ref_token), 1)
         else:
             event_type = "substitution"  # fallback for unknown operations
             subtype = None
@@ -169,7 +200,7 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
             start_ms = word_times[hyp_idx].get("start", 0) * 1000
             end_ms = word_times[hyp_idx].get("end", 0) * 1000
         
-        word_events.append({
+        event_data = {
             "ref_token": ref_token if ref_token else None,
             "hyp_token": hyp_token if hyp_token else None,
             "start_ms": start_ms,
@@ -178,6 +209,16 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
             "subtype": subtype,
             "ref_idx": ref_idx,
             "hyp_idx": hyp_idx
-        })
+        }
+        
+        # Add char_diff and cer_local for substitution events
+        if event_type == "substitution":
+            event_data["char_diff"] = char_diff
+            event_data["cer_local"] = cer_local
+        else:
+            event_data["char_diff"] = None
+            event_data["cer_local"] = None
+        
+        word_events.append(event_data)
     
     return word_events

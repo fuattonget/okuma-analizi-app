@@ -4,7 +4,12 @@ import unicodedata
 
 # Normalization and stopword helpers
 _PUNCT = r"[.,!?;:\"\"„…]+"
+_PUNCTUATION = {'.', ',', '!', '?', ';', ':', '"', '"', '"', "'"}
 _STOPWORDS = {"ve", "de", "da", "ile", "mi", "mı", "mu", "mü", "ki"}
+
+def _is_punctuation(tok: str) -> bool:
+    """Check if token is punctuation"""
+    return tok in _PUNCTUATION
 
 def _norm_token(tok: str) -> str:
     """Normalize token: NFC + casefold + remove leading/trailing punctuation"""
@@ -76,7 +81,12 @@ def levenshtein_align(ref_tokens: List[str], hyp_tokens: List[str]) -> List[Tupl
                 # Calculate costs for each operation
                 del_cost = dp[i-1][j] + _get_operation_cost(ref_token, "", "delete")
                 ins_cost = dp[i][j-1] + _get_operation_cost("", hyp_token, "insert")
-                rep_cost = dp[i-1][j-1] + _get_operation_cost(ref_token, hyp_token, "replace")
+                
+                # For punctuation tokens, disallow substitution (set cost to infinity)
+                if _is_punctuation(ref_token) or _is_punctuation(hyp_token):
+                    rep_cost = float('inf')
+                else:
+                    rep_cost = dp[i-1][j-1] + _get_operation_cost(ref_token, hyp_token, "replace")
                 
                 dp[i][j] = min(del_cost, ins_cost, rep_cost)
     
@@ -103,10 +113,19 @@ def levenshtein_align(ref_tokens: List[str], hyp_tokens: List[str]) -> List[Tupl
             alignment.append(("insert", "", hyp_token, -1, j-1))
             j -= 1
         else:
-            # Replace
-            alignment.append(("replace", ref_token, hyp_token, i-1, j-1))
-            i -= 1
-            j -= 1
+            # Replace (only if not punctuation)
+            if not (_is_punctuation(ref_token) or _is_punctuation(hyp_token)):
+                alignment.append(("replace", ref_token, hyp_token, i-1, j-1))
+                i -= 1
+                j -= 1
+            else:
+                # Force delete/insert for punctuation
+                if i > 0:
+                    alignment.append(("delete", ref_token, "", i-1, -1))
+                    i -= 1
+                elif j > 0:
+                    alignment.append(("insert", "", hyp_token, -1, j-1))
+                    j -= 1
     
     return list(reversed(alignment))
 
@@ -197,6 +216,10 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
         elif op == "replace":
             event_type = "substitution"
             subtype = classify_replace(ref_token, hyp_token)
+            
+            # Calculate char_diff and cer_local for substitutions
+            char_diff = char_edit_stats(ref_token, hyp_token)[0]
+            cer_local = char_diff / max(len(ref_token), 1)
         else:
             event_type = "substitution"  # fallback for unknown operations
             subtype = None
@@ -209,7 +232,7 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
             start_ms = word_times[hyp_idx].get("start", 0) * 1000
             end_ms = word_times[hyp_idx].get("end", 0) * 1000
         
-        word_events.append({
+        event_data = {
             "ref_token": ref_token if ref_token else None,
             "hyp_token": hyp_token if hyp_token else None,
             "start_ms": start_ms,
@@ -218,7 +241,17 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
             "subtype": subtype,
             "ref_idx": ref_idx,
             "hyp_idx": hyp_idx
-        })
+        }
+        
+        # Add char_diff and cer_local for substitution events
+        if event_type == "substitution":
+            event_data["char_diff"] = char_diff
+            event_data["cer_local"] = cer_local
+        else:
+            event_data["char_diff"] = None
+            event_data["cer_local"] = None
+        
+        word_events.append(event_data)
     
     return word_events
 
