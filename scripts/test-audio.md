@@ -112,7 +112,6 @@ Aşağıdaki metni okuyarak ses kaydı yap:
 ### Analiz Tamamlanmıyor
 - Worker loglarını kontrol et: `docker compose logs worker`
 - MongoDB bağlantısını kontrol et: `docker compose logs mongo`
-- Whisper model yükleme hatalarını kontrol et
 
 ## Log İnceleme
 

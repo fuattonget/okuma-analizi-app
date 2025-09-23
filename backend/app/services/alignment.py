@@ -132,21 +132,49 @@ def normalize_sub_type(sub_type: str) -> str:
     return normalization_map.get(sub_type, sub_type)
 
 def _norm_token(tok: str) -> str:
-    """Normalize token for case-insensitive comparison while preserving apostrophes"""
+    """Normalize token: lowercase + Turkish diacritic normalization + strip punctuation"""
     if not tok:
         return ""
-    # Normalize Unicode and convert to lowercase for comparison
-    t = unicodedata.normalize("NFC", tok).lower()
+    
+    # Convert to lowercase first
+    t = tok.lower()
+    
+    # Turkish diacritic normalization
+    # İ → i, ğ → g, ç → c, ö → o, ü → u, ş → s
+    t = t.replace('ı', 'i')
+    t = t.replace('ğ', 'g')
+    t = t.replace('ç', 'c')
+    t = t.replace('ö', 'o')
+    t = t.replace('ü', 'u')
+    t = t.replace('ş', 's')
+    
+    # Handle İ variations (İ can become i̇ after casefold)
+    t = t.replace('i̇', 'i')  # İ casefold result
+    
+    # Remove combining diacritical marks
+    t = unicodedata.normalize('NFD', t)
+    t = ''.join(c for c in t if unicodedata.category(c) != 'Mn')
+    t = unicodedata.normalize('NFC', t)
+    
+    # Strip trailing punctuation characters (.,!?;:"")
+    t = re.sub(r'[.,!?;:"""]+$', '', t)
+    t = re.sub(r'^[.,!?;:"""]+', '', t)
+    
     return t
 
 
 def tokenize_tr(text: str) -> List[str]:
     """Turkish tokenization using regex pattern - preserves apostrophes, removes punctuation"""
+    if not text or not text.strip():
+        return []
+    
+    # Normalize curly quotes to ASCII apostrophe
+    text = text.replace("'", "'").replace("'", "'")
+    
     # Keep original casing and extract words only (no punctuation)
-    # This pattern matches Turkish words including çğıöşüâîû characters and apostrophes
-    # but excludes punctuation marks like .,!?;: " " , etc.
-    # Includes all apostrophe-like characters: ' ' ` ` ´ ´
-    words = re.findall(r"[a-zA-ZçğıöşüâîûÇĞIİÖŞÜÂÎÛ''`´]+", text)
+    # Pattern matches: [letters/digits]+(?:'[letters/digits]+)*
+    # This ensures apostrophes are part of words when between letters/digits
+    words = re.findall(r"[A-Za-zÇĞİÖŞÜÂÎÛçğıöşü0-9]+(?:'[A-Za-zÇĞİÖŞÜÂÎÛçğıöşü0-9]+)*", text)
     
     # Filter out empty strings and very short words (1 char) unless they are common
     common_single_chars = {"a", "e", "i", "ı", "o", "ö", "u", "ü"}
@@ -399,7 +427,11 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
                 # Skip this event entirely for punctuation
                 continue
         
-        # Map operation to event type
+        # Check for normalized equality for any operation
+        elif _norm_token(ref_token) == _norm_token(hyp_token):
+            # Only case/punctuation difference - treat as correct
+            event_type = "correct"
+            subtype = "case_punct_only"
         elif op == "equal":
             event_type = "correct"
             subtype = None

@@ -9,23 +9,32 @@ def tokenize_turkish_text(text: str) -> List[str]:
     """
     Tokenize Turkish text into words, preserving apostrophes and removing punctuation
     
+    Normalizes curly quotes to ASCII apostrophe and treats apostrophe as part of word.
+    Examples:
+        "Nevzat'ın"   → ["Nevzat'ın"]
+        "Nevzat'ı"    → ["Nevzat'ı"] 
+        "Okulu, ..."  → ["Okulu", ...]   // comma removed
+        "öğretmendir."→ ["öğretmendir"]  // period removed
+    
     Args:
         text: Input text to tokenize
         
     Returns:
-        List of word tokens (no punctuation)
+        List of word tokens (no punctuation, apostrophes preserved)
     """
     if not text or not text.strip():
         return []
+    
+    # Normalize curly quotes to ASCII apostrophe
+    text = text.replace("'", "'").replace("'", "'")
     
     # Keep original casing and extract words only (no punctuation)
     text = text.strip()
     
     # Turkish word pattern: includes Turkish characters and apostrophes, excludes punctuation
-    # This pattern matches Turkish words including çğıöşüâîû characters and apostrophes
-    # but excludes punctuation marks like .,!?;: " " , etc.
-    # Includes all apostrophe-like characters: ' ' ` ` ´ ´
-    tokens = re.findall(r"[a-zA-ZçğıöşüâîûÇĞIİÖŞÜÂÎÛ''`´]+", text)
+    # Pattern matches: [letters/digits]+(?:'[letters/digits]+)*
+    # This ensures apostrophes are part of words when between letters/digits
+    tokens = re.findall(r"[A-Za-zÇĞİÖŞÜÂÎÛçğıöşü0-9]+(?:'[A-Za-zÇĞİÖŞÜÂÎÛçğıöşü0-9]+)*", text)
     
     # Filter out empty strings and very short words (1 char) unless they are common
     common_single_chars = {"a", "e", "i", "ı", "o", "ö", "u", "ü"}

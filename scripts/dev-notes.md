@@ -58,7 +58,7 @@ okuma-analizi/
 
 Sistem Türkçe dilinde çalışacak şekilde optimize edilmiştir:
 
-- **Whisper Modeli**: Türkçe konuşma tanıma için yapılandırılmış
+
 - **Tokenizasyon**: Türkçe karakterler (ç, ğ, ı, ö, ş, ü) desteklenir
 - **Hata Analizi**: Türkçe okuma hatalarının detaylı sınıflandırması
 - **Hece Analizi**: Türkçe hece yapısına uygun hata türleri

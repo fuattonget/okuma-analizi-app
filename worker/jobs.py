@@ -208,9 +208,15 @@ async def _analyze_audio_async(analysis_id: str):
         logger.debug("Starting text tokenization and alignment")
         align_start = time.time()
         
-        # Use the worker's own tokenizer
-        from services.alignment import tokenize_tr
-        ref_tokens = tokenize_tr(text.body)
+        # Use canonical tokens from TextDoc instead of re-tokenizing
+        # This ensures we use the same tokenization as when the text was saved
+        ref_tokens = text.canonical.tokens if text.canonical and text.canonical.tokens else []
+        if not ref_tokens:
+            # Fallback to tokenizing body if canonical tokens are missing
+            from services.alignment import tokenize_tr
+            ref_tokens = tokenize_tr(text.body)
+            logger.warning("Using fallback tokenization - canonical.tokens was empty")
+        
         # Use raw words directly - NO TOKENIZATION of hypothesis
         hyp_tokens = [w['word'] for w in words]
         
