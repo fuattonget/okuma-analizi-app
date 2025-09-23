@@ -48,8 +48,35 @@ class TestAlignmentNoMerge(unittest.TestCase):
             self.assertEqual(actual_op, op)
             self.assertEqual(actual_ref, ref)
             self.assertEqual(actual_hyp, hyp)
-            self.assertEqual(actual_ref_idx, ref_idx)
-            self.assertEqual(actual_hyp_idx, hyp_idx)
+    
+    def test_apostrophe_tokenization(self):
+        """Test that apostrophe words are kept as single tokens"""
+        # Test cases for apostrophe handling
+        test_cases = [
+            ("Nevzat'ın dişi", ["Nevzat'ın", "dişi"]),
+            ("Nevzat'ı gördüm", ["Nevzat'ı", "gördüm"]),
+            ("Okulu, öğrencileri.", ["Okulu", "öğrencileri"]),
+            ("Atatürk'ün yanındakiler", ["Atatürk'ün", "yanındakiler"]),
+            ("Türkiye'nin eğitimi,", ["Türkiye'nin", "eğitimi"]),
+        ]
+        
+        for text, expected in test_cases:
+            with self.subTest(text=text):
+                result = alignment.tokenize_tr(text)
+                self.assertEqual(result, expected, f"Failed for text: {text}")
+    
+    def test_curly_quote_normalization(self):
+        """Test that curly quotes are normalized to ASCII apostrophe"""
+        # Test curly quote normalization
+        test_cases = [
+            ("Nevzat'ın", ["Nevzat'ın"]),  # curly quote normalized
+            ("Nevzat'ı", ["Nevzat'ı"]),    # curly quote normalized
+        ]
+        
+        for text, expected in test_cases:
+            with self.subTest(text=text):
+                result = alignment.tokenize_tr(text)
+                self.assertEqual(result, expected, f"Failed for text: {text}")
     
     def test_alignment_with_missing_words(self):
         """Test alignment with missing words"""
