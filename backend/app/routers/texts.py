@@ -98,9 +98,16 @@ async def create_text(text_data: TextCreate):
             active=existing_text.active
         )
     
+    # Debug: Log incoming text data
+    logger.info(f"DEBUG: Received text data - title: {text_data.title}, body: {repr(text_data.body)}")
+    
     # Normalize and tokenize the text
     normalized_body = normalize_turkish_text(text_data.body)
     tokenized_words = tokenize_turkish_text(normalized_body)
+    
+    # Debug: Log processing results
+    logger.info(f"DEBUG: Normalized body: {repr(normalized_body)}")
+    logger.info(f"DEBUG: Tokenized words: {tokenized_words}")
     
     text_doc = TextDoc(
         slug=slug,

@@ -53,7 +53,7 @@ def setup_logging():
 setup_logging()
 
 from db import connect_to_mongo, close_mongo_connection
-from app.models.documents import (
+from models import (
     AnalysisDoc, AudioFileDoc, TextDoc, ReadingSessionDoc,
     WordEventDoc, PauseEventDoc, SttResultDoc
 )
@@ -247,7 +247,7 @@ async def _analyze_audio_async(analysis_id: str):
                 ref_token=event_data.get('ref_token'),
                 hyp_token=event_data.get('hyp_token'),
                 type=event_data.get('type', 'unknown'),
-                sub_type=event_data.get('subtype'),
+                sub_type=event_data.get('sub_type'),
                 timing={
                     'start_ms': event_data.get('start_ms'),
                     'end_ms': event_data.get('end_ms')
@@ -310,6 +310,7 @@ async def _analyze_audio_async(analysis_id: str):
                 "missing": counts.get("missing", 0),
                 "extra": counts.get("extra", 0),
                 "substitution": counts.get("substitution", 0),  # Use "substitution" instead of "diff"
+                "repetition": counts.get("repetition", 0),
                 "pause_long": len(pause_events)
             }
         }
@@ -344,7 +345,7 @@ async def _analyze_audio_async(analysis_id: str):
         logger.info(f"Analysis {analysis_id} completed successfully in {total_time:.2f}ms")
         
     except Exception as e:
-        logger.error(f"Analysis {analysis_id} failed: {str(e)}", exc_info=True)
+        logger.error(f"Analysis {analysis_id} failed: {repr(e)}", exc_info=True)
         
         # Update analysis with error
         try:

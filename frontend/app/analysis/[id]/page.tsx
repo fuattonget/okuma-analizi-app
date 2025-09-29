@@ -1,18 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { apiClient, AnalysisDetail, WordEvent, PauseEvent, Metrics } from '@/lib/api';
+import { apiClient, AnalysisDetail, WordEvent, PauseEvent, Metrics, AnalysisExport } from '@/lib/api';
 import { tokenizeWithSeparators } from '@/lib/tokenize';
 import { formatTurkishDate } from '@/lib/dateUtils';
 import classNames from 'classnames';
-import DebugButton from '@/components/DebugButton';
-import DebugPanel from '@/components/DebugPanel';
 
 export default function AnalysisDetailPage() {
   const params = useParams();
   const router = useRouter();
   const [analysis, setAnalysis] = useState<AnalysisDetail | null>(null);
+  const [exportData, setExportData] = useState<AnalysisExport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [summaryExpanded, setSummaryExpanded] = useState(false);
@@ -39,15 +38,45 @@ export default function AnalysisDetailPage() {
       const analysisData = await apiClient.getAnalysis(id);
       setAnalysis(analysisData);
       
-      // Load events if analysis is completed
+      // Load export data if analysis is completed
       if (analysisData.status === 'done') {
-        loadEvents(id);
+        await loadExportData(id);
       }
     } catch (err) {
       setError('Analiz bulunamadı');
       console.error('Failed to load analysis:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadExportData = async (analysisId: string) => {
+    try {
+      setEventsLoading(true);
+      const exportData = await apiClient.getAnalysisExport(analysisId);
+      setExportData(exportData);
+      
+      // Set events and pauses from export data
+      setWordEvents(exportData.events);
+      setPauseEvents(exportData.pauses);
+      
+      // Create metrics object from export data
+      const metricsData: Metrics = {
+        analysis_id: exportData.analysis_id,
+        counts: exportData.summary.counts,
+        wer: exportData.summary.wer,
+        accuracy: exportData.summary.accuracy,
+        wpm: exportData.summary.wpm,
+        long_pauses: exportData.summary.long_pauses,
+        error_types: exportData.summary.error_types
+      };
+      setMetrics(metricsData);
+    } catch (err) {
+      console.error('Failed to load export data:', err);
+      // Fallback to individual API calls if export fails
+      await loadEvents(analysisId);
+    } finally {
+      setEventsLoading(false);
     }
   };
 
@@ -86,7 +115,7 @@ export default function AnalysisDetailPage() {
   const downloadAnalysisAsJSON = async (analysisId: string) => {
     try {
       setDownloading(true);
-      const analysisData = await apiClient.getAnalysisExport(analysisId);
+      const analysisData = exportData || await apiClient.getAnalysisExport(analysisId);
       
       // Create a blob with the JSON data
       const jsonString = JSON.stringify(analysisData, null, 2);
@@ -148,18 +177,22 @@ export default function AnalysisDetailPage() {
   };
 
   const getSummaryBreakdown = () => {
-    if (!analysis?.summary?.counts) return null;
+    // Use export data if available, otherwise fall back to analysis summary
+    const summary = exportData?.summary || analysis?.summary;
+    if (!summary?.counts) return null;
 
-    const counts = analysis.summary.counts;
+    const counts = summary.counts;
 
-    return {
+    const breakdown = {
       correct: counts.correct || 0,
-      errors: (counts.diff || 0) + (counts.missing || 0) + (counts.extra || 0),
+      errors: (counts.substitution || 0) + (counts.missing || 0) + (counts.extra || 0) + (counts.repetition || 0),
       missing: counts.missing || 0,
       extra: counts.extra || 0,
-      diff: counts.diff || 0,
-      longPauses: analysis.summary.long_pauses?.count || 0,
+      substitution: counts.substitution || 0,
+      repetition: counts.repetition || 0,
+      longPauses: summary.long_pauses?.count || 0,
     };
+    return breakdown;
   };
 
   const getEventTypeColor = (type: string) => {
@@ -168,7 +201,8 @@ export default function AnalysisDetailPage() {
       missing: 'text-red-600 bg-red-50',
       extra: 'text-blue-600 bg-blue-50',
       diff: 'text-yellow-600 bg-yellow-50',
-      substitution: 'text-orange-600 bg-orange-50'
+      substitution: 'text-orange-600 bg-orange-50',
+      repetition: 'text-purple-600 bg-purple-50'
     };
     return colors[type as keyof typeof colors] || 'text-gray-600 bg-gray-50';
   };
@@ -201,10 +235,10 @@ export default function AnalysisDetailPage() {
       <div className="text-center py-8">
         <p className="text-red-600 mb-4">{error || 'Analiz bulunamadı'}</p>
         <button
-          onClick={() => router.push('/')}
+          onClick={() => router.push('/analyses')}
           className="btn btn-primary"
         >
-          Ana Sayfaya Dön
+          Geçmiş Analizlere Dön
         </button>
       </div>
     );
@@ -215,7 +249,7 @@ export default function AnalysisDetailPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <button
-          onClick={() => router.push('/')}
+          onClick={() => router.push('/analyses')}
           className="btn btn-secondary"
         >
           ← Geri
@@ -299,6 +333,7 @@ export default function AnalysisDetailPage() {
         </div>
       </div>
 
+
       {/* Results */}
       {analysis.status === 'done' && (
         <div className="card">
@@ -326,7 +361,7 @@ export default function AnalysisDetailPage() {
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               )}
             >
-              Kelime Olayları ({wordEvents.length})
+              Kelime Olayları ({exportData?.events?.length || wordEvents.length})
             </button>
             <button
               onClick={() => setActiveTab('pauses')}
@@ -337,7 +372,7 @@ export default function AnalysisDetailPage() {
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               )}
             >
-              Duraksama Olayları ({pauseEvents.length})
+              Duraksama Olayları ({exportData?.pauses?.length || pauseEvents.length})
             </button>
           </div>
 
@@ -347,25 +382,25 @@ export default function AnalysisDetailPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <div className="text-center">
                   <p className="text-2xl font-bold text-blue-600">
-                    {metrics?.wer?.toFixed(3) || analysis.summary.wer?.toFixed(3) || 'N/A'}
+                    {exportData?.summary?.wer?.toFixed(3) || '—'}
                   </p>
                   <p className="text-sm text-gray-600">WER</p>
                 </div>
                 <div className="text-center">
                   <p className="text-2xl font-bold text-green-600">
-                    {metrics?.accuracy?.toFixed(1) || analysis.summary.accuracy?.toFixed(1) || 'N/A'}%
+                    {exportData?.summary?.accuracy?.toFixed(1) || '—'}%
                   </p>
                   <p className="text-sm text-gray-600">Doğruluk</p>
                 </div>
                 <div className="text-center">
                   <p className="text-2xl font-bold text-purple-600">
-                    {metrics?.wpm?.toFixed(1) || analysis.summary.wpm?.toFixed(1) || 'N/A'}
+                    {exportData?.summary?.wpm?.toFixed(1) || '—'}
                   </p>
                   <p className="text-sm text-gray-600">WPM</p>
                 </div>
                 <div className="text-center">
                   <p className="text-2xl font-bold text-orange-600">
-                    {metrics?.long_pauses?.count || analysis.summary.long_pauses?.count || 0}
+                    {exportData?.summary?.long_pauses?.count || 0}
                   </p>
                   <p className="text-sm text-gray-600">Uzun Duraksama</p>
                 </div>
@@ -408,8 +443,12 @@ export default function AnalysisDetailPage() {
                               <p className="text-xs text-gray-600">Fazla</p>
                             </div>
                             <div className="text-center">
-                              <p className="text-lg font-semibold text-yellow-600">{breakdown.diff}</p>
+                              <p className="text-lg font-semibold text-orange-600">{breakdown.substitution}</p>
                               <p className="text-xs text-gray-600">Kelimede Farklılık</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-lg font-semibold text-purple-600">{breakdown.repetition}</p>
+                              <p className="text-xs text-gray-600">Tekrarlama</p>
                             </div>
                             <div className="text-center">
                               <p className="text-lg font-semibold text-orange-600">{breakdown.longPauses}</p>
@@ -431,13 +470,13 @@ export default function AnalysisDetailPage() {
                 <div className="text-center py-8">
                   <div className="text-gray-500">Kelime olayları yükleniyor...</div>
                 </div>
-              ) : wordEvents.length === 0 ? (
+              ) : (exportData?.events?.length || wordEvents.length) === 0 ? (
                 <div className="text-center py-8">
                   <div className="text-gray-500">Kelime olayı bulunamadı</div>
                 </div>
               ) : (
                 <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {wordEvents.map((event, index) => (
+                  {(exportData?.events || wordEvents).map((event, index) => (
                     <div key={event.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
                       <div className="flex items-center space-x-3">
                         <span className="text-sm font-mono text-gray-500 w-8">#{event.position}</span>
@@ -480,13 +519,13 @@ export default function AnalysisDetailPage() {
                 <div className="text-center py-8">
                   <div className="text-gray-500">Duraksama olayları yükleniyor...</div>
                 </div>
-              ) : pauseEvents.length === 0 ? (
+              ) : (exportData?.pauses?.length || pauseEvents.length) === 0 ? (
                 <div className="text-center py-8">
                   <div className="text-gray-500">Duraksama olayı bulunamadı</div>
                 </div>
               ) : (
                 <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {pauseEvents.map((event, index) => (
+                  {(exportData?.pauses || pauseEvents).map((event, index) => (
                     <div key={event.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
                       <div className="flex items-center space-x-3">
                         <span className="text-sm font-mono text-gray-500 w-8">#{event.after_position}</span>
@@ -513,9 +552,6 @@ export default function AnalysisDetailPage() {
         </div>
       )}
       
-      {/* Debug Components */}
-      <DebugButton />
-      <DebugPanel />
     </div>
   );
 }

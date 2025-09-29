@@ -1,38 +1,60 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient, AnalysisSummary } from '@/lib/api';
 import { formatTurkishDate } from '@/lib/dateUtils';
 import { useAnalysisStore } from '@/lib/store';
 import classNames from 'classnames';
-import DebugButton from '@/components/DebugButton';
-import DebugPanel from '@/components/DebugPanel';
 
 export default function AnalysesPage() {
   const router = useRouter();
-  const { analyses, setAnalyses, updateAnalysis, startPolling, stopPolling } = useAnalysisStore();
+  const { analyses, setAnalyses, updateAnalysis, startPolling, stopPolling, stopAllPolling } = useAnalysisStore();
   
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'queued' | 'running' | 'done' | 'failed'>('all');
 
   useEffect(() => {
     loadAnalyses();
+    
+    // Cleanup polling on unmount
+    return () => {
+      stopAllPolling();
+    };
   }, []);
 
-  const loadAnalyses = async () => {
+  const loadAnalyses = useCallback(async () => {
     try {
       setLoading(true);
-      console.log('Loading analyses...');
       const analysesData = await apiClient.getAnalyses(50); // Load more analyses
-      console.log('Analyses loaded:', analysesData);
       setAnalyses(analysesData);
+      
+      // Start polling for running/queued analyses
+      analysesData.forEach(analysis => {
+        if (analysis.status === 'running' || analysis.status === 'queued') {
+          startPolling(analysis.id, async () => {
+            try {
+              const updatedAnalysis = await apiClient.getAnalysis(analysis.id);
+              updateAnalysis(analysis.id, { status: updatedAnalysis.status });
+              
+              if (updatedAnalysis.status === 'done' || updatedAnalysis.status === 'failed') {
+                // Reload full analysis data
+                updateAnalysis(analysis.id, updatedAnalysis);
+                stopPolling(analysis.id);
+              }
+            } catch (error) {
+              console.error(`Failed to poll analysis ${analysis.id}:`, error);
+              stopPolling(analysis.id);
+            }
+          });
+        }
+      });
     } catch (error) {
       console.error('Failed to load analyses:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [setAnalyses, startPolling, updateAnalysis, stopPolling]);
 
   const getStatusBadge = (status: string) => {
     const statusClasses = {
@@ -116,6 +138,7 @@ export default function AnalysesPage() {
         </div>
       </div>
 
+
       {/* Analyses List */}
       <div className="card">
         {filteredAnalyses.length === 0 ? (
@@ -153,15 +176,15 @@ export default function AnalysesPage() {
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div>
                           <span className="text-gray-600">WER:</span>
-                          <span className="font-medium ml-1">{analysis.wer?.toFixed(3) || 'N/A'}</span>
+                          <span className="font-medium ml-1">{analysis.summary?.wer?.toFixed(3) || analysis.wer?.toFixed(3) || 'N/A'}</span>
                         </div>
                         <div>
                           <span className="text-gray-600">Doğruluk:</span>
-                          <span className="font-medium ml-1">%{analysis.accuracy?.toFixed(1) || 'N/A'}</span>
+                          <span className="font-medium ml-1">%{analysis.summary?.accuracy?.toFixed(1) || analysis.accuracy?.toFixed(1) || 'N/A'}</span>
                         </div>
                         <div>
                           <span className="text-gray-600">WPM:</span>
-                          <span className="font-medium ml-1">{analysis.wpm?.toFixed(0) || 'N/A'}</span>
+                          <span className="font-medium ml-1">{analysis.summary?.wpm?.toFixed(0) || analysis.wpm?.toFixed(0) || 'N/A'}</span>
                         </div>
                         <div>
                           <span className="text-gray-600">Duraksama:</span>
@@ -207,9 +230,6 @@ export default function AnalysesPage() {
         )}
       </div>
 
-      {/* Debug Components */}
-      <DebugButton />
-      <DebugPanel />
     </div>
   );
 }

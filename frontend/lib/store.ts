@@ -1,11 +1,12 @@
 import { create } from 'zustand';
+import { AnalysisSummary } from './api';
 
 interface AnalysisStore {
-  analyses: any[];
+  analyses: AnalysisSummary[];
   pollingIntervals: Map<string, NodeJS.Timeout>;
-  setAnalyses: (analyses: any[]) => void;
-  addAnalysis: (analysis: any) => void;
-  updateAnalysis: (id: string, updates: Partial<any>) => void;
+  setAnalyses: (analyses: AnalysisSummary[]) => void;
+  addAnalysis: (analysis: AnalysisSummary) => void;
+  updateAnalysis: (id: string, updates: Partial<AnalysisSummary>) => void;
   startPolling: (id: string, callback: () => Promise<void>) => void;
   stopPolling: (id: string) => void;
   stopAllPolling: () => void;

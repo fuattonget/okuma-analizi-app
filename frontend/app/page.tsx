@@ -5,33 +5,43 @@ import { useRouter } from 'next/navigation';
 import { apiClient, Text, AnalysisSummary } from '@/lib/api';
 import { useAnalysisStore } from '@/lib/store';
 import classNames from 'classnames';
-import DebugButton from '@/components/DebugButton';
-import DebugPanel from '@/components/DebugPanel';
 
 export default function HomePage() {
   const router = useRouter();
-  const { analyses, setAnalyses, addAnalysis, updateAnalysis, startPolling, stopPolling } = useAnalysisStore();
+  const { analyses, setAnalyses, addAnalysis, updateAnalysis, startPolling, stopPolling, stopAllPolling } = useAnalysisStore();
   
   const [texts, setTexts] = useState<Text[]>([]);
   const [filteredTexts, setFilteredTexts] = useState<Text[]>([]);
   const [selectedTextId, setSelectedTextId] = useState<string>('');
   const [customText, setCustomText] = useState('');
-  const [grade, setGrade] = useState<number>(1);
+  const [grade, setGrade] = useState<string>('');
+  
+  
   const [isUploading, setIsUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [formErrors, setFormErrors] = useState({
+    file: '',
+    text: '',
+    grade: ''
+  });
 
   // Load texts and analyses on mount
   useEffect(() => {
     loadTexts();
     loadAnalyses();
+    
+    // Cleanup polling on unmount
+    return () => {
+      stopAllPolling();
+    };
   }, []);
 
   // Filter texts by grade
   useEffect(() => {
-    if (grade) {
-      const filtered = texts.filter(t => t.grade === grade);
+    if (grade && grade !== '') {
+      const filtered = texts.filter(t => t.grade === parseInt(grade));
       setFilteredTexts(filtered);
     } else {
       setFilteredTexts(texts);
@@ -40,36 +50,54 @@ export default function HomePage() {
 
   // Update customText when a text is selected
   useEffect(() => {
-    console.log('useEffect triggered:', { selectedTextId, textsLength: texts.length });
     if (selectedTextId && texts.length > 0) {
       const selectedText = texts.find(t => t.id === selectedTextId);
-      console.log('Selected text found:', selectedText);
       if (selectedText) {
-        console.log('Setting customText to:', selectedText.body);
         setCustomText(selectedText.body);
-        setGrade(selectedText.grade);
+        // Don't override user's grade selection
+        // setGrade(selectedText.grade);
       }
     }
   }, [selectedTextId, texts]);
 
-  const loadTexts = async () => {
+  const loadTexts = useCallback(async () => {
     try {
       const textsData = await apiClient.getTexts();
-      console.log('Loaded texts:', textsData);
       setTexts(textsData);
     } catch (error) {
       console.error('Failed to load texts:', error);
     }
-  };
+  }, []);
 
-  const loadAnalyses = async () => {
+  const loadAnalyses = useCallback(async () => {
     try {
       const analysesData = await apiClient.getAnalyses(20);
       setAnalyses(analysesData);
+      
+      // Start polling for running/queued analyses
+      analysesData.forEach(analysis => {
+        if (analysis.status === 'running' || analysis.status === 'queued') {
+          startPolling(analysis.id, async () => {
+            try {
+              const updatedAnalysis = await apiClient.getAnalysis(analysis.id);
+              updateAnalysis(analysis.id, { status: updatedAnalysis.status });
+              
+              if (updatedAnalysis.status === 'done' || updatedAnalysis.status === 'failed') {
+                // Reload full analysis data
+                updateAnalysis(analysis.id, updatedAnalysis);
+                stopPolling(analysis.id);
+              }
+            } catch (error) {
+              console.error(`Failed to poll analysis ${analysis.id}:`, error);
+              stopPolling(analysis.id);
+            }
+          });
+        }
+      });
     } catch (error) {
       console.error('Failed to load analyses:', error);
     }
-  };
+  }, [setAnalyses, startPolling, updateAnalysis, stopPolling]);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -87,38 +115,113 @@ export default function HomePage() {
     setDragActive(false);
     
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      setSelectedFile(e.dataTransfer.files[0]);
+      const file = e.dataTransfer.files[0];
+      validateAndSetFile(file);
     }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
+      const file = e.target.files[0];
+      validateAndSetFile(file);
     }
+  };
+
+  // File validation
+  const validateAndSetFile = (file: File) => {
+    const errors = { ...formErrors };
+    
+    // File size check (max 50MB)
+    if (file.size > 50 * 1024 * 1024) {
+      errors.file = 'Dosya boyutu 50MB\'dan büyük olamaz';
+      setFormErrors(errors);
+      return;
+    }
+    
+    // File type check
+    const allowedTypes = ['audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/m4a', 'audio/x-m4a'];
+    if (!allowedTypes.includes(file.type)) {
+      errors.file = 'Desteklenmeyen dosya türü. MP3, WAV, M4A dosyaları kabul edilir.';
+      setFormErrors(errors);
+      return;
+    }
+    
+    // Clear file error and set file
+    errors.file = '';
+    setFormErrors(errors);
+    setSelectedFile(file);
+  };
+
+  // Sanitize input
+  const sanitizeInput = (input: string) => {
+    return input
+      .trim()
+      .replace(/[<>]/g, '') // Remove potential HTML tags
+      .replace(/javascript:/gi, '') // Remove javascript: protocol
+      .replace(/on\w+=/gi, ''); // Remove event handlers
+  };
+
+  // Form validation
+  const validateForm = () => {
+    const errors = { file: '', text: '', grade: '' };
+    let isValid = true;
+
+    // File validation
+    if (!selectedFile) {
+      errors.file = 'Ses dosyası seçilmelidir';
+      isValid = false;
+    }
+
+    // Text validation
+    if (!customText.trim()) {
+      errors.text = 'Hedef metin gereklidir';
+      isValid = false;
+    } else if (customText.trim().length < 10) {
+      errors.text = 'Hedef metin en az 10 karakter olmalıdır';
+      isValid = false;
+    } else if (customText.trim().length > 10000) {
+      errors.text = 'Hedef metin en fazla 10,000 karakter olabilir';
+      isValid = false;
+    }
+
+    // Grade validation
+    if (!grade || grade === '' || ![1, 2, 3, 4].includes(parseInt(grade))) {
+      errors.grade = 'Geçerli bir sınıf seviyesi seçilmelidir';
+      isValid = false;
+    }
+
+    setFormErrors(errors);
+    return isValid;
   };
 
 
   const startAnalysis = async () => {
-    if (!selectedFile || !customText.trim()) return;
+    // Validate form before proceeding
+    if (!validateForm()) {
+      return;
+    }
     
     setIsUploading(true);
     try {
+      // Sanitize custom text
+      const sanitizedText = sanitizeInput(customText);
+      
       // Create a temporary text if using custom text
       let textId = selectedTextId;
-      if (!selectedTextId && customText.trim()) {
+      if (!selectedTextId && sanitizedText.trim()) {
         const tempText = await apiClient.createText({
           title: `Geçici Metin - ${new Date().toLocaleString('tr-TR')}`,
-          grade: grade,
-          body: customText.trim(),
+          grade: parseInt(grade),
+          body: sanitizedText.trim(),
         });
-        textId = tempText.text_id; // Use text_id for upload
+        textId = tempText.id; // Use id for upload
         // Add to local texts list
         setTexts([tempText, ...texts]);
       } else if (selectedTextId) {
-        // Find the selected text and use its text_id
+        // Find the selected text and use its id
         const selectedText = texts.find(t => t.id === selectedTextId);
         if (selectedText) {
-          textId = selectedText.text_id;
+          textId = selectedText.id;
         }
       }
       
@@ -137,13 +240,12 @@ export default function HomePage() {
       // Start polling for status updates
       startPolling(response.analysis_id, async () => {
         try {
-          const status = await apiClient.getAnalysisStatus(response.analysis_id);
-          updateAnalysis(response.analysis_id, { status: status.status });
+          const analysis = await apiClient.getAnalysis(response.analysis_id);
+          updateAnalysis(response.analysis_id, { status: analysis.status });
           
-          if (status.status === 'done' || status.status === 'failed') {
+          if (analysis.status === 'done' || analysis.status === 'failed') {
             // Reload full analysis data
-            const fullAnalysis = await apiClient.getAnalysis(response.analysis_id);
-            updateAnalysis(response.analysis_id, fullAnalysis);
+            updateAnalysis(response.analysis_id, analysis);
             stopPolling(response.analysis_id);
           }
         } catch (error) {
@@ -156,7 +258,7 @@ export default function HomePage() {
       setSelectedFile(null);
       setSelectedTextId('');
       setCustomText('');
-      setGrade(1);
+      setGrade('');
       
       // Show success message
       setShowSuccess(true);
@@ -172,11 +274,23 @@ export default function HomePage() {
         errorMessage = 'Metin bilgileri eksik veya hatalı. Lütfen tüm alanları doldurun.';
       } else if (error.response?.status === 400) {
         errorMessage = 'Ses dosyası veya metin formatı desteklenmiyor.';
+      } else if (error.response?.status === 413) {
+        errorMessage = 'Dosya boyutu çok büyük. Lütfen daha küçük bir dosya seçin.';
+      } else if (error.response?.status === 415) {
+        errorMessage = 'Desteklenmeyen dosya türü. Lütfen ses dosyası seçin.';
+      } else if (error.response?.status >= 500) {
+        errorMessage = 'Sunucu hatası. Lütfen daha sonra tekrar deneyin.';
+      } else if (!navigator.onLine) {
+        errorMessage = 'İnternet bağlantınızı kontrol edin.';
       } else if (error.response?.data?.detail) {
         errorMessage = error.response.data.detail;
       }
       
-      alert(errorMessage);
+      // Show error in a better way
+      setFormErrors(prev => ({
+        ...prev,
+        file: errorMessage
+      }));
     } finally {
       setIsUploading(false);
     }
@@ -208,13 +322,14 @@ export default function HomePage() {
           {/* File Upload */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-4">
-              Ses Dosyası
+              Ses Dosyası <span className="text-red-500">*</span>
             </label>
             <div
               className={classNames(
                 'border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors',
                 dragActive ? 'border-blue-400 bg-blue-50' : 'border-gray-300',
-                selectedFile ? 'border-green-400 bg-green-50' : ''
+                selectedFile ? 'border-green-400 bg-green-50' : '',
+                formErrors.file ? 'border-red-400 bg-red-50' : ''
               )}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
@@ -243,28 +358,39 @@ export default function HomePage() {
                 </div>
               )}
             </div>
+            {formErrors.file && (
+              <p className="text-red-500 text-sm mt-2">{formErrors.file}</p>
+            )}
           </div>
           
           {/* Text Selection */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Sınıf Seviyesi
+                Sınıf Seviyesi <span className="text-red-500">*</span>
               </label>
               <select
                 value={grade}
                 onChange={(e) => {
-                  setGrade(e.target.value ? parseInt(e.target.value) : 1);
+                  setGrade(e.target.value);
                   setSelectedTextId(''); // Reset selection when grade changes
+                  // Clear grade error when user selects
+                  if (formErrors.grade) {
+                    setFormErrors(prev => ({ ...prev, grade: '' }));
+                  }
                 }}
-                className="select text-lg py-3"
+                className={`select text-lg py-3 ${formErrors.grade ? 'border-red-500' : ''}`}
+                style={{backgroundColor: grade === '' ? '#f9f9f9' : 'white'}}
               >
-                <option value="1">Sınıf seçiniz</option>
-                <option value="1">1. Sınıf</option>
-                <option value="2">2. Sınıf</option>
-                <option value="3">3. Sınıf</option>
-                <option value="4">4. Sınıf</option>
+                <option value="">Sınıf seçiniz</option>
+                <option value={1}>1. Sınıf</option>
+                <option value={2}>2. Sınıf</option>
+                <option value={3}>3. Sınıf</option>
+                <option value={4}>4. Sınıf</option>
               </select>
+              {formErrors.grade && (
+                <p className="text-red-500 text-sm mt-1">{formErrors.grade}</p>
+              )}
             </div>
             
             <div>
@@ -275,9 +401,9 @@ export default function HomePage() {
                 value={selectedTextId}
                 onChange={(e) => setSelectedTextId(e.target.value)}
                 className="select text-lg py-3"
-                disabled={!grade}
+                disabled={!grade || grade === ''}
               >
-                <option value="">{grade ? 'Metin seçiniz' : 'Önce sınıf seçiniz'}</option>
+                <option value="">{grade && grade !== '' ? 'Metin seçiniz' : 'Önce sınıf seçiniz'}</option>
                 {filteredTexts.map((text) => (
                   <option key={text.id} value={text.id}>
                     {text.title}
@@ -290,14 +416,29 @@ export default function HomePage() {
           {/* Target Text Input */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Hedef Metin
+              Hedef Metin <span className="text-red-500">*</span>
             </label>
             <textarea
               value={customText}
-              onChange={(e) => setCustomText(e.target.value)}
+              onChange={(e) => {
+                setCustomText(e.target.value);
+                // Clear text error when user types
+                if (formErrors.text) {
+                  setFormErrors(prev => ({ ...prev, text: '' }));
+                }
+              }}
               placeholder="Analiz edilecek metni buraya yazın veya yukarıdan seçin..."
-              className="textarea h-32 text-lg"
+              className={`textarea h-32 text-lg ${formErrors.text ? 'border-red-500' : ''}`}
+              maxLength={10000}
             />
+            <div className="flex justify-between items-center mt-1">
+              {formErrors.text && (
+                <p className="text-red-500 text-sm">{formErrors.text}</p>
+              )}
+              <p className="text-sm text-gray-500 ml-auto">
+                {customText.length}/10,000 karakter
+              </p>
+            </div>
             <p className="text-sm text-gray-500 mt-1">
               Metin seçtiyseniz otomatik doldurulur, isterseniz düzenleyebilirsiniz.
             </p>
@@ -341,9 +482,6 @@ export default function HomePage() {
         </div>
       )}
       
-      {/* Debug Components */}
-      <DebugButton />
-      <DebugPanel />
     </div>
   );
 }

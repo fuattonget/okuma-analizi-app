@@ -1,18 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiClient, Text } from '@/lib/api';
 import { formatTurkishDateOnly } from '@/lib/dateUtils';
 import classNames from 'classnames';
-import DebugButton from '@/components/DebugButton';
-import DebugPanel from '@/components/DebugPanel';
 
 export default function TextsPage() {
   const [texts, setTexts] = useState<Text[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingText, setEditingText] = useState<Text | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [showCopyForm, setShowCopyForm] = useState(false);
   const [deletingText, setDeletingText] = useState<Text | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [formData, setFormData] = useState({
@@ -21,16 +18,15 @@ export default function TextsPage() {
     body: '',
     comment: ''
   });
-  const [copyFormData, setCopyFormData] = useState({
+  const [formErrors, setFormErrors] = useState({
     title: '',
-    body: ''
+    grade: '',
+    body: '',
+    comment: ''
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    loadTexts();
-  }, []);
-
-  const loadTexts = async () => {
+  const loadTexts = useCallback(async () => {
     try {
       setLoading(true);
       const textsData = await apiClient.getTexts();
@@ -40,17 +36,17 @@ export default function TextsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadTexts();
+  }, []);
 
   const handleCreate = () => {
     setEditingText(null);
     setFormData({ title: '', grade: '', body: '', comment: '' });
+    setFormErrors({ title: '', grade: '', body: '', comment: '' });
     setShowForm(true);
-  };
-
-  const handleCopy = () => {
-    setCopyFormData({ title: '', body: '' });
-    setShowCopyForm(true);
   };
 
   const handleEdit = (text: Text) => {
@@ -61,6 +57,7 @@ export default function TextsPage() {
       body: text.body,
       comment: text.comment || ''
     });
+    setFormErrors({ title: '', grade: '', body: '', comment: '' });
     setShowForm(true);
   };
 
@@ -73,7 +70,7 @@ export default function TextsPage() {
     if (!deletingText) return;
     
     try {
-      await apiClient.deleteText(deletingText.text_id);
+      await apiClient.deleteText(deletingText.id);
       setTexts(texts.filter(t => t.id !== deletingText.id));
       setShowDeleteModal(false);
       setDeletingText(null);
@@ -88,61 +85,130 @@ export default function TextsPage() {
     setDeletingText(null);
   };
 
+  // Form validation
+  const validateForm = () => {
+    const errors = { title: '', grade: '', body: '', comment: '' };
+    let isValid = true;
+
+    // Title validation
+    if (!formData.title.trim()) {
+      errors.title = 'Metin başlığı gereklidir';
+      isValid = false;
+    } else if (formData.title.trim().length < 3) {
+      errors.title = 'Metin başlığı en az 3 karakter olmalıdır';
+      isValid = false;
+    } else if (formData.title.trim().length > 200) {
+      errors.title = 'Metin başlığı en fazla 200 karakter olabilir';
+      isValid = false;
+    }
+
+    // Grade validation
+    if (!formData.grade) {
+      errors.grade = 'Sınıf seviyesi seçilmelidir';
+      isValid = false;
+    } else if (!['1', '2', '3', '4'].includes(formData.grade)) {
+      errors.grade = 'Geçersiz sınıf seviyesi';
+      isValid = false;
+    }
+
+    // Body validation
+    if (!formData.body.trim()) {
+      errors.body = 'Metin içeriği gereklidir';
+      isValid = false;
+    } else if (formData.body.trim().length < 10) {
+      errors.body = 'Metin içeriği en az 10 karakter olmalıdır';
+      isValid = false;
+    } else if (formData.body.trim().length > 10000) {
+      errors.body = 'Metin içeriği en fazla 10,000 karakter olabilir';
+      isValid = false;
+    }
+
+    // Comment validation (optional)
+    if (formData.comment && formData.comment.length > 500) {
+      errors.comment = 'Yorum en fazla 500 karakter olabilir';
+      isValid = false;
+    }
+
+    setFormErrors(errors);
+    return isValid;
+  };
+
+  // Sanitize input
+  const sanitizeInput = (input: string) => {
+    return input
+      .trim()
+      .replace(/[<>]/g, '') // Remove potential HTML tags
+      .replace(/javascript:/gi, '') // Remove javascript: protocol
+      .replace(/on\w+=/gi, '') // Remove event handlers
+      .replace(/'/g, "'") // Normalize curly quotes to ASCII apostrophe
+      .replace(/'/g, "'"); // Normalize curly quotes to ASCII apostrophe
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title.trim() || !formData.body.trim()) return;
+    
+    // Validate form
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsSubmitting(true);
 
     try {
+      // Debug: Log original form data
+      console.log('Original form data:', formData);
+      
+      // Sanitize inputs
+      const sanitizedData = {
+        title: sanitizeInput(formData.title),
+        grade: parseInt(formData.grade),
+        body: sanitizeInput(formData.body),
+        comment: formData.comment ? sanitizeInput(formData.comment) : ''
+      };
+      
+      // Debug: Log sanitized data
+      console.log('Sanitized data:', sanitizedData);
+
       if (editingText) {
         // Update existing text
-        const updatedText = await apiClient.updateText(editingText.text_id, {
-          title: formData.title,
-          grade: parseInt(formData.grade),
-          body: formData.body,
-          comment: formData.comment
-        });
+        const updatedText = await apiClient.updateText(editingText.id, sanitizedData);
         setTexts(texts.map(t => t.id === editingText.id ? updatedText : t));
       } else {
         // Create new text
-        const newText = await apiClient.createText({
-          title: formData.title,
-          grade: parseInt(formData.grade),
-          body: formData.body,
-          comment: formData.comment
-        });
+        const newText = await apiClient.createText(sanitizedData);
         setTexts([newText, ...texts]);
       }
       
       setShowForm(false);
       setFormData({ title: '', grade: '', body: '', comment: '' });
-    } catch (error) {
+      setFormErrors({ title: '', grade: '', body: '', comment: '' });
+    } catch (error: any) {
       console.error('Failed to save text:', error);
-      alert('Metin kaydedilirken hata oluştu');
+      
+      // Better error handling
+      let errorMessage = 'Metin kaydedilirken hata oluştu';
+      if (error.response?.status === 400) {
+        errorMessage = 'Girilen veriler geçersiz. Lütfen kontrol edin.';
+      } else if (error.response?.status === 409) {
+        errorMessage = 'Bu başlıkta bir metin zaten mevcut.';
+      } else if (error.response?.status >= 500) {
+        errorMessage = 'Sunucu hatası. Lütfen daha sonra tekrar deneyin.';
+      } else if (!navigator.onLine) {
+        errorMessage = 'İnternet bağlantınızı kontrol edin.';
+      }
+      
+      alert(errorMessage);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleCopySubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!copyFormData.title.trim() || !copyFormData.body.trim()) return;
-
-    try {
-      const newText = await apiClient.copyText({
-        title: copyFormData.title,
-        body: copyFormData.body
-      });
-      setTexts([newText, ...texts]);
-      setShowCopyForm(false);
-      setCopyFormData({ title: '', body: '' });
-    } catch (error) {
-      console.error('Failed to copy text:', error);
-      alert('Metin kopyalanırken hata oluştu');
-    }
-  };
 
   const handleCancel = () => {
     setShowForm(false);
     setEditingText(null);
-    setFormData({ title: '', grade: '', body: '' });
+    setFormData({ title: '', grade: '', body: '', comment: '' });
+    setFormErrors({ title: '', grade: '', body: '', comment: '' });
   };
 
   if (loading) {
@@ -158,20 +224,12 @@ export default function TextsPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Metin Yönetimi</h1>
-        <div className="flex gap-2">
-          <button
-            onClick={handleCopy}
-            className="btn btn-secondary"
-          >
-            Dışardan Metin Kopyala
-          </button>
-          <button
-            onClick={handleCreate}
-            className="btn btn-primary"
-          >
-            Yeni Metin Ekle
-          </button>
-        </div>
+        <button
+          onClick={handleCreate}
+          className="btn btn-primary"
+        >
+          Yeni Metin Ekle
+        </button>
       </div>
 
       {/* Form Modal */}
@@ -185,26 +243,36 @@ export default function TextsPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Metin Başlığı
+                  Metin Başlığı <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="input w-full"
+                  className={`input w-full ${formErrors.title ? 'border-red-500' : ''}`}
                   placeholder="Metin başlığı"
+                  maxLength={200}
                   required
                 />
+                <div className="flex justify-between items-center mt-1">
+                  {formErrors.title && (
+                    <span className="text-red-500 text-sm">{formErrors.title}</span>
+                  )}
+                  <span className="text-gray-400 text-sm ml-auto">
+                    {formData.title.length}/200
+                  </span>
+                </div>
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Sınıf Seviyesi
+                  Sınıf Seviyesi <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={formData.grade}
                   onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
-                  className="select w-full"
+                  className={`select w-full ${formErrors.grade ? 'border-red-500' : ''}`}
+                  required
                 >
                   <option value="">Seçiniz</option>
                   <option value="1">1. Sınıf</option>
@@ -212,19 +280,31 @@ export default function TextsPage() {
                   <option value="3">3. Sınıf</option>
                   <option value="4">4. Sınıf</option>
                 </select>
+                {formErrors.grade && (
+                  <span className="text-red-500 text-sm mt-1">{formErrors.grade}</span>
+                )}
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Metin İçeriği
+                  Metin İçeriği <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   value={formData.body}
                   onChange={(e) => setFormData({ ...formData, body: e.target.value })}
-                  className="textarea w-full h-32"
+                  className={`textarea w-full h-32 ${formErrors.body ? 'border-red-500' : ''}`}
                   placeholder="Metin içeriğini buraya yazın..."
+                  maxLength={10000}
                   required
                 />
+                <div className="flex justify-between items-center mt-1">
+                  {formErrors.body && (
+                    <span className="text-red-500 text-sm">{formErrors.body}</span>
+                  )}
+                  <span className="text-gray-400 text-sm ml-auto">
+                    {formData.body.length}/10,000
+                  </span>
+                </div>
               </div>
               
               <div>
@@ -234,9 +314,18 @@ export default function TextsPage() {
                 <textarea
                   value={formData.comment}
                   onChange={(e) => setFormData({ ...formData, comment: e.target.value })}
-                  className="textarea w-full h-20"
+                  className={`textarea w-full h-20 ${formErrors.comment ? 'border-red-500' : ''}`}
                   placeholder="Metin hakkında yorumunuz..."
+                  maxLength={500}
                 />
+                <div className="flex justify-between items-center mt-1">
+                  {formErrors.comment && (
+                    <span className="text-red-500 text-sm">{formErrors.comment}</span>
+                  )}
+                  <span className="text-gray-400 text-sm ml-auto">
+                    {formData.comment.length}/500
+                  </span>
+                </div>
               </div>
               
               <div className="flex gap-2 justify-end">
@@ -250,8 +339,19 @@ export default function TextsPage() {
                 <button
                   type="submit"
                   className="btn btn-primary"
+                  disabled={isSubmitting}
                 >
-                  {editingText ? 'Güncelle' : 'Kaydet'}
+                  {isSubmitting ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      {editingText ? 'Güncelleniyor...' : 'Kaydediliyor...'}
+                    </>
+                  ) : (
+                    editingText ? 'Güncelle' : 'Kaydet'
+                  )}
                 </button>
               </div>
             </form>
@@ -259,61 +359,6 @@ export default function TextsPage() {
         </div>
       )}
 
-      {/* Copy Form Modal */}
-      {showCopyForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold mb-4">
-              Dışardan Metin Kopyala
-            </h2>
-            
-            <form onSubmit={handleCopySubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Metin Başlığı
-                </label>
-                <input
-                  type="text"
-                  value={copyFormData.title}
-                  onChange={(e) => setCopyFormData({ ...copyFormData, title: e.target.value })}
-                  className="input w-full"
-                  placeholder="Metin başlığını girin..."
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Metin İçeriği
-                </label>
-                <textarea
-                  value={copyFormData.body}
-                  onChange={(e) => setCopyFormData({ ...copyFormData, body: e.target.value })}
-                  className="textarea w-full h-32"
-                  placeholder="Kopyaladığınız metni buraya yapıştırın..."
-                  required
-                />
-              </div>
-              
-              <div className="flex gap-2 justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowCopyForm(false)}
-                  className="btn btn-secondary"
-                >
-                  İptal
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                >
-                  Kopyala ve Kaydet
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && deletingText && (
@@ -456,9 +501,6 @@ export default function TextsPage() {
         )}
       </div>
 
-      {/* Debug Components */}
-      <DebugButton />
-      <DebugPanel />
     </div>
   );
 }

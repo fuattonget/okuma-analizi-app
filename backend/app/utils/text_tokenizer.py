@@ -9,7 +9,7 @@ def tokenize_turkish_text(text: str) -> List[str]:
     """
     Tokenize Turkish text into words, preserving apostrophes and removing punctuation
     
-    Normalizes curly quotes to ASCII apostrophe and treats apostrophe as part of word.
+    Normalizes all types of apostrophes to ASCII apostrophe and treats apostrophe as part of word.
     Examples:
         "Nevzat'ın"   → ["Nevzat'ın"]
         "Nevzat'ı"    → ["Nevzat'ı"] 
@@ -25,8 +25,14 @@ def tokenize_turkish_text(text: str) -> List[str]:
     if not text or not text.strip():
         return []
     
-    # Normalize curly quotes to ASCII apostrophe
-    text = text.replace("'", "'").replace("'", "'")
+    # Normalize all types of apostrophes to ASCII apostrophe
+    # Handle various Unicode apostrophe characters
+    text = text.replace(chr(8216), "'")  # U+2018 LEFT SINGLE QUOTATION MARK
+    text = text.replace(chr(8217), "'")  # U+2019 RIGHT SINGLE QUOTATION MARK  
+    text = text.replace(chr(8218), "'")  # U+201A SINGLE LOW-9 QUOTATION MARK
+    text = text.replace(chr(8219), "'")  # U+201B SINGLE HIGH-REVERSED-9 QUOTATION MARK
+    text = text.replace(chr(96), "'")    # U+0060 GRAVE ACCENT
+    text = text.replace(chr(180), "'")   # U+00B4 ACUTE ACCENT
     
     # Keep original casing and extract words only (no punctuation)
     text = text.strip()
@@ -34,10 +40,11 @@ def tokenize_turkish_text(text: str) -> List[str]:
     # Turkish word pattern: includes Turkish characters and apostrophes, excludes punctuation
     # Pattern matches: [letters/digits]+(?:'[letters/digits]+)*
     # This ensures apostrophes are part of words when between letters/digits
+    # Updated pattern to better handle Turkish apostrophes
     tokens = re.findall(r"[A-Za-zÇĞİÖŞÜÂÎÛçğıöşü0-9]+(?:'[A-Za-zÇĞİÖŞÜÂÎÛçğıöşü0-9]+)*", text)
     
     # Filter out empty strings and very short words (1 char) unless they are common
-    common_single_chars = {"a", "e", "i", "ı", "o", "ö", "u", "ü"}
+    common_single_chars = {"a", "e", "i", "ı", "o", "ö", "u", "ü", "A", "E", "I", "İ", "O", "Ö", "U", "Ü"}
     filtered_tokens = []
     
     for token in tokens:
@@ -62,6 +69,17 @@ def normalize_turkish_text(text: str) -> str:
     
     # Remove extra whitespace but preserve punctuation and apostrophes
     text = re.sub(r'\s+', ' ', text.strip())
+    
+    # Fix missing apostrophes in Turkish possessive forms
+    # Pattern: word + space + possessive suffix
+    # Examples: "Onur u" -> "Onur'u", "Onur un" -> "Onur'un"
+    possessive_patterns = [
+        (r'([A-Za-zÇĞİÖŞÜÂÎÛçğıöşü0-9]+)\s+(ın|in|un|ün|ı|i|u|ü)(?=\s|$|[.,!?;:])', r"\1'\2"),  # possessive suffixes
+        (r'([A-Za-zÇĞİÖŞÜÂÎÛçğıöşü0-9]+)\s+(ki|kı|ku|kü)(?=\s|$|[.,!?;:])', r"\1'\2"),  # relative pronoun
+    ]
+    
+    for pattern, replacement in possessive_patterns:
+        text = re.sub(pattern, replacement, text)
     
     # Normalize spacing around punctuation but keep the punctuation
     text = re.sub(r'\s*([.,!?;:])', r'\1', text)  # Remove space before punctuation
