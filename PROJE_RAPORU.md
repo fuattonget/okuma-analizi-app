@@ -365,35 +365,52 @@ deleteSession(id: string): Promise<void>
   - Language detection
   - Confidence scores
   - Character-level timestamps (`timestamps_granularity: "character"`)
+  - **Retry Mechanism**: 3 deneme ile exponential backoff
+  - **Error Handling**: 429 rate limit, timeout handling
+  - **Raw Words Extraction**: Sadece "word" tipindeki tokenları alır, spacing'leri atar
 
 #### 2. Hizalama (Alignment) - Levenshtein (Geliştirilmiş)
 **Dosya**: `worker/services/alignment.py`
 - **Algoritma**: Dynamic Programming Levenshtein Distance
-- **Yeni Özellikler**:
+- **Gelişmiş Özellikler**:
+  - **Unicode Apostrophe Normalization**: Tüm apostrophe türleri ASCII'ye normalize edilir
+  - **Turkish Tokenization**: Kesme işaretli kelimeler tek token olarak işlenir
   - **Normalizasyon**: Case-insensitive ve noktalama işareti göz ardı etme
   - **Stopword Ağırlıklandırma**: "ve", "de", "da", "ile", "mi/mı/mu/mü", "ki" için düşük maliyet
+  - **Filler Word Handling**: "çok", "yani", "işte" gibi filler kelimeler için özel işlem
+  - **Repetition Detection**: "--" ile işaretlenmiş tekrarları tespit eder
   - **Akıllı Hizalama**: Stopword'ler yanlışlıkla substitution yaratmıyor
+  - **Post-Repair**: SUB+MISSING pattern'lerini düzeltir
 - **Fonksiyonlar**:
-  - `_norm_token()`: Token normalizasyonu
+  - `_norm_token()`: Token normalizasyonu (Türkçe karakterler dahil)
   - `_is_stop()`: Stopword kontrolü
+  - `_is_filler()`: Filler word kontrolü
+  - `_track_filler_repetitions()`: Filler tekrarlarını takip eder
   - `_get_operation_cost()`: Stopword-aware maliyet hesaplama
   - `levenshtein_align()`: Geliştirilmiş hizalama
-  - `classify_replace()`: Hata türü sınıflandırması
+  - `classify_replace()`: Hata türü sınıflandırması (harf_ek, harf_cik, hece_ek, hece_cik, degistirme)
   - `build_word_events()`: Kelime seviyesi olaylar
+  - `_local_swap_repair()`: Yerel hata düzeltme
 
 #### 3. Skorlama (Scoring)
 **Dosya**: `worker/services/scoring.py`
 - **Metrikler**:
-  - WER (Word Error Rate)
-  - Accuracy (Doğruluk yüzdesi)
-  - WPM (Words Per Minute)
+  - WER (Word Error Rate): (subs + dels + ins) / n_ref
+  - Accuracy (Doğruluk yüzdesi): 100 * (n_ref - subs - dels) / n_ref
+  - WPM (Words Per Minute): hyp_count / duration_minutes
 - **Hesaplama**: Subs, dels, ins sayılarından
+- **Event Types**: correct, missing, extra, substitution, repetition
+- **Validation**: Summary consistency kontrolü
 
 #### 4. Duraksama Tespiti
 **Dosya**: `worker/services/pauses.py`
-- **Kaynak**: ElevenLabs spacing data
+- **Kaynak**: Word timing data (ElevenLabs'den gelen)
 - **Threshold**: 500ms (varsayılan)
-- **Sınıflandırma**: short, medium, long, very_long
+- **Sınıflandırma**: 
+  - short: 0.3-0.5 saniye
+  - medium: 0.5-1.0 saniye  
+  - long: 1.0+ saniye
+  - very_long: 1.0+ saniye (ayrı kategori)
 - **Çıktı**: PauseEventDoc listesi
 
 ### Worker Job İşleme
@@ -401,15 +418,25 @@ deleteSession(id: string): Promise<void>
 - **Queue**: Redis Queue (RQ)
 - **Job Function**: `analyze_audio(analysis_id)`
 - **İşlem Sırası**:
-  1. AnalysisDoc durumunu "running" yap
-  2. ReadingSessionDoc, AudioFileDoc ve TextDoc'u getir
-  3. GCS'den ses dosyasını indir
-  4. ElevenLabs ile transkripsiyon
-  5. Levenshtein hizalama (geliştirilmiş)
-  6. Metrik hesaplama
-  7. Duraksama tespiti
-  8. WordEventDoc ve PauseEventDoc oluştur
-  9. Sonuçları AnalysisDoc'a kaydet
+  1. **Database Connection**: MongoDB'ye bağlan
+  2. **Analysis Status Update**: AnalysisDoc durumunu "running" yap
+  3. **Document Retrieval**: ReadingSessionDoc, AudioFileDoc ve TextDoc'u getir
+  4. **Audio Download**: GCS'den ses dosyasını geçici dosyaya indir
+  5. **STT Processing**: ElevenLabs ile transkripsiyon (retry mechanism ile)
+  6. **Text Tokenization**: Canonical tokens kullan (fallback: re-tokenize)
+  7. **Alignment**: Geliştirilmiş Levenshtein hizalama
+  8. **Event Building**: WordEventDoc ve PauseEventDoc oluştur
+  9. **Metrics Calculation**: WER, Accuracy, WPM hesapla
+  10. **Pause Detection**: Duraksama tespiti
+  11. **Summary Update**: AnalysisDoc'a sonuçları kaydet
+  12. **Session Completion**: ReadingSessionDoc'u "completed" yap
+  13. **Cleanup**: Geçici dosyaları temizle, DB bağlantısını kapat
+
+**Error Handling**:
+- **Retry Logic**: ElevenLabs API için 3 deneme
+- **Exception Handling**: Hata durumunda AnalysisDoc'u "failed" yap
+- **Logging**: Detaylı loglama (Loguru ile)
+- **Resource Cleanup**: Geçici dosyalar ve DB bağlantıları temizlenir
 
 ## 5. Teknik Borçlar / Riskler
 
@@ -429,6 +456,24 @@ deleteSession(id: string): Promise<void>
 - **Durum**: ✅ Çözüldü - Gelişmiş alignment algoritması
 - **Önceki Sorun**: Case/punctuation farkları yanlış substitution yaratıyordu
 - **Mevcut**: Normalize karşılaştırma ve stopword-aware maliyet hesaplama
+
+#### 4. Turkish Apostrophe Tokenization
+- **Durum**: ✅ Çözüldü - Unicode apostrophe normalization
+- **Sorun**: "Nevzat'ın", "Onur'u" gibi kelimeler yanlış tokenize ediliyordu
+- **Çözüm**: 
+  - Frontend: `sanitizeInput()` ile curly quotes normalize edilir
+  - Backend: `tokenize_turkish_text()` ile Unicode apostrophes ASCII'ye dönüştürülür
+  - Regex pattern: `[A-Za-zÇĞİÖŞÜÂÎÛçğıöşü0-9]+(?:'[A-Za-zÇĞİÖŞÜÂÎÛçğıöşü0-9]+)*`
+
+#### 5. Frontend JavaScript Hoisting Error
+- **Durum**: ✅ Çözüldü - Function declaration order düzeltildi
+- **Sorun**: `useEffect` içinde `loadTexts` fonksiyonu tanımlanmadan kullanılıyordu
+- **Çözüm**: `loadTexts` fonksiyonunu `useEffect`'ten önce tanımladık
+
+#### 6. Docker Volume Mount Issues
+- **Durum**: ✅ Çözüldü - Volume mount'lar eklendi
+- **Sorun**: Kod değişiklikleri container'a yansımıyordu
+- **Çözüm**: `docker-compose.yml`'e `./backend:/app` ve `./frontend:/app` volume mount'ları eklendi
 
 ### 🟡 Orta Riskler
 
@@ -461,7 +506,78 @@ deleteSession(id: string): Promise<void>
 - **Durum**: ✅ İyi - Docker Compose ile
 - **Servisler**: Backend, Frontend, Worker, MongoDB, Redis
 
-## 6. Özet Tablo
+## 6. Worker Servisleri Detaylı Analizi
+
+### Worker Konfigürasyonu (`worker/config.py`)
+- **Settings Class**: Pydantic Settings ile environment variable yönetimi
+- **ElevenLabs Ayarları**: API key, model, language, temperature
+- **Database Ayarları**: MongoDB URI ve database adı
+- **GCS Ayarları**: Credentials path ve bucket adı
+- **Debug Ayarları**: Log level, format, file path
+- **Performance**: Trace slow operations (250ms+)
+
+### Worker Ana İşleyiş (`worker/jobs.py`)
+- **Async Processing**: `asyncio.run()` ile async job processing
+- **Database Management**: Connection setup ve cleanup
+- **Error Handling**: Comprehensive exception handling
+- **Logging**: Structured logging with Loguru
+- **Resource Management**: Temporary file cleanup
+- **Status Updates**: Real-time analysis status updates
+
+### STT Servisi (`worker/services/elevenlabs_stt.py`)
+- **API Integration**: ElevenLabs Speech-to-Text API
+- **Retry Mechanism**: 3 attempts with exponential backoff
+- **Error Handling**: 429 rate limit, timeout, network errors
+- **Data Processing**: Raw words extraction (word type only)
+- **Configuration**: Model, language, temperature settings
+- **Response Parsing**: Word-level timestamps ve confidence scores
+
+### Alignment Servisi (`worker/services/alignment.py`)
+- **Core Algorithm**: Dynamic Programming Levenshtein Distance
+- **Turkish Language Support**: 
+  - Unicode apostrophe normalization
+  - Turkish character handling (ÇĞİÖŞÜÂÎÛçğıöşü)
+  - Apostrophe-preserving tokenization
+- **Advanced Features**:
+  - Stopword-aware cost calculation
+  - Filler word detection and handling
+  - Repetition detection (-- markers)
+  - Post-repair mechanisms
+  - Local swap repair
+- **Error Classification**:
+  - `harf_ek`: Single character addition
+  - `harf_cik`: Single character deletion
+  - `hece_ekleme`: Syllable addition
+  - `hece_eksiltme`: Syllable deletion
+  - `harf_değiştirme`: Character substitution
+
+### Scoring Servisi (`worker/services/scoring.py`)
+- **Metrics Calculation**:
+  - WER (Word Error Rate)
+  - Accuracy percentage
+  - WPM (Words Per Minute)
+- **Event Processing**: Word event aggregation
+- **Validation**: Summary consistency checking
+- **Backward Compatibility**: "diff" field support
+
+### Pause Detection Servisi (`worker/services/pauses.py`)
+- **Detection Method**: Word timing analysis
+- **Classification Levels**:
+  - short: 0.3-0.5 seconds
+  - medium: 0.5-1.0 seconds
+  - long: 1.0+ seconds
+  - very_long: 1.0+ seconds (separate category)
+- **Threshold**: Configurable (default 500ms)
+- **Output**: PauseEventDoc objects
+
+### Worker Performans Optimizasyonları
+- **Batch Processing**: Multiple document operations
+- **Memory Management**: Temporary file cleanup
+- **Database Efficiency**: Connection pooling
+- **Error Recovery**: Graceful failure handling
+- **Logging Efficiency**: Structured logging with rotation
+
+## 7. Özet Tablo
 
 | Koleksiyon | Model Dosyası | Alanlar | İndeksler |
 |------------|---------------|---------|-----------|
@@ -532,4 +648,11 @@ deleteSession(id: string): Promise<void>
 
 **Rapor Tarihi**: 2025-01-19  
 **Proje Durumu**: Production Ready  
-**Son Güncelleme**: Alignment algoritması iyileştirildi, stopword-aware maliyet hesaplama eklendi, case/punctuation normalizasyonu implementasyonu tamamlandı
+**Son Güncelleme**: 
+- Turkish apostrophe tokenization sorunu çözüldü
+- Frontend JavaScript hoisting hatası düzeltildi
+- Docker volume mount sorunları giderildi
+- Worker servisleri detaylı analizi eklendi
+- Alignment algoritması iyileştirildi, stopword-aware maliyet hesaplama eklendi
+- Case/punctuation normalizasyonu implementasyonu tamamlandı
+- Unicode apostrophe normalization eklendi

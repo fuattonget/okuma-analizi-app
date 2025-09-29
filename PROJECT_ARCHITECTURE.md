@@ -236,7 +236,7 @@ Content-Type: multipart/form-data
   "start_ms": float,
   "end_ms": float,
   "type": str,  # "correct", "missing", "extra", "diff"
-  "subtype": str,
+  "sub_type": str,
   "details": dict
 }
 ```

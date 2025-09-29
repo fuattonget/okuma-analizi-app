@@ -131,6 +131,7 @@ class AnalysisSummary(BaseModel):
     created_at: str
     status: str
     text_title: str
+    text: Optional[Dict[str, str]] = None
     wer: Optional[float] = None
     accuracy: Optional[float] = None
     wpm: Optional[float] = None
@@ -235,6 +236,10 @@ async def get_analyses(limit: int = Query(20, ge=1, le=100)):
             "created_at": analysis.created_at.replace(tzinfo=timezone(timedelta(hours=3))).isoformat(),
             "status": analysis.status,
             "text_title": text.title if text else "Unknown",
+            "text": {
+                "title": text.title if text else "Unknown",
+                "body": text.body if text else ""
+            },
             "wer": summary.get("wer"),
             "accuracy": summary.get("accuracy"),
             "wpm": summary.get("wpm"),
@@ -244,6 +249,10 @@ async def get_analyses(limit: int = Query(20, ge=1, le=100)):
             "audio_duration_sec": getattr(audio, 'duration_sec', None) if audio else None,
             "audio_size_bytes": getattr(audio, 'size_bytes', None) if audio else None
         }
+        
+        # Debug text field
+        app_logger.info(f"DEBUG: text object: {text}")
+        app_logger.info(f"DEBUG: text field in response: {response_data.get('text')}")
         
         # Add DEBUG fields if enabled
         if settings.debug:
@@ -378,6 +387,7 @@ async def get_analysis_metrics(analysis_id: str):
                 "missing": counts["missing"],
                 "extra": counts["extra"],
                 "substitution": counts["diff"],
+                "repetition": counts.get("repetition", 0),
                 "pause_long": long_pauses
             }
         }

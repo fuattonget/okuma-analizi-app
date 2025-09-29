@@ -125,7 +125,7 @@ async def fix_word_events_for_analysis(analysis_id: str):
                 ref_token=event_data.get('ref_token'),
                 hyp_token=event_data.get('hyp_token'),
                 type=event_data.get('type', 'unknown'),
-                sub_type=event_data.get('subtype'),
+                sub_type=event_data.get('sub_type'),
                 timing={
                     'start_ms': event_data.get('start_ms'),
                     'end_ms': event_data.get('end_ms')

@@ -37,15 +37,17 @@ services:
       - REDIS_URL=redis://redis:6379
       - GCS_CREDENTIALS_PATH=./gcs-service-account.json
       - GCS_BUCKET=doky_ai_audio_storage
-      - ELEVENLABS_API_KEY=sk_b3f8dd913a905ad2d0bd615b85043b5bc03c41c48465594c
+      - ELEVENLABS_API_KEY=sk_48197cd19b83cd15d1bdbdedd1bba7043c9a7eb8de549b1d
       - ELEVENLABS_MODEL=scribe_v1
       - ELEVENLABS_LANGUAGE=tr
+      - ELEVENLABS_TEMPERATURE=0.0
     depends_on:
       - mongodb
       - redis
     volumes:
       - ./gcs-service-account.json:/app/gcs-service-account.json
       - ./logs:/app/logs
+      - ./backend:/app
     networks:
       - okuma-network
 
@@ -59,15 +61,18 @@ services:
       - MONGO_URI=mongodb://mongodb:27017
       - MONGO_DB=okuma_analizi
       - REDIS_URL=redis://redis:6379
-      - ELEVENLABS_API_KEY=sk_b3f8dd913a905ad2d0bd615b85043b5bc03c41c48465594c
+      - ELEVENLABS_API_KEY=sk_48197cd19b83cd15d1bdbdedd1bba7043c9a7eb8de549b1d
       - ELEVENLABS_MODEL=scribe_v1
       - ELEVENLABS_LANGUAGE=tr
+      - ELEVENLABS_TEMPERATURE=0.0
     depends_on:
       - mongodb
       - redis
       - api
     volumes:
       - ./logs:/app/logs
+      - ./worker:/app
+      - ./gcs-service-account.json:/app/gcs-service-account.json
     networks:
       - okuma-network
 
@@ -80,9 +85,11 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_API_BASE=http://localhost:8000
     depends_on:
       - api
+    volumes:
+      - ./frontend:/app
     networks:
       - okuma-network
 

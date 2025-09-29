@@ -1,0 +1,249 @@
+{
+  "timestamp": "1758892710.5828745",
+  "tests": [
+    {
+      "success": true,
+      "test_name": "Basic Alignment",
+      "ref_text": "Güzel bir gün var",
+      "hyp_text": "Güzel çok güzel gün merhaba",
+      "ref_tokens": [
+        "Güzel",
+        "bir",
+        "gün",
+        "var"
+      ],
+      "hyp_tokens": [
+        "Güzel",
+        "çok",
+        "güzel",
+        "gün",
+        "merhaba"
+      ],
+      "event_counts": {
+        "repetition": 1,
+        "extra": 2,
+        "correct": 2,
+        "missing": 2
+      },
+      "events": [
+        {
+          "ref_token": null,
+          "hyp_token": "Güzel",
+          "start_ms": null,
+          "end_ms": null,
+          "type": "repetition",
+          "sub_type": "enhanced_pattern",
+          "ref_idx": -1,
+          "hyp_idx": 0,
+          "char_diff": null,
+          "cer_local": null
+        },
+        {
+          "ref_token": null,
+          "hyp_token": "çok",
+          "start_ms": null,
+          "end_ms": null,
+          "type": "extra",
+          "sub_type": null,
+          "ref_idx": -1,
+          "hyp_idx": 1,
+          "char_diff": null,
+          "cer_local": null
+        },
+        {
+          "ref_token": "Güzel",
+          "hyp_token": "güzel",
+          "start_ms": null,
+          "end_ms": null,
+          "type": "correct",
+          "sub_type": "case_punct_only",
+          "ref_idx": 0,
+          "hyp_idx": 2,
+          "char_diff": null,
+          "cer_local": null
+        },
+        {
+          "ref_token": "bir",
+          "hyp_token": null,
+          "start_ms": null,
+          "end_ms": null,
+          "type": "missing",
+          "sub_type": null,
+          "ref_idx": 1,
+          "hyp_idx": -1,
+          "char_diff": null,
+          "cer_local": null
+        },
+        {
+          "ref_token": "gün",
+          "hyp_token": "gün",
+          "start_ms": null,
+          "end_ms": null,
+          "type": "correct",
+          "sub_type": "case_punct_only",
+          "ref_idx": 2,
+          "hyp_idx": 3,
+          "char_diff": null,
+          "cer_local": null
+        },
+        {
+          "ref_token": null,
+          "hyp_token": "merhaba",
+          "start_ms": null,
+          "end_ms": null,
+          "type": "extra",
+          "sub_type": null,
+          "ref_idx": -1,
+          "hyp_idx": 4,
+          "char_diff": null,
+          "cer_local": null
+        },
+        {
+          "ref_token": "var",
+          "hyp_token": null,
+          "start_ms": null,
+          "end_ms": null,
+          "type": "missing",
+          "sub_type": null,
+          "ref_idx": 3,
+          "hyp_idx": -1,
+          "char_diff": null,
+          "cer_local": null
+        }
+      ]
+    },
+    {
+      "success": true,
+      "test_name": "Punctuation Handling",
+      "ref_text": "Merhaba, dünya!",
+      "hyp_text": "Merhaba, dünya.",
+      "all_correct": true,
+      "correct_count": 2,
+      "total_count": 2
+    },
+    {
+      "success": true,
+      "test_name": "Turkish Normalization",
+      "all_passed": true,
+      "results": [
+        {
+          "input": "İhtiyaçlarımız",
+          "expected": "ihtiyaclarimiz",
+          "actual": "ihtiyaclarimiz",
+          "passed": true
+        },
+        {
+          "input": "Güzel",
+          "expected": "guzel",
+          "actual": "guzel",
+          "passed": true
+        },
+        {
+          "input": "çocuk",
+          "expected": "cocuk",
+          "actual": "cocuk",
+          "passed": true
+        },
+        {
+          "input": "öğrenci",
+          "expected": "ogrenci",
+          "actual": "ogrenci",
+          "passed": true
+        },
+        {
+          "input": "şarkı",
+          "expected": "sarki",
+          "actual": "sarki",
+          "passed": true
+        },
+        {
+          "input": "Atatürk'ün",
+          "expected": "ataturk'un",
+          "actual": "ataturk'un",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "success": true,
+      "test_name": "Substitution Subtypes",
+      "all_passed": true,
+      "results": [
+        {
+          "ref": "test",
+          "hyp": "tests",
+          "expected": "harf_ekleme",
+          "actual": "harf_ekleme",
+          "passed": true
+        },
+        {
+          "ref": "tests",
+          "hyp": "test",
+          "expected": "harf_eksiltme",
+          "actual": "harf_eksiltme",
+          "passed": true
+        },
+        {
+          "ref": "test",
+          "hyp": "tast",
+          "expected": "harf_değiştirme",
+          "actual": "harf_değiştirme",
+          "passed": true
+        },
+        {
+          "ref": "test",
+          "hyp": "testing",
+          "expected": "hece_ekleme",
+          "actual": "hece_ekleme",
+          "passed": true
+        },
+        {
+          "ref": "testing",
+          "hyp": "test",
+          "expected": "hece_eksiltme",
+          "actual": "hece_eksiltme",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "success": true,
+      "test_name": "Repetition Detection",
+      "all_passed": true,
+      "results": [
+        {
+          "name": "Dash pattern",
+          "expected": 1,
+          "actual": 1,
+          "passed": true,
+          "repetition_tokens": [
+            "okul--"
+          ]
+        },
+        {
+          "name": "Consecutive identical",
+          "expected": 2,
+          "actual": 2,
+          "passed": true,
+          "repetition_tokens": [
+            "güzel",
+            "güzel"
+          ]
+        },
+        {
+          "name": "No repetition",
+          "expected": 0,
+          "actual": 0,
+          "passed": true,
+          "repetition_tokens": []
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total": 5,
+    "passed": 5,
+    "failed": 0,
+    "success_rate": 100.0
+  }
+}
