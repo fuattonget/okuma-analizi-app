@@ -6,7 +6,7 @@ from typing import Optional
 import os
 import uuid
 import tempfile
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import soundfile as sf
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -250,7 +250,7 @@ async def upload_audio(
                 "duration_ms": duration_ms,
                 "duration_sec": duration_sec,
                 "sr": sample_rate,
-                "uploaded_at": datetime.utcnow(),
+                "uploaded_at": datetime.now(timezone(timedelta(hours=3))),
                 "hash": {
                     "md5": gcs_result["md5"],
                     "sha256": None  # Will be calculated later if needed
@@ -533,7 +533,7 @@ async def upload_standalone_audio(
             "size_bytes": gcs_result["size_bytes"],
             "md5_hash": gcs_result["md5"],
             "duration_sec": duration_sec,
-            "uploaded_at": datetime.utcnow(),
+            "uploaded_at": datetime.now(timezone(timedelta(hours=3))),
             "uploaded_by": uploaded_by
         }
         

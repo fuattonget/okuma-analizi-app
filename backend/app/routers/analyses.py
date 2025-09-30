@@ -6,6 +6,7 @@ from typing import Union
 import tempfile
 import os
 from datetime import datetime, timezone, timedelta
+from app.utils.timezone import to_turkey_timezone, to_utc_iso
 import soundfile as sf
 from bson import ObjectId
 from app.models.documents import AnalysisDoc, TextDoc, AudioFileDoc, WordEventDoc, PauseEventDoc, ReadingSessionDoc
@@ -233,7 +234,7 @@ async def get_analyses(limit: int = Query(20, ge=1, le=100)):
         # Build base response
         response_data = {
             "id": str(analysis.id),
-            "created_at": analysis.created_at.replace(tzinfo=timezone(timedelta(hours=3))).isoformat(),
+            "created_at": to_turkey_timezone(analysis.created_at),
             "status": analysis.status,
             "text_title": text.title if text else "Unknown",
             "text": {
@@ -259,11 +260,11 @@ async def get_analyses(limit: int = Query(20, ge=1, le=100)):
             # Add timings
             timings = {}
             if analysis.created_at:
-                timings["queued_at"] = analysis.created_at.replace(tzinfo=timezone(timedelta(hours=3))).isoformat()
+                timings["queued_at"] = to_turkey_timezone(analysis.created_at)
             if analysis.started_at:
-                timings["started_at"] = analysis.started_at.isoformat()
+                timings["started_at"] = to_turkey_timezone(analysis.started_at)
             if analysis.finished_at:
-                timings["finished_at"] = analysis.finished_at.replace(tzinfo=timezone(timedelta(hours=3))).isoformat()
+                timings["finished_at"] = to_turkey_timezone(analysis.finished_at)
                 if analysis.started_at:
                     total_ms = (analysis.finished_at - analysis.started_at).total_seconds() * 1000
                     timings["total_ms"] = round(total_ms, 2)
@@ -293,7 +294,13 @@ async def get_analysis_word_events(analysis_id: str):
         if not analysis:
             raise HTTPException(status_code=404, detail="Analysis not found")
         
-        word_events = await WordEventDoc.find(WordEventDoc.analysis_id == analysis_id).to_list()
+        from bson import ObjectId
+        word_events = await WordEventDoc.find(WordEventDoc.analysis_id == ObjectId(analysis_id)).to_list()
+        
+        # Convert ObjectId fields to strings for API response
+        for event in word_events:
+            event.id = str(event.id)
+            event.analysis_id = str(event.analysis_id)
         
         app_logger.info(f"Retrieved {len(word_events)} word events for analysis {analysis_id}")
         return word_events
@@ -312,7 +319,13 @@ async def get_analysis_pause_events(analysis_id: str):
         if not analysis:
             raise HTTPException(status_code=404, detail="Analysis not found")
         
-        pause_events = await PauseEventDoc.find(PauseEventDoc.analysis_id == analysis_id).to_list()
+        from bson import ObjectId
+        pause_events = await PauseEventDoc.find(PauseEventDoc.analysis_id == ObjectId(analysis_id)).to_list()
+        
+        # Convert ObjectId fields to strings for API response
+        for event in pause_events:
+            event.id = str(event.id)
+            event.analysis_id = str(event.analysis_id)
         
         app_logger.info(f"Retrieved {len(pause_events)} pause events for analysis {analysis_id}")
         return pause_events
@@ -332,10 +345,12 @@ async def get_analysis_metrics(analysis_id: str):
             raise HTTPException(status_code=404, detail="Analysis not found")
         
         # Get word events
-        word_events = await WordEventDoc.find(WordEventDoc.analysis_id == analysis_id).to_list()
+        from bson import ObjectId
+        word_events = await WordEventDoc.find(WordEventDoc.analysis_id == ObjectId(analysis_id)).to_list()
         
         # Get pause events
-        pause_events = await PauseEventDoc.find(PauseEventDoc.analysis_id == analysis_id).to_list()
+        from bson import ObjectId
+        pause_events = await PauseEventDoc.find(PauseEventDoc.analysis_id == ObjectId(analysis_id)).to_list()
         
         # Calculate counts
         counts = {
@@ -479,7 +494,7 @@ async def analyze_file(
             tokenized_words = tokenize_turkish_text(normalized_body)
             
             # Generate unique slug for custom text
-            custom_slug = f"custom-{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
+            custom_slug = f"custom-{datetime.now(timezone(timedelta(hours=3))).strftime('%Y%m%d_%H%M%S')}"
             
             custom_text_doc = TextDoc(
                 slug=custom_slug,
@@ -579,7 +594,7 @@ async def analyze_file(
             "size_bytes": gcs_result["size_bytes"],
             "md5_hash": gcs_result["md5"],
             "duration_sec": duration_sec,
-            "uploaded_at": datetime.utcnow(),
+            "uploaded_at": datetime.now(timezone(timedelta(hours=3))),
             "uploaded_by": uploaded_by
         }
         
@@ -694,7 +709,7 @@ async def get_analysis_audio_url(analysis_id: str, expiration_hours: int = Query
             "audio_id": str(session.audio_id),
             "signed_url": signed_url,
             "expiration_hours": expiration_hours,
-            "expires_at": (datetime.utcnow() + timedelta(hours=expiration_hours)).isoformat() + "Z"
+            "expires_at": (datetime.now(timezone(timedelta(hours=3))) + timedelta(hours=expiration_hours)).isoformat()
         }
         
     except HTTPException:
@@ -742,10 +757,10 @@ async def get_analysis(analysis_id: str):
     # Build base response
     response_data = {
         "id": str(analysis.id),
-        "created_at": analysis.created_at.replace(tzinfo=timezone(timedelta(hours=3))).isoformat(),
+        "created_at": to_turkey_timezone(analysis.created_at),
         "status": analysis.status,
-        "started_at": analysis.started_at.isoformat() if analysis.started_at else None,
-        "finished_at": analysis.finished_at.replace(tzinfo=timezone(timedelta(hours=3))).isoformat() if analysis.finished_at else None,
+        "started_at": to_turkey_timezone(analysis.started_at),
+        "finished_at": to_turkey_timezone(analysis.finished_at),
         "error": analysis.error,
         "summary": analysis.summary or {},
         "text": {
@@ -759,11 +774,11 @@ async def get_analysis(analysis_id: str):
         # Add timings
         timings = {}
         if analysis.created_at:
-            timings["queued_at"] = analysis.created_at.replace(tzinfo=timezone(timedelta(hours=3))).isoformat()
+            timings["queued_at"] = to_turkey_timezone(analysis.created_at)
         if analysis.started_at:
-            timings["started_at"] = analysis.started_at.isoformat()
+            timings["started_at"] = to_turkey_timezone(analysis.started_at)
         if analysis.finished_at:
-            timings["finished_at"] = analysis.finished_at.replace(tzinfo=timezone(timedelta(hours=3))).isoformat()
+            timings["finished_at"] = to_turkey_timezone(analysis.finished_at)
         
         response_data["debug"] = {
             "timings": timings,

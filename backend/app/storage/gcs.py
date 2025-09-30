@@ -1,7 +1,7 @@
 import os
 import uuid
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
 from google.cloud import storage
 from google.cloud.exceptions import NotFound
@@ -126,7 +126,7 @@ def generate_signed_url(
             raise NotFound(f"Blob {blob_name} not found in bucket {bucket_name}")
         
         # Calculate expiration time
-        expiration_time = datetime.utcnow() + timedelta(hours=expiration_hours)
+        expiration_time = datetime.now(timezone(timedelta(hours=3))) + timedelta(hours=expiration_hours)
         
         # Generate signed URL
         signed_url = blob.generate_signed_url(

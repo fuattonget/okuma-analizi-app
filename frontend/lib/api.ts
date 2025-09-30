@@ -92,19 +92,6 @@ export interface AnalysisSummary {
     };
   };
   audio_id: string;
-  // DEBUG fields
-  timings?: {
-    queued_at?: string;
-    started_at?: string;
-    finished_at?: string;
-    total_ms?: number;
-  };
-  counts_direct?: {
-    correct: number;
-    missing: number;
-    extra: number;
-    diff: number;
-  };
 }
 
 export interface AnalysisDetail {
@@ -141,53 +128,6 @@ export interface AnalysisDetail {
   text: {
     title: string;
     body: string;
-  };
-  // DEBUG fields
-  timings?: {
-    queued_at?: string;
-    started_at?: string;
-    finished_at?: string;
-    total_ms?: number;
-  };
-  counts_direct?: {
-    correct: number;
-    missing: number;
-    extra: number;
-    diff: number;
-  };
-}
-
-// Session types
-export interface SessionSummary {
-  id: string;
-  text_id: string;
-  audio_id: string;
-  reader_id?: string;
-  status: string;
-  created_at: string;
-  completed_at?: string;
-}
-
-export interface SessionDetail {
-  id: string;
-  text_id: string;
-  audio_id: string;
-  reader_id?: string;
-  status: string;
-  created_at: string;
-  completed_at?: string;
-  text: {
-    title: string;
-    body: string;
-  };
-  audio: {
-    id: string;
-    original_name: string;
-    storage_name: string;
-    content_type?: string;
-    size_bytes?: number;
-    duration_sec?: number;
-    uploaded_at: string;
   };
 }
 
@@ -340,32 +280,6 @@ export const apiClient = {
 
   async getAnalysis(id: string): Promise<AnalysisDetail> {
     const response = await api.get(`/v1/analyses/${id}`);
-    return response.data;
-  },
-
-
-  // Sessions
-  async getSessions(limit: number = 20, status?: string, reader_id?: string): Promise<SessionSummary[]> {
-    const params = new URLSearchParams({ limit: limit.toString() });
-    if (status) params.append('status', status);
-    if (reader_id) params.append('reader_id', reader_id);
-    
-    const response = await api.get(`/v1/sessions?${params.toString()}`);
-    return response.data;
-  },
-
-  async getSession(sessionId: string): Promise<SessionDetail> {
-    const response = await api.get(`/v1/sessions/${sessionId}`);
-    return response.data;
-  },
-
-  async getSessionAnalyses(sessionId: string, limit: number = 20): Promise<AnalysisSummary[]> {
-    const response = await api.get(`/v1/sessions/${sessionId}/analyses?limit=${limit}`);
-    return response.data;
-  },
-
-  async updateSessionStatus(sessionId: string, status: string): Promise<{ message: string; session_id: string }> {
-    const response = await api.put(`/v1/sessions/${sessionId}/status?status=${status}`);
     return response.data;
   },
 

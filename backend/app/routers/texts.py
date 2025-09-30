@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from app.models.documents import TextDoc, CanonicalTokens
 from app.utils.text_tokenizer import tokenize_turkish_text, normalize_turkish_text
+from app.utils.timezone import to_turkey_timezone
 from typing import Union
 from loguru import logger
 import hashlib
@@ -60,7 +61,7 @@ async def get_texts():
             grade=text.grade,
             body=text.body,
             comment=text.comment,
-            created_at=text.created_at.isoformat(),
+            created_at=to_turkey_timezone(text.created_at),
             active=text.active
         )
         result.append(text_response)
@@ -94,7 +95,7 @@ async def create_text(text_data: TextCreate):
             grade=existing_text.grade,
             body=existing_text.body,
             comment=existing_text.comment,
-            created_at=existing_text.created_at.isoformat(),
+            created_at=to_turkey_timezone(existing_text.created_at),
             active=existing_text.active
         )
     
@@ -130,7 +131,7 @@ async def create_text(text_data: TextCreate):
         grade=text_doc.grade,
         body=text_doc.body,
         comment=text_doc.comment,
-        created_at=text_doc.created_at.isoformat(),
+        created_at=to_turkey_timezone(text_doc.created_at),
         active=text_doc.active
     )
 
@@ -152,7 +153,7 @@ async def copy_text(text_data: TextCopyCreate):
                 grade=existing_text.grade,
                 body=existing_text.body,
                 comment=existing_text.comment,
-                created_at=existing_text.created_at.isoformat(),
+                created_at=to_turkey_timezone(existing_text.created_at),
                 active=existing_text.active
             )
         
@@ -182,7 +183,7 @@ async def copy_text(text_data: TextCopyCreate):
             grade=text_doc.grade,
             body=text_doc.body,
             comment=text_doc.comment,
-            created_at=text_doc.created_at.isoformat(),
+            created_at=to_turkey_timezone(text_doc.created_at),
             active=text_doc.active
         )
         
@@ -206,7 +207,7 @@ async def get_text(text_id: str):
             grade=text.grade,
             body=text.body,
             comment=text.comment,
-            created_at=text.created_at.isoformat(),
+            created_at=to_turkey_timezone(text.created_at),
             active=text.active
         )
     except Exception:
@@ -247,7 +248,7 @@ async def update_text(text_id: str, text_data: TextUpdate):
             grade=text.grade,
             body=text.body,
             comment=text.comment,
-            created_at=text.created_at.isoformat(),
+            created_at=to_turkey_timezone(text.created_at),
             active=text.active
         )
     except Exception:

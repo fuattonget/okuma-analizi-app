@@ -85,189 +85,6 @@ def _track_filler_repetitions(hyp_tokens: List[str], word_times: List[Dict[str, 
     
     return repeated_fillers
 
-def _detect_word_repetitions(hyp_tokens: List[str], word_times: List[Dict[str, Any]] = None) -> Dict[int, Dict[str, Any]]:
-    """
-    Detect word repetitions in hypothesis tokens.
-    Returns dict mapping hyp_token_index -> repetition_info
-    
-    Repetition patterns:
-    1. Exact repetitions: "yeni yeni nesil"
-    2. Partial repetitions: "yeni nese- yeni nesil" 
-    3. Similar repetitions: "yeni yeni- nesil"
-    """
-    repetition_info = {}
-    n = len(hyp_tokens)
-    
-    for i in range(n):
-        current_token = hyp_tokens[i]
-        current_norm = _norm_token(current_token)
-        
-        # Skip very short tokens or punctuation
-        if len(current_norm) < 2 or _is_punctuation(current_token):
-            repetition_info[i] = {"is_repetition": False, "repetition_group": None, "repetition_type": None}
-            continue
-        
-        # Look for repetitions in nearby tokens (within 5 positions)
-        repetition_group = [i]
-        repetition_type = None
-        
-        # Check previous tokens
-        for j in range(max(0, i-5), i):
-            prev_token = hyp_tokens[j]
-            prev_norm = _norm_token(prev_token)
-            
-            if len(prev_norm) < 2 or _is_punctuation(prev_token):
-                continue
-                
-            # Check for exact match (no normalization)
-            # But avoid false positives like "istediği," and "istediği"
-            if current_token == prev_token:
-                repetition_group.append(j)
-                repetition_type = "exact"
-                break
-            # Check if one is punctuation variant of the other - if so, don't consider repetition
-            elif (len(current_token) >= 5 and len(prev_token) >= 5 and 
-                  abs(len(current_token) - len(prev_token)) <= 2 and
-                  ''.join(c for c in current_token if c.isalnum()) == ''.join(c for c in prev_token if c.isalnum())):
-                # These are punctuation variants, not repetitions
-                continue
-            
-            # Check for partial match (current is prefix of previous) - only for longer words
-            # But avoid false positives like "istediği" in "istediği,"
-            if (len(current_token) >= 5 and len(prev_token) >= 5 and 
-                current_token in prev_token and len(current_token) >= 3 and
-                not (len(prev_token) - len(current_token) <= 2)):  # Avoid punctuation variants
-                repetition_group.append(j)
-                repetition_type = "partial"
-                break
-                    
-            # Check for high similarity - only for longer words to avoid false positives
-            if len(current_norm) >= 5 and len(prev_norm) >= 5:
-                lev_dist = char_edit_stats(current_norm, prev_norm)[0]
-                max_len = max(len(current_norm), len(prev_norm), 1)
-                similarity = 1.0 - (lev_dist / max_len)
-                
-                if similarity > 0.7:  # High similarity threshold
-                    repetition_group.append(j)
-                    repetition_type = "similar"
-                    break
-        
-        # Check next tokens for exact repetitions (like "yeni" -> "yeni")
-        if not repetition_type:
-            for j in range(i + 1, min(n, i + 5)):  # Check next 4 tokens
-                next_token = hyp_tokens[j]
-                next_norm = _norm_token(next_token)
-                
-                if len(next_norm) < 2 or _is_punctuation(next_token):
-                    continue
-                    
-                # Check for exact match
-                if current_norm == next_norm:
-                    repetition_group.append(j)
-                    repetition_type = "exact"
-                    break
-        
-        # Check next tokens for partial repetitions (like "nese-")
-        if not repetition_type and i < n - 1:
-            next_token = hyp_tokens[i + 1]
-            next_norm = _norm_token(next_token)
-            
-            # Check if current token is a partial version of next token
-            if (current_norm and next_norm and 
-                current_norm in next_norm and 
-                len(current_norm) >= 3 and 
-                len(next_norm) > len(current_norm)):
-                repetition_group.append(i + 1)
-                repetition_type = "partial_forward"
-        
-        # Check if current token is a partial version of a previous token
-        if not repetition_type:
-            for j in range(max(0, i-5), i):
-                prev_token = hyp_tokens[j]
-                prev_norm = _norm_token(prev_token)
-                
-                if (len(prev_norm) >= 2 and not _is_punctuation(prev_token) and
-                    current_norm and prev_norm and 
-                    current_norm in prev_norm and 
-                    len(current_norm) >= 3 and 
-                    len(prev_norm) > len(current_norm)):
-                    repetition_group.append(j)
-                    repetition_type = "partial_backward"
-                    break
-        
-        # Check if current token is a partial version of a next token
-        if not repetition_type and i < n - 1:
-            for j in range(i + 1, min(n, i + 3)):  # Check next 2 tokens
-                next_token = hyp_tokens[j]
-                next_norm = _norm_token(next_token)
-                
-                if (len(next_norm) >= 2 and not _is_punctuation(next_token) and
-                    current_norm and next_norm and 
-                    len(current_norm) >= 3 and 
-                    len(next_norm) > len(current_norm)):
-                    
-                    # Check for substring match
-                    if current_norm in next_norm:
-                        repetition_group.append(j)
-                        repetition_type = "partial_forward"
-                        break
-                    
-                    # Check for high similarity (for cases like "nese" vs "nesil")
-                    lev_dist = char_edit_stats(current_norm, next_norm)[0]
-                    max_len = max(len(current_norm), len(next_norm), 1)
-                    similarity = 1.0 - (lev_dist / max_len)
-                    
-                    if similarity >= 0.6:  # Lower threshold for partial matches
-                        repetition_group.append(j)
-                        repetition_type = "partial_forward"
-                        break
-        
-        # NEW: Check for forward repetition patterns
-        # This handles cases like "yeni nese- yeni nesil" where the first "yeni" and "nese-" 
-        # should be marked as repetitions because they appear again later
-        if not repetition_type and i < n - 2:
-            # Look for patterns where current token + next token form a repetition
-            # with tokens that appear later in the sequence
-            for j in range(i + 2, min(n, i + 6)):  # Check tokens 2-5 positions ahead
-                later_token = hyp_tokens[j]
-                later_norm = _norm_token(later_token)
-                
-                if len(later_norm) < 2 or _is_punctuation(later_token):
-                    continue
-                
-                # Check if current token matches a later token
-                if current_norm == later_norm:
-                    # Found a match, now check if there's a partial match in between
-                    for k in range(i + 1, j):
-                        middle_token = hyp_tokens[k]
-                        middle_norm = _norm_token(middle_token)
-                        
-                        if len(middle_norm) < 2 or _is_punctuation(middle_token):
-                            continue
-                        
-                        # Check if middle token is a partial version of the later token
-                        if (middle_norm and later_norm and 
-                            middle_norm in later_norm and 
-                            len(middle_norm) >= 3 and 
-                            len(later_norm) > len(middle_token)):
-                            # Found a forward repetition pattern
-                            repetition_group.extend([i, k, j])
-                            repetition_type = "forward_repetition"
-                            break
-                    
-                    if repetition_type:
-                        break
-        
-        # Mark as repetition if group has more than one token
-        is_repetition = len(repetition_group) > 1
-        repetition_info[i] = {
-            "is_repetition": is_repetition,
-            "repetition_group": repetition_group if is_repetition else None,
-            "repetition_type": repetition_type if is_repetition else None
-        }
-    
-    return repetition_info
-
 def normalize_sub_type(sub_type: str) -> str:
     """Normalize sub_type labels to standard format"""
     if not sub_type:
@@ -277,15 +94,13 @@ def normalize_sub_type(sub_type: str) -> str:
     normalization_map = {
         "hece_ek": "hece_ekleme",
         "hece_cik": "hece_eksiltme", 
-        "harf_ek": "harf_ekleme",
-        "harf_cik": "harf_eksiltme",
         "degistirme": "harf_değiştirme"
     }
     
     return normalization_map.get(sub_type, sub_type)
 
 def _norm_token(tok: str) -> str:
-    """Normalize token: lowercase + Turkish diacritic normalization + strip only dashes for repetition detection"""
+    """Normalize token: lowercase + Turkish diacritic normalization + strip punctuation"""
     if not tok:
         return ""
     
@@ -309,24 +124,11 @@ def _norm_token(tok: str) -> str:
     t = ''.join(c for c in t if unicodedata.category(c) != 'Mn')
     t = unicodedata.normalize('NFC', t)
     
-    # Only strip trailing dashes (for repetition detection), keep punctuation
-    # According to criteria: "Noktalama farkı ("," "." vb.) tek başına hata oluşturmaz"
-    t = re.sub(r'-+$', '', t)
-    t = re.sub(r'^-+', '', t)
+    # Strip trailing punctuation characters (.,!?;:"")
+    t = re.sub(r'[.,!?;:"""]+$', '', t)
+    t = re.sub(r'^[.,!?;:"""]+', '', t)
     
     return t
-
-def _is_punctuation_only_difference(ref: str, hyp: str) -> bool:
-    """Check if the only difference between ref and hyp is punctuation"""
-    if not ref or not hyp:
-        return False
-    
-    # Remove all punctuation from both tokens
-    ref_clean = re.sub(r'[.,!?;:""\'-]', '', ref)
-    hyp_clean = re.sub(r'[.,!?;:""\'-]', '', hyp)
-    
-    # Check if they are equal after removing punctuation
-    return _norm_token(ref_clean) == _norm_token(hyp_clean)
 
 def _is_stop(tok: str) -> bool:
     """Check if token is a stopword"""
@@ -365,21 +167,6 @@ def _get_operation_cost(ref_token: str, hyp_token: str, operation: str,
         # Check for filler substitution penalties - forbid all filler substitutions
         if _is_filler(hyp_token) and not _is_filler(ref_token):
             # Filler substituting content word - forbid this completely
-            return float('inf')
-        
-        # SUB gating: compute normalized Levenshtein distance
-        ref_norm = _norm_token(ref_token)
-        hyp_norm = _norm_token(hyp_token)
-        lev_dist = char_edit_stats(ref_norm, hyp_norm)[0]
-        max_len = max(len(ref_norm), len(hyp_norm), 1)
-        lev_norm = lev_dist / max_len
-        
-        # If lev_norm > 0.5, treat SUB as disallowed
-        if lev_norm > 0.5:
-            return float('inf')
-        
-        # Proper-noun rule: if ref looks like a proper noun and lev_norm > 0.4, disallow SUB
-        if re.match(r'^[A-ZÇĞİÖŞÜÂÎÛ]', ref_token) and lev_norm > 0.4:
             return float('inf')
         
         # Higher cost for stopword substitutions
@@ -425,9 +212,6 @@ def levenshtein_align(ref_tokens: List[str], hyp_tokens: List[str],
     if word_times and len(word_times) == len(hyp_tokens):
         repeated_fillers = _track_filler_repetitions(hyp_tokens, word_times)
     
-    # Detect word repetitions
-    word_repetitions = _detect_word_repetitions(hyp_tokens, word_times)
-    
     # Create DP table
     dp = [[0.0] * (n + 1) for _ in range(m + 1)]
     
@@ -454,12 +238,26 @@ def levenshtein_align(ref_tokens: List[str], hyp_tokens: List[str],
             if _norm_token(ref_token) == _norm_token(hyp_token):
                 dp[i][j] = dp[i-1][j-1]
             else:
-                # Calculate costs for each operation with filler awareness
-                del_cost = dp[i-1][j] + _get_operation_cost(ref_token, "", "delete", repeated_fillers, -1)
-                ins_cost = dp[i][j-1] + _get_operation_cost("", hyp_token, "insert", repeated_fillers, j-1)
-                rep_cost = dp[i-1][j-1] + _get_operation_cost(ref_token, hyp_token, "replace", repeated_fillers, j-1)
+                # Special case: "öğret-öğretmen" pattern
+                is_repetition_pattern = False
+                if ("-" in hyp_token and not hyp_token.startswith("-") and not hyp_token.endswith("-")):
+                    parts = hyp_token.split("-", 1)
+                    if len(parts) > 1:
+                        norm_hyp_after_dash = _norm_token(parts[1])
+                        norm_ref = _norm_token(ref_token)
+                        if norm_hyp_after_dash == norm_ref:
+                            is_repetition_pattern = True
                 
-                dp[i][j] = min(del_cost, ins_cost, rep_cost)
+                if is_repetition_pattern:
+                    # Treat as equal (repetition pattern)
+                    dp[i][j] = dp[i-1][j-1]
+                else:
+                    # Calculate costs for each operation with filler awareness
+                    del_cost = dp[i-1][j] + _get_operation_cost(ref_token, "", "delete", repeated_fillers, -1)
+                    ins_cost = dp[i][j-1] + _get_operation_cost("", hyp_token, "insert", repeated_fillers, j-1)
+                    rep_cost = dp[i-1][j-1] + _get_operation_cost(ref_token, hyp_token, "replace", repeated_fillers, j-1)
+                    
+                    dp[i][j] = min(del_cost, ins_cost, rep_cost)
     
     # Backtrack to find alignment
     alignment = []
@@ -475,17 +273,33 @@ def levenshtein_align(ref_tokens: List[str], hyp_tokens: List[str],
             alignment.append(("equal", ref_token, hyp_token, i-1, j-1))
             i -= 1
             j -= 1
-        elif i > 0 and j > 0 and _is_punctuation(ref_token) and _is_punctuation(hyp_token):
-            # Punctuation matching - only allow exact match, otherwise skip
-            if ref_token == hyp_token:
-                alignment.append(("equal", ref_token, hyp_token, i-1, j-1))
+        elif i > 0 and j > 0:
+            # Special case: "öğret-öğretmen" pattern
+            is_repetition_pattern = False
+            if ("-" in hyp_token and not hyp_token.startswith("-") and not hyp_token.endswith("-")):
+                parts = hyp_token.split("-", 1)
+                if len(parts) > 1:
+                    norm_hyp_after_dash = _norm_token(parts[1])
+                    norm_ref = _norm_token(ref_token)
+                    if norm_hyp_after_dash == norm_ref:
+                        is_repetition_pattern = True
+            
+            if is_repetition_pattern:
+                # Treat as repetition pattern
+                alignment.append(("replace", ref_token, hyp_token, i-1, j-1))
                 i -= 1
                 j -= 1
-            else:
-                # Different punctuation - skip both (treat as equal)
-                alignment.append(("equal", ref_token, hyp_token, i-1, j-1))
-                i -= 1
-                j -= 1
+            elif _is_punctuation(ref_token) and _is_punctuation(hyp_token):
+                # Punctuation matching - only allow exact match, otherwise skip
+                if ref_token == hyp_token:
+                    alignment.append(("equal", ref_token, hyp_token, i-1, j-1))
+                    i -= 1
+                    j -= 1
+                else:
+                    # Different punctuation - skip both (treat as equal)
+                    alignment.append(("equal", ref_token, hyp_token, i-1, j-1))
+                    i -= 1
+                    j -= 1
         elif i > 0 and (j == 0 or dp[i-1][j] < dp[i][j-1]):
             # Delete - but skip punctuation completely
             if _is_punctuation(ref_token):
@@ -620,275 +434,30 @@ def syllables_tr(word: str) -> int:
 
 
 def classify_replace(ref: str, hyp: str) -> str:
-    """Classify replacement type based on edit distance and character count according to criteria"""
+    """Classify replacement type based on edit distance and syllable count"""
     ed, len_diff = char_edit_stats(ref, hyp)
     
-    # According to criteria:
-    # - harf_ekleme: fark sadece 1 harf ekleme
-    # - harf_eksiltme: fark sadece 1 harf eksiltme  
-    # - hece_ekleme: hyp_token ref_token'dan uzun ve aradaki fark ≥2 harf
-    # - hece_eksiltme: hyp_token ref_token'dan kısa ve aradaki fark ≥2 harf
-    
-    # len_diff = len(ref) - len(hyp)
-    # So len_diff > 0 means ref is longer (hyp is shorter)
-    # And len_diff < 0 means ref is shorter (hyp is longer)
-    
-    if ed == 1 and len_diff == -1:  # ref shorter by 1, hyp longer by 1
-        return "harf_ekleme"
-    elif ed == 1 and len_diff == 1:  # ref longer by 1, hyp shorter by 1
-        return "harf_eksiltme"
-    elif ed == 1 and len_diff == 0:  # same length, 1 character change
-        return "harf_değiştirme"
+    if ed == 1 and len_diff == 1:
+        return "harf_ek"
+    elif ed == 1 and len_diff == -1:
+        return "harf_cik"
+    elif ed == 1 and len_diff == 0:
+        return "degistirme"
     else:  # ed >= 2
-        # Check character length difference for syllable-like classification
-        if len_diff <= -2:  # ref much shorter, hyp much longer
-            return "hece_ekleme"
-        elif len_diff >= 2:  # ref much longer, hyp much shorter
-            return "hece_eksiltme"
+        s_ref, s_hyp = syllables_tr(ref), syllables_tr(hyp)
+        if s_hyp > s_ref:
+            return "hece_ek"
+        elif s_hyp < s_ref:
+            return "hece_cik"
         else:
-            return "harf_değiştirme"
+            return "degistirme"
 
 
 def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_times: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Build word events from alignment and word timing data"""
     word_events = []
     
-    # Extract hypothesis tokens for repetition detection
-    hyp_tokens = []
     for op, ref_token, hyp_token, ref_idx, hyp_idx in alignment:
-        if hyp_token:
-            hyp_tokens.append(hyp_token)
-        else:
-            hyp_tokens.append("")
-    
-    # Detect word repetitions using new algorithm
-    word_repetitions = _detect_word_repetitions(hyp_tokens, word_times)
-    
-    # Create repetition map for backward compatibility
-    repetition_map = {}  # alignment_idx -> is_repetition
-    for i, (op, ref_token, hyp_token, ref_idx, hyp_idx) in enumerate(alignment):
-        if hyp_token and hyp_idx >= 0 and hyp_idx < len(hyp_tokens):
-            repetition_info = word_repetitions.get(hyp_idx, {"is_repetition": False})
-            repetition_map[i] = repetition_info["is_repetition"]  # Use alignment index i, not hyp_idx
-        else:
-            repetition_map[i] = False
-    
-    # NEW: Enhanced repetition detection for "--" patterns and consecutive extra tokens
-    def check_enhanced_repetition(alignment_idx: int, op: str, ref_token: str, hyp_token: str) -> bool:
-        """Check for enhanced repetition patterns - only for clear repetition cases"""
-        if not hyp_token:
-            return False
-            
-        # Check for repetition patterns in both insert and replace operations
-        # Insert operations: extra tokens that might be repetitions
-        # Replace operations: tokens with clear repetition markers
-        if op not in ["insert", "replace"]:
-            return False
-            
-        # Rule 1: Check for "--" pattern in hyp_token (clear repetition marker)
-        # If a token ends with "--", it's almost certainly a repetition marker from ElevenLabs
-        if "--" in hyp_token:
-            # Look for similar tokens in nearby positions
-            for j in range(max(0, alignment_idx - 3), min(len(alignment), alignment_idx + 4)):
-                if j == alignment_idx:
-                    continue
-                other_op, other_ref, other_hyp, other_ref_idx, other_hyp_idx = alignment[j]
-                if other_hyp and other_hyp != hyp_token:
-                    # Check for exact match after removing "--"
-                    norm_hyp = _norm_token(hyp_token.replace("--", ""))
-                    norm_other = _norm_token(other_hyp)
-                    if norm_hyp == norm_other:  # Exact match
-                        return True
-                    
-                    # Check for substring relationships
-                    if norm_hyp and len(norm_hyp) >= 3 and norm_hyp in norm_other:
-                        return True
-                    if norm_other and len(norm_other) >= 3 and norm_other in norm_hyp:
-                        return True
-                    
-                    # Check for high similarity (for cases like "eserin-i--" vs "eseriniz")
-                    from services.alignment import char_edit_stats
-                    lev_dist = char_edit_stats(norm_hyp, norm_other)[0]
-                    max_len = max(len(norm_hyp), len(norm_other), 1)
-                    similarity = 1.0 - (lev_dist / max_len)
-                    if similarity >= 0.7:  # 70% similarity threshold
-                        return True
-            
-            # If no similar token found nearby, but token has "--", still consider it repetition
-            # This handles cases where the repetition is clear from the "--" marker
-            return True
-        
-        # Rule 2: Check for repetition patterns in hyp_token (clear repetition markers)
-        # Patterns: "es-", "ge-", "ba-", "de-", "da-", "te-", "ta-", etc.
-        # If a token starts with a common prefix followed by "-", it's likely a repetition marker
-        repetition_prefixes = ["es-", "ge-", "ba-", "de-", "da-", "te-", "ta-", "ke-", "ka-", "me-", "ma-", "ne-", "na-", "pe-", "pa-", "re-", "ra-", "se-", "sa-", "ve-", "va-", "ye-", "ya-", "ze-", "za-"]
-        
-        for prefix in repetition_prefixes:
-            if hyp_token.startswith(prefix):
-                # Check if the rest of the token matches the ref_token
-                if ref_token:
-                    norm_hyp_rest = _norm_token(hyp_token[len(prefix):])  # Remove prefix
-                    norm_ref = _norm_token(ref_token)
-                    if norm_hyp_rest == norm_ref:  # Exact match
-                        return True
-                    
-                    # Check for substring relationships
-                    if norm_hyp_rest and len(norm_hyp_rest) >= 3 and norm_hyp_rest in norm_ref:
-                        return True
-                    if norm_ref and len(norm_ref) >= 3 and norm_ref in norm_hyp_rest:
-                        return True
-                    
-                    # Check for high similarity
-                    from services.alignment import char_edit_stats
-                    lev_dist = char_edit_stats(norm_hyp_rest, norm_ref)[0]
-                    max_len = max(len(norm_hyp_rest), len(norm_ref), 1)
-                    similarity = 1.0 - (lev_dist / max_len)
-                    if similarity >= 0.7:  # 70% similarity threshold
-                        return True
-                
-                # If no ref_token or no match, but token has repetition prefix, still consider it repetition
-                return True
-        
-        # Rule 3: Check for middle-dash patterns in hyp_token (clear repetition marker)
-        # Patterns like "u-üzerindeki", "öğre-öğretmenleri" where the dash is in the middle
-        if "-" in hyp_token and not hyp_token.startswith("-") and not hyp_token.endswith("-"):
-            # Check if the part after the dash matches the ref_token
-            if ref_token:
-                # Split by dash and take the part after the first dash
-                parts = hyp_token.split("-", 1)
-                if len(parts) > 1:
-                    norm_hyp_after_dash = _norm_token(parts[1])  # Part after first dash
-                    norm_ref = _norm_token(ref_token)
-                    
-                    # Check for exact match
-                    if norm_hyp_after_dash == norm_ref:
-                        return True
-                    
-                    # Check for substring relationships
-                    if norm_hyp_after_dash and len(norm_hyp_after_dash) >= 3 and norm_hyp_after_dash in norm_ref:
-                        return True
-                    if norm_ref and len(norm_ref) >= 3 and norm_ref in norm_hyp_after_dash:
-                        return True
-                    
-                    # Check for high similarity
-                    from services.alignment import char_edit_stats
-                    lev_dist = char_edit_stats(norm_hyp_after_dash, norm_ref)[0]
-                    max_len = max(len(norm_hyp_after_dash), len(norm_ref), 1)
-                    similarity = 1.0 - (lev_dist / max_len)
-                    if similarity >= 0.7:  # 70% similarity threshold
-                        return True
-            
-            # If no ref_token or no match, but token has middle dash, still consider it repetition
-            return True
-        
-        # Rule 4: Check if consecutive extra tokens later match ref tokens
-        # Look ahead for matching ref tokens
-        for j in range(alignment_idx + 1, min(len(alignment), alignment_idx + 6)):
-            future_op, future_ref, future_hyp, future_ref_idx, future_hyp_idx = alignment[j]
-            if future_ref and future_hyp:
-                # Check if current hyp_token exactly matches future ref_token
-                norm_hyp = _norm_token(hyp_token)
-                norm_ref = _norm_token(future_ref)
-                if norm_hyp == norm_ref:  # Exact match only
-                    return True
-                
-                # Check if current hyp_token contains future ref_token (for cases like "dersini" -> "ders")
-                if norm_ref and len(norm_ref) >= 3 and norm_ref in norm_hyp:
-                    return True
-                
-                # Check if future ref_token contains current hyp_token (for cases like "hiç," -> "hiçbir")
-                if norm_hyp and len(norm_hyp) >= 3 and norm_hyp in norm_ref:
-                    return True
-                
-                # Check for high similarity with lower threshold for partial repetitions
-                from services.alignment import char_edit_stats
-                lev_dist = char_edit_stats(norm_hyp, norm_ref)[0]
-                max_len = max(len(norm_hyp), len(norm_ref), 1)
-                similarity = 1.0 - (lev_dist / max_len)
-                if similarity >= 0.5:  # 50% similarity threshold for partial repetitions
-                    return True
-        
-        return False
-    
-    # NEW: Check for consecutive extra tokens that form repetition patterns
-    def check_consecutive_extra_repetition(alignment_idx: int, alignment: List[Tuple[str, str, str, int, int]]) -> bool:
-        """Check if current position is part of consecutive extra tokens that form repetition according to criteria"""
-        if alignment_idx >= len(alignment):
-            return False
-            
-        current_op, current_ref, current_hyp, current_ref_idx, current_hyp_idx = alignment[alignment_idx]
-        
-        # Only check insert operations (extra tokens), not replace operations (substitutions)
-        if current_op != "insert" or not current_hyp:
-            return False
-        
-        # According to criteria:
-        # 1. hyp_token "--" ile bitiyorsa ve sonraki token aynı/benzer → repetition
-        # 2. Arka arkaya gelen aynı hyp_token dizileri (extra) sonradan ref_token ile eşleşiyorsa → hepsi repetition
-        
-        # Rule 1: Check for "--" pattern in hyp_token and next token similarity
-        if current_hyp.endswith("--"):
-            # Look for next token in alignment
-            for j in range(alignment_idx + 1, min(len(alignment), alignment_idx + 3)):
-                if j < len(alignment):
-                    next_op, next_ref, next_hyp, next_ref_idx, next_hyp_idx = alignment[j]
-                    if next_hyp:
-                        # Check if next token is similar to current (without --)
-                        current_base = current_hyp.replace("--", "")
-                        if _norm_token(current_base) == _norm_token(next_hyp):
-                            return True
-                        # Check for high similarity
-                        lev_dist = char_edit_stats(_norm_token(current_base), _norm_token(next_hyp))[0]
-                        max_len = max(len(_norm_token(current_base)), len(_norm_token(next_hyp)), 1)
-                        similarity = 1.0 - (lev_dist / max_len)
-                        if similarity >= 0.8:
-                            return True
-        
-        # Rule 2: Check for consecutive identical hyp_tokens that later match ref tokens
-        # Find all consecutive insert operations starting from current position
-        consecutive_operations = []
-        for j in range(alignment_idx, len(alignment)):
-            op, ref_token, hyp_token, ref_idx, hyp_idx = alignment[j]
-            if op == "insert" and hyp_token:
-                consecutive_operations.append((j, hyp_token))
-            else:
-                break
-        
-        # Need at least 2 consecutive operations to form a pattern
-        if len(consecutive_operations) < 2:
-            return False
-        
-        # Check if any two consecutive hyp_tokens are identical
-        for k in range(len(consecutive_operations) - 1):
-            if consecutive_operations[k][1] == consecutive_operations[k+1][1]:
-                return True
-        
-        # Look ahead for correct tokens that might match our consecutive operations
-        start_look_ahead = alignment_idx + len(consecutive_operations)
-        for j in range(start_look_ahead, min(len(alignment), start_look_ahead + 6)):
-            future_op, future_ref, future_hyp, future_ref_idx, future_hyp_idx = alignment[j]
-            if future_op == "equal" and future_ref and future_hyp:
-                # Check if any of our consecutive operations match this correct token
-                for op_idx, op_hyp in consecutive_operations:
-                    # Check for exact match (no punctuation cleaning)
-                    if op_hyp == future_ref:
-                        return True
-                    
-                    # Check for high similarity
-                    lev_dist = char_edit_stats(_norm_token(op_hyp), _norm_token(future_ref))[0]
-                    max_len = max(len(_norm_token(op_hyp)), len(_norm_token(future_ref)), 1)
-                    similarity = 1.0 - (lev_dist / max_len)
-                    if similarity >= 0.8:
-                        return True
-        
-        return False
-    
-    for i, (op, ref_token, hyp_token, ref_idx, hyp_idx) in enumerate(alignment):
-        # Initialize subtype for all cases
-        subtype = None
-        char_diff = None
-        cer_local = None
-        
         # Skip punctuation tokens - they should not generate error events
         if _is_punctuation(ref_token) or _is_punctuation(hyp_token):
             # If both are punctuation and same, mark as correct, otherwise skip
@@ -901,86 +470,45 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
                 # Skip this event entirely for punctuation
                 continue
         
+        # Check for normalized equality for any operation
+        elif _norm_token(ref_token) == _norm_token(hyp_token):
+            # Only case/punctuation difference - treat as correct
+            event_type = "correct"
+            subtype = "case_punct_only"
         elif op == "equal":
-            # Check for normalized equality for equal operations
-            if _norm_token(ref_token) == _norm_token(hyp_token):
-                # Only case/punctuation difference - treat as correct
-                event_type = "correct"
-                subtype = "case_punct_only"
-            else:
-                event_type = "correct"
-                subtype = None
+            event_type = "correct"
+            subtype = None
         elif op == "delete":
             event_type = "missing"
             subtype = None
         elif op == "insert":
-            # Check if this is a repetition based on new algorithm
-            # Use alignment index instead of hyp_idx for repetition_map
-            alignment_idx = len(word_events)  # Current alignment index
-            if hyp_token and alignment_idx in repetition_map and repetition_map[alignment_idx]:
-                event_type = "repetition"
-                subtype = None
-            elif check_enhanced_repetition(i, op, ref_token, hyp_token):
+            event_type = "extra"
+            subtype = None
+        elif op == "replace":
+            # Check for repetition pattern (e.g., "öğret-öğretmen")
+            is_repetition_pattern = False
+            if ("-" in hyp_token and not hyp_token.startswith("-") and not hyp_token.endswith("-")):
+                parts = hyp_token.split("-", 1)
+                if len(parts) > 1:
+                    norm_hyp_after_dash = _norm_token(parts[1])
+                    norm_ref = _norm_token(ref_token)
+                    if norm_hyp_after_dash == norm_ref:
+                        is_repetition_pattern = True
+            
+            if is_repetition_pattern:
                 event_type = "repetition"
                 subtype = "enhanced_pattern"
-            elif check_consecutive_extra_repetition(i, alignment):
-                event_type = "repetition"
-                subtype = "consecutive_extra"
+                char_diff = None
+                cer_local = None
             else:
-                # Check if this is part of a repetition group
-                if hyp_token and hyp_idx >= 0 and hyp_idx < len(hyp_tokens):
-                    repetition_info = word_repetitions.get(hyp_idx, {"is_repetition": False})
-                    if repetition_info["is_repetition"]:
-                        event_type = "repetition"
-                        subtype = repetition_info.get("repetition_type")
-                    else:
-                        event_type = "extra"
-                        subtype = None
-                else:
-                    event_type = "extra"
-                    subtype = None
-        elif op == "replace":
-            # Check if this is only punctuation difference
-            if _is_punctuation_only_difference(ref_token, hyp_token):
-                # Only punctuation difference - treat as correct
-                event_type = "correct"
-                subtype = "case_punct_only"
-            else:
-                # For replace operations, treat as substitution unless it's a clear repetition case
-                # Check if this is a repetition based on new algorithm (only for insert operations)
-                alignment_idx = len(word_events)  # Current alignment index
+                event_type = "substitution"
+                subtype = classify_replace(ref_token, hyp_token)
+                # Normalize sub_type
+                subtype = normalize_sub_type(subtype)
                 
-                # Only check repetition for insert operations, not replace operations
-                if op == "insert" and hyp_token and alignment_idx in repetition_map and repetition_map[alignment_idx]:
-                    event_type = "repetition"
-                    subtype = None
-                elif op == "insert" and check_enhanced_repetition(i, op, ref_token, hyp_token):
-                    event_type = "repetition"
-                    subtype = "enhanced_pattern"
-                elif op == "insert" and hyp_token and hyp_idx >= 0 and hyp_idx < len(hyp_tokens):
-                    # Check if this is part of a repetition group (only for insert operations)
-                    repetition_info = word_repetitions.get(hyp_idx, {"is_repetition": False})
-                    if repetition_info["is_repetition"]:
-                        event_type = "repetition"
-                        subtype = repetition_info.get("repetition_type")
-                    else:
-                        event_type = "extra"
-                        subtype = None
-                else:
-                    # For replace operations, check if it's a repetition first
-                    if check_enhanced_repetition(i, op, ref_token, hyp_token):
-                        event_type = "repetition"
-                        subtype = "enhanced_pattern"
-                    else:
-                        # Otherwise treat as substitution
-                        event_type = "substitution"
-                        subtype = classify_replace(ref_token, hyp_token)
-                        # Normalize sub_type
-                        subtype = normalize_sub_type(subtype)
-                    
-                    # Calculate char_diff and cer_local for substitutions
-                    char_diff = char_edit_stats(ref_token, hyp_token)[0]
-                    cer_local = char_diff / max(len(ref_token), 1)
+                # Calculate char_diff and cer_local for substitutions
+                char_diff = char_edit_stats(ref_token, hyp_token)[0]
+                cer_local = char_diff / max(len(ref_token), 1)
         else:
             event_type = "substitution"  # fallback for unknown operations
             subtype = None
@@ -1014,95 +542,101 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
         
         word_events.append(event_data)
     
-    # Local post-repair: fix consecutive SUB+MISSING patterns
-    word_events = _local_swap_repair(word_events)
-    
     return word_events
 
 
-def _local_swap_repair(word_events: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """
-    Local post-repair to fix consecutive SUB+MISSING patterns.
-    For each pair of consecutive events i, i+1:
-    if events[i].type == "substitution" and events[i+1].type == "missing":
-        let ref_i = events[i].ref_token, hyp = events[i].hyp_token, ref_next = events[i+1].ref_token
-        s_bad  = lev_norm(ref_i, hyp)
-        s_good = lev_norm(ref_next, hyp)
-        if s_bad > 0.5 and s_good <= 0.3:
-            // rewrite:
-            events[i]   = MISSING(ref_i)
-            events[i+1] = SUBSTITUTION(ref_next, hyp) with updated char_diff based on normalized forms
-    """
-    if len(word_events) < 2:
-        return word_events
+def test_case_punct_alignment():
+    """Test case and punctuation normalization"""
+    ref = ["bu", "güzel", "bir", "gün", "güneş", "parlıyor", "ve", "kuşlar", "şarkı", "söylüyor", "çocuklar", "parkta", "oynuyor"]
+    hyp = ["Bu", "güzel", "bir", "günler.", "Güneş", "parlıyordu.", "Kuşlar", "şarkı", "söylüyor.", "Çocukların", "parkta", "çok", "oynuyorlardı."]
     
-    repaired = word_events.copy()
-    i = 0
+    alignment = levenshtein_align(ref, hyp)
+    events = build_word_events(alignment, [])
     
-    while i < len(repaired) - 1:
-        current = repaired[i]
-        next_event = repaired[i + 1]
-        
-        # Check for SUB+MISSING pattern
-        if (current["type"] == "substitution" and 
-            next_event["type"] == "missing" and
-            current["ref_token"] and 
-            current["hyp_token"] and 
-            next_event["ref_token"]):
-            
-            ref_i = current["ref_token"]
-            hyp = current["hyp_token"]
-            ref_next = next_event["ref_token"]
-            
-            # Calculate normalized Levenshtein distances
-            ref_i_norm = _norm_token(ref_i)
-            hyp_norm = _norm_token(hyp)
-            ref_next_norm = _norm_token(ref_next)
-            
-            # s_bad = lev_norm(ref_i, hyp)
-            lev_dist_bad = char_edit_stats(ref_i_norm, hyp_norm)[0]
-            max_len_bad = max(len(ref_i_norm), len(hyp_norm), 1)
-            s_bad = lev_dist_bad / max_len_bad
-            
-            # s_good = lev_norm(ref_next, hyp)
-            lev_dist_good = char_edit_stats(ref_next_norm, hyp_norm)[0]
-            max_len_good = max(len(ref_next_norm), len(hyp_norm), 1)
-            s_good = lev_dist_good / max_len_good
-            
-            # Apply repair condition: s_bad > 0.5 and s_good <= 0.3
-            if s_bad > 0.5 and s_good <= 0.3:
-                # Rewrite events:
-                # events[i] = MISSING(ref_i)
-                # events[i+1] = SUBSTITUTION(ref_next, hyp)
-                
-                # Update current event to MISSING
-                repaired[i] = {
-                    **current,
-                    "type": "missing",
-                    "sub_type": None,
-                    "char_diff": None,
-                    "cer_local": None,
-                    "hyp_token": None,
-                    "hyp_idx": -1
-                }
-                
-                # Update next event to SUBSTITUTION
-                char_diff = char_edit_stats(ref_next_norm, hyp_norm)[0]
-                cer_local = char_diff / max(len(ref_next_norm), 1)
-                subtype = classify_replace(ref_next, hyp)
-                subtype = normalize_sub_type(subtype)
-                
-                repaired[i + 1] = {
-                    **next_event,
-                    "type": "substitution",
-                    "sub_type": subtype,
-                    "char_diff": char_diff,
-                    "cer_local": cer_local,
-                    "hyp_token": hyp,
-                    "hyp_idx": current["hyp_idx"]  # Use the original hyp_idx from the substitution
-                }
-        
-        i += 1
+    # Count event types
+    correct = sum(1 for e in events if e["type"] == "correct")
+    missing = sum(1 for e in events if e["type"] == "missing")
+    extra = sum(1 for e in events if e["type"] == "extra")
+    substitution = sum(1 for e in events if e["type"] == "substitution")
     
-    return repaired
+    print(f"Case/Punct Test Results:")
+    print(f"  Correct: {correct}, Missing: {missing}, Extra: {extra}, Substitution: {substitution}")
     
+    # Check specific cases
+    for i, event in enumerate(events):
+        if event["ref_token"] == "bu" and event["hyp_token"] == "Bu":
+            print(f"  ✓ 'bu' vs 'Bu' -> {event['type']} (should be correct)")
+        elif event["ref_token"] == "söylüyor" and event["hyp_token"] == "söylüyor.":
+            print(f"  ✓ 'söylüyor' vs 'söylüyor.' -> {event['type']} (should be correct)")
+    
+    return events
+
+
+def test_stopword_alignment():
+    """Test stopword handling"""
+    ref = ["ve", "kuşlar", "şarkı"]
+    hyp = ["Kuşlar", "şarkı"]
+    
+    alignment = levenshtein_align(ref, hyp)
+    events = build_word_events(alignment, [])
+    
+    # Count event types
+    correct = sum(1 for e in events if e["type"] == "correct")
+    missing = sum(1 for e in events if e["type"] == "missing")
+    extra = sum(1 for e in events if e["type"] == "extra")
+    substitution = sum(1 for e in events if e["type"] == "substitution")
+    
+    print(f"Stopword Test Results:")
+    print(f"  Correct: {correct}, Missing: {missing}, Extra: {extra}, Substitution: {substitution}")
+    
+    # Check specific cases
+    for i, event in enumerate(events):
+        if event["ref_token"] == "ve":
+            print(f"  ✓ 've' -> {event['type']} (should be missing)")
+        elif event["ref_token"] == "kuşlar" and event["hyp_token"] == "Kuşlar":
+            print(f"  ✓ 'kuşlar' vs 'Kuşlar' -> {event['type']} (should be correct)")
+        elif event["ref_token"] == "şarkı" and event["hyp_token"] == "şarkı":
+            print(f"  ✓ 'şarkı' vs 'şarkı' -> {event['type']} (should be correct)")
+    
+    return events
+
+
+def test_apostrophe_alignment():
+    """Test apostrophe handling"""
+    ref = ["atatürk", "ün", "yanındakiler"]
+    hyp = ["Atatürk'ün", "yanındakiler"]
+    
+    alignment = levenshtein_align(ref, hyp)
+    events = build_word_events(alignment, [])
+    
+    # Count event types
+    correct = sum(1 for e in events if e["type"] == "correct")
+    missing = sum(1 for e in events if e["type"] == "missing")
+    extra = sum(1 for e in events if e["type"] == "extra")
+    substitution = sum(1 for e in events if e["type"] == "substitution")
+    
+    print(f"Apostrophe Test Results:")
+    print(f"  Correct: {correct}, Missing: {missing}, Extra: {extra}, Substitution: {substitution}")
+    
+    # Check specific cases
+    for i, event in enumerate(events):
+        if event["ref_token"] == "atatürk" and event["hyp_token"] == "Atatürk'ün":
+            print(f"  ✓ 'atatürk' vs 'Atatürk'ün' -> {event['type']} (should be substitution)")
+        elif event["ref_token"] == "ün":
+            print(f"  ✓ 'ün' -> {event['type']} (should be missing)")
+        elif event["ref_token"] == "yanındakiler" and event["hyp_token"] == "yanındakiler":
+            print(f"  ✓ 'yanındakiler' vs 'yanındakiler' -> {event['type']} (should be correct)")
+    
+    return events
+
+
+if __name__ == "__main__":
+    print("Testing alignment improvements...")
+    print("=" * 50)
+    test_case_punct_alignment()
+    print()
+    test_stopword_alignment()
+    print()
+    test_apostrophe_alignment()
+    print("=" * 50)
+    print("Tests completed!")

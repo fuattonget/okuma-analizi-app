@@ -148,3 +148,4 @@ docker compose logs -f
 Bu test senaryosu ile sistemin tüm özelliklerini kapsamlı bir şekilde test edebilirsiniz.
 
 
+
