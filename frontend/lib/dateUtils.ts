@@ -3,20 +3,32 @@
  */
 
 /**
- * Converts a date string to Turkish timezone if it doesn't already have timezone info
- * @param dateString - The date string to convert
+ * Converts a date string to Turkish timezone
+ * @param dateString - The date string to convert (assumed to be UTC)
  * @returns Date string with Turkish timezone (+03:00)
  */
 export function toTurkishTime(dateString: string): string {
   if (!dateString) return '';
   
-  // If the date string already has timezone info, return as is
-  if (dateString.includes('+') || dateString.includes('Z')) {
-    return dateString;
-  }
+  // Parse the date and convert to Turkish timezone
+  const date = new Date(dateString);
   
-  // Add Turkish timezone if not present
-  return dateString + '+03:00';
+  // Convert to Turkish timezone by adding 3 hours
+  const turkishTime = new Date(date.getTime() + (3 * 60 * 60 * 1000));
+  
+  return turkishTime.toISOString().replace('Z', '+03:00');
+}
+
+/**
+ * Converts a date string to Turkish timezone and returns a Date object
+ * @param dateString - The date string to convert
+ * @returns Date object with Turkish timezone
+ */
+export function toTurkishDate(dateString: string): Date {
+  if (!dateString) return new Date();
+  
+  const turkishTime = toTurkishTime(dateString);
+  return new Date(turkishTime);
 }
 
 /**
@@ -32,13 +44,20 @@ export function formatTurkishDate(
     month: 'long',
     day: 'numeric',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    timeZone: 'Europe/Istanbul'
   }
 ): string {
   if (!dateString) return '';
   
   const turkishTime = toTurkishTime(dateString);
-  return new Date(turkishTime).toLocaleString('tr-TR', options);
+  const date = new Date(turkishTime);
+  
+  // Ensure we're using Turkish timezone
+  return date.toLocaleString('tr-TR', {
+    ...options,
+    timeZone: 'Europe/Istanbul'
+  });
 }
 
 /**
@@ -50,7 +69,39 @@ export function formatTurkishDateOnly(dateString: string): string {
   return formatTurkishDate(dateString, {
     year: 'numeric',
     month: 'long',
-    day: 'numeric'
+    day: 'numeric',
+    timeZone: 'Europe/Istanbul'
+  });
+}
+
+/**
+ * Formats a date string for display with time only in Turkish locale
+ * @param dateString - The date string to format
+ * @returns Formatted time string
+ */
+export function formatTurkishTimeOnly(dateString: string): string {
+  return formatTurkishDate(dateString, {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZone: 'Europe/Istanbul'
+  });
+}
+
+/**
+ * Formats a date string for display with full date and time in Turkish locale
+ * @param dateString - The date string to format
+ * @returns Formatted date and time string
+ */
+export function formatTurkishDateTime(dateString: string): string {
+  return formatTurkishDate(dateString, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZone: 'Europe/Istanbul'
   });
 }
 

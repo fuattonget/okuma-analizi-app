@@ -688,22 +688,29 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
         # Rule 1: Check for "--" pattern in hyp_token (clear repetition marker)
         # If a token ends with "--", it's almost certainly a repetition marker from ElevenLabs
         if "--" in hyp_token:
-            # Look for similar tokens in nearby positions
-            for j in range(max(0, alignment_idx - 3), min(len(alignment), alignment_idx + 4)):
+            # Clean the hyp_token by removing "--" for comparison
+            clean_hyp = hyp_token.replace("--", "").strip()
+            
+            # Look for similar tokens in nearby positions (both before and after)
+            for j in range(max(0, alignment_idx - 5), min(len(alignment), alignment_idx + 6)):
                 if j == alignment_idx:
                     continue
                 other_op, other_ref, other_hyp, other_ref_idx, other_hyp_idx = alignment[j]
                 if other_hyp and other_hyp != hyp_token:
-                    # Check for exact match after removing "--"
-                    norm_hyp = _norm_token(hyp_token.replace("--", ""))
+                    # Check for exact match after removing "--" and normalizing
+                    norm_hyp = _norm_token(clean_hyp)
                     norm_other = _norm_token(other_hyp)
                     if norm_hyp == norm_other:  # Exact match
                         return True
                     
-                    # Check for substring relationships
-                    if norm_hyp and len(norm_hyp) >= 3 and norm_hyp in norm_other:
+                    # Check if the clean hyp_token is a prefix of other_hyp
+                    if (norm_hyp and len(norm_hyp) >= 3 and norm_other and 
+                        norm_hyp in norm_other and len(norm_other) > len(norm_hyp)):
                         return True
-                    if norm_other and len(norm_other) >= 3 and norm_other in norm_hyp:
+                    
+                    # Check if other_hyp is a prefix of clean hyp_token
+                    if (norm_other and len(norm_other) >= 3 and norm_hyp and 
+                        norm_other in norm_hyp and len(norm_hyp) > len(norm_other)):
                         return True
                     
                     # Check for high similarity (for cases like "eserin-i--" vs "eseriniz")
@@ -711,45 +718,30 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
                     lev_dist = char_edit_stats(norm_hyp, norm_other)[0]
                     max_len = max(len(norm_hyp), len(norm_other), 1)
                     similarity = 1.0 - (lev_dist / max_len)
-                    if similarity >= 0.7:  # 70% similarity threshold
+                    if similarity >= 0.6:  # 60% similarity threshold for "--" patterns
                         return True
+            
+            # Special case: If hyp_token ends with "--" and there's a ref_token,
+            # check if the clean version matches the ref_token
+            if ref_token:
+                norm_hyp_clean = _norm_token(clean_hyp)
+                norm_ref = _norm_token(ref_token)
+                if norm_hyp_clean == norm_ref:  # Exact match with ref
+                    return True
+                
+                # Check for substring relationships with ref_token
+                if (norm_hyp_clean and len(norm_hyp_clean) >= 3 and norm_ref and 
+                    norm_hyp_clean in norm_ref):
+                    return True
+                if (norm_ref and len(norm_ref) >= 3 and norm_hyp_clean and 
+                    norm_ref in norm_hyp_clean):
+                    return True
             
             # If no similar token found nearby, but token has "--", still consider it repetition
             # This handles cases where the repetition is clear from the "--" marker
             return True
         
-        # Rule 2: Check for repetition patterns in hyp_token (clear repetition markers)
-        # Patterns: "es-", "ge-", "ba-", "de-", "da-", "te-", "ta-", etc.
-        # If a token starts with a common prefix followed by "-", it's likely a repetition marker
-        repetition_prefixes = ["es-", "ge-", "ba-", "de-", "da-", "te-", "ta-", "ke-", "ka-", "me-", "ma-", "ne-", "na-", "pe-", "pa-", "re-", "ra-", "se-", "sa-", "ve-", "va-", "ye-", "ya-", "ze-", "za-"]
-        
-        for prefix in repetition_prefixes:
-            if hyp_token.startswith(prefix):
-                # Check if the rest of the token matches the ref_token
-                if ref_token:
-                    norm_hyp_rest = _norm_token(hyp_token[len(prefix):])  # Remove prefix
-                    norm_ref = _norm_token(ref_token)
-                    if norm_hyp_rest == norm_ref:  # Exact match
-                        return True
-                    
-                    # Check for substring relationships
-                    if norm_hyp_rest and len(norm_hyp_rest) >= 3 and norm_hyp_rest in norm_ref:
-                        return True
-                    if norm_ref and len(norm_ref) >= 3 and norm_ref in norm_hyp_rest:
-                        return True
-                    
-                    # Check for high similarity
-                    from services.alignment import char_edit_stats
-                    lev_dist = char_edit_stats(norm_hyp_rest, norm_ref)[0]
-                    max_len = max(len(norm_hyp_rest), len(norm_ref), 1)
-                    similarity = 1.0 - (lev_dist / max_len)
-                    if similarity >= 0.7:  # 70% similarity threshold
-                        return True
-                
-                # If no ref_token or no match, but token has repetition prefix, still consider it repetition
-                return True
-        
-        # Rule 3: Check for middle-dash patterns in hyp_token (clear repetition marker)
+        # Rule 2: Check for middle-dash patterns in hyp_token (clear repetition marker)
         # Patterns like "u-üzerindeki", "öğre-öğretmenleri" where the dash is in the middle
         if "-" in hyp_token and not hyp_token.startswith("-") and not hyp_token.endswith("-"):
             # Check if the part after the dash matches the ref_token
@@ -781,8 +773,40 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
             # If no ref_token or no match, but token has middle dash, still consider it repetition
             return True
         
+        # Rule 3: Check for repetition patterns in hyp_token (clear repetition markers)
+        # Patterns: "es-", "ge-", "ba-", "de-", "da-", "te-", "ta-", etc.
+        # If a token starts with a common prefix followed by "-", it's likely a repetition marker
+        repetition_prefixes = ["es-", "ge-", "ba-", "de-", "da-", "te-", "ta-", "ke-", "ka-", "me-", "ma-", "ne-", "na-", "pe-", "pa-", "re-", "ra-", "se-", "sa-", "ve-", "va-", "ye-", "ya-", "ze-", "za-"]
+        
+        for prefix in repetition_prefixes:
+            if hyp_token.startswith(prefix):
+                # Check if the rest of the token matches the ref_token
+                if ref_token:
+                    norm_hyp_rest = _norm_token(hyp_token[len(prefix):])  # Remove prefix
+                    norm_ref = _norm_token(ref_token)
+                    if norm_hyp_rest == norm_ref:  # Exact match
+                        return True
+                    
+                    # Check for substring relationships
+                    if norm_hyp_rest and len(norm_hyp_rest) >= 3 and norm_hyp_rest in norm_ref:
+                        return True
+                    if norm_ref and len(norm_ref) >= 3 and norm_ref in norm_hyp_rest:
+                        return True
+                    
+                    # Check for high similarity
+                    from services.alignment import char_edit_stats
+                    lev_dist = char_edit_stats(norm_hyp_rest, norm_ref)[0]
+                    max_len = max(len(norm_hyp_rest), len(norm_ref), 1)
+                    similarity = 1.0 - (lev_dist / max_len)
+                    if similarity >= 0.7:  # 70% similarity threshold
+                        return True
+                
+                # If no ref_token or no match, but token has repetition prefix, still consider it repetition
+                return True
+        
+        
         # Rule 4: Check if consecutive extra tokens later match ref tokens
-        # Look ahead for matching ref tokens
+        # Look ahead for matching ref tokens - but be much more conservative
         for j in range(alignment_idx + 1, min(len(alignment), alignment_idx + 6)):
             future_op, future_ref, future_hyp, future_ref_idx, future_hyp_idx = alignment[j]
             if future_ref and future_hyp:
@@ -792,20 +816,23 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
                 if norm_hyp == norm_ref:  # Exact match only
                     return True
                 
-                # Check if current hyp_token contains future ref_token (for cases like "dersini" -> "ders")
-                if norm_ref and len(norm_ref) >= 3 and norm_ref in norm_hyp:
+                # Only check for substring relationships if there's a clear repetition pattern
+                # This means the hyp_token should be significantly different from ref_token
+                # and the future_ref should be significantly different from future_hyp
+                if (norm_ref and len(norm_ref) >= 4 and norm_ref in norm_hyp and
+                    len(norm_hyp) - len(norm_ref) >= 4):  # At least 4 character difference
                     return True
                 
-                # Check if future ref_token contains current hyp_token (for cases like "hiç," -> "hiçbir")
-                if norm_hyp and len(norm_hyp) >= 3 and norm_hyp in norm_ref:
+                if (norm_hyp and len(norm_hyp) >= 4 and norm_hyp in norm_ref and
+                    len(norm_ref) - len(norm_hyp) >= 4):  # At least 4 character difference
                     return True
                 
-                # Check for high similarity with lower threshold for partial repetitions
+                # Check for high similarity only for very similar tokens (80%+ similarity)
                 from services.alignment import char_edit_stats
                 lev_dist = char_edit_stats(norm_hyp, norm_ref)[0]
                 max_len = max(len(norm_hyp), len(norm_ref), 1)
                 similarity = 1.0 - (lev_dist / max_len)
-                if similarity >= 0.5:  # 50% similarity threshold for partial repetitions
+                if similarity >= 0.8:  # 80% similarity threshold - much higher
                     return True
         
         return False
@@ -946,37 +973,24 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
                 event_type = "correct"
                 subtype = "case_punct_only"
             else:
-                # For replace operations, treat as substitution unless it's a clear repetition case
-                # Check if this is a repetition based on new algorithm (only for insert operations)
-                alignment_idx = len(word_events)  # Current alignment index
-                
-                # Only check repetition for insert operations, not replace operations
-                if op == "insert" and hyp_token and alignment_idx in repetition_map and repetition_map[alignment_idx]:
-                    event_type = "repetition"
-                    subtype = None
-                elif op == "insert" and check_enhanced_repetition(i, op, ref_token, hyp_token):
+                # Check for "--" pattern first - this should always be repetition regardless of operation type
+                if hyp_token and "--" in hyp_token:
                     event_type = "repetition"
                     subtype = "enhanced_pattern"
-                elif op == "insert" and hyp_token and hyp_idx >= 0 and hyp_idx < len(hyp_tokens):
-                    # Check if this is part of a repetition group (only for insert operations)
-                    repetition_info = word_repetitions.get(hyp_idx, {"is_repetition": False})
-                    if repetition_info["is_repetition"]:
-                        event_type = "repetition"
-                        subtype = repetition_info.get("repetition_type")
-                    else:
-                        event_type = "extra"
-                        subtype = None
+                # Check for middle-dash patterns (like "u-üzerindeki")
+                elif hyp_token and "-" in hyp_token and not hyp_token.startswith("-") and not hyp_token.endswith("-"):
+                    event_type = "repetition"
+                    subtype = "enhanced_pattern"
+                # Check for other enhanced repetition patterns
+                elif check_enhanced_repetition(i, op, ref_token, hyp_token):
+                    event_type = "repetition"
+                    subtype = "enhanced_pattern"
                 else:
-                    # For replace operations, check if it's a repetition first
-                    if check_enhanced_repetition(i, op, ref_token, hyp_token):
-                        event_type = "repetition"
-                        subtype = "enhanced_pattern"
-                    else:
-                        # Otherwise treat as substitution
-                        event_type = "substitution"
-                        subtype = classify_replace(ref_token, hyp_token)
-                        # Normalize sub_type
-                        subtype = normalize_sub_type(subtype)
+                    # For replace operations, treat as substitution
+                    event_type = "substitution"
+                    subtype = classify_replace(ref_token, hyp_token)
+                    # Normalize sub_type
+                    subtype = normalize_sub_type(subtype)
                     
                     # Calculate char_diff and cer_local for substitutions
                     char_diff = char_edit_stats(ref_token, hyp_token)[0]

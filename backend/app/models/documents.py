@@ -1,11 +1,45 @@
 from beanie import Document
-from pydantic import Field, BaseModel, ConfigDict
+from pydantic import Field, BaseModel, ConfigDict, field_serializer, field_validator
 from typing import Optional, Literal, Dict, Any, List
 from datetime import datetime, timezone, timedelta
+from app.utils.timezone import get_utc_now, to_utc
 from pymongo import IndexModel, ASCENDING, DESCENDING
 from bson import ObjectId
+import pytz
 
 print("📄 Loading document models...")
+
+
+class TurkishDateTime:
+    """Custom datetime field that preserves Turkish timezone in MongoDB"""
+    
+    @staticmethod
+    def __get_validators__():
+        yield TurkishDateTime.validate
+    
+    @classmethod
+    def validate(cls, value):
+        if isinstance(value, str):
+            # Parse ISO string
+            dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+        elif isinstance(value, datetime):
+            dt = value
+        else:
+            raise ValueError(f"Invalid datetime value: {value}")
+        
+        # Ensure it has Turkish timezone
+        if dt.tzinfo is None:
+            # Assume it's Turkish time if no timezone
+            dt = dt.replace(tzinfo=timezone(timedelta(hours=3)))
+        elif dt.tzinfo != timezone(timedelta(hours=3)):
+            # Convert to Turkish timezone
+            dt = dt.astimezone(timezone(timedelta(hours=3)))
+        
+        return dt
+    
+    @classmethod
+    def __modify_schema__(cls, field_schema):
+        field_schema.update(type='string', format='date-time')
 
 
 class CanonicalTokens(BaseModel):
@@ -39,8 +73,15 @@ class TextDoc(Document):
     body: str  # metin içeriği
     canonical: CanonicalTokens = Field(default_factory=lambda: CanonicalTokens())  # canonical tokenization
     comment: Optional[str] = None  # metin hakkında oluşturan kişinin yorumu
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone(timedelta(hours=3))))
+    created_at: datetime = Field(default_factory=get_utc_now)
     active: bool = True  # metin silinmiş yada aktif metin mi
+    
+    @field_validator('created_at', mode='before')
+    @classmethod
+    def ensure_utc_timezone(cls, value: Optional[datetime]) -> Optional[datetime]:
+        """Ensure datetime is in UTC timezone before saving"""
+        return to_utc(value)
+    
     
     class Settings:
         name = "texts"
@@ -62,7 +103,13 @@ class AudioFileDoc(Document):
     original_name: str
     duration_ms: Optional[int] = None
     sr: Optional[int] = None
-    uploaded_at: datetime = Field(default_factory=lambda: datetime.now(timezone(timedelta(hours=3))))
+    uploaded_at: datetime = Field(default_factory=get_utc_now)
+    
+    @field_validator('uploaded_at', mode='before')
+    @classmethod
+    def ensure_utc_timezone(cls, value: Optional[datetime]) -> Optional[datetime]:
+        """Ensure datetime is in UTC timezone before saving"""
+        return to_utc(value)
     
     # GCS metadata fields
     text_id: Optional[ObjectId] = None
@@ -78,6 +125,7 @@ class AudioFileDoc(Document):
     # Privacy and ownership
     privacy: PrivacyInfo = Field(default_factory=PrivacyInfo)
     owner: OwnerInfo = Field(default_factory=OwnerInfo)
+    
     
     class Settings:
         name = "audio_files"
@@ -110,7 +158,14 @@ class AnalysisDoc(Document):
     finished_at: Optional[datetime] = None
     summary: Dict[str, Any] = {}
     error: Optional[str] = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone(timedelta(hours=3))))
+    created_at: datetime = Field(default_factory=get_utc_now)
+    
+    @field_validator('created_at', 'started_at', 'finished_at', mode='before')
+    @classmethod
+    def ensure_utc_timezone(cls, value: Optional[datetime]) -> Optional[datetime]:
+        """Ensure datetime is in UTC timezone before saving"""
+        return to_utc(value)
+    
     
     class Settings:
         name = "analyses"
@@ -131,8 +186,15 @@ class ReadingSessionDoc(Document):
     audio_id: ObjectId  # reference to AudioFileDoc
     reader_id: Optional[str] = None
     status: Literal["active", "completed", "cancelled"] = "active"
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone(timedelta(hours=3))))
+    created_at: datetime = Field(default_factory=get_utc_now)
     completed_at: Optional[datetime] = None
+    
+    @field_validator('created_at', 'completed_at', mode='before')
+    @classmethod
+    def ensure_utc_timezone(cls, value: Optional[datetime]) -> Optional[datetime]:
+        """Ensure datetime is in UTC timezone before saving"""
+        return to_utc(value)
+    
     
     class Settings:
         name = "reading_sessions"
@@ -213,7 +275,7 @@ class SttResultDoc(Document):
     language: str  # detected language code
     transcript: str  # full transcript text
     words: List[WordData] = Field(default_factory=list)  # word-level data
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone(timedelta(hours=3))))
+    created_at: datetime = Field(default_factory=get_utc_now)
     
     class Settings:
         name = "stt_results"
