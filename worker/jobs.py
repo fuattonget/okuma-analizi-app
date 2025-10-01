@@ -150,7 +150,10 @@ async def _analyze_audio_async(analysis_id: str):
             api_key=settings.elevenlabs_api_key,
             model=settings.elevenlabs_model,
             language=settings.elevenlabs_language,
-            temperature=settings.elevenlabs_temperature
+            temperature=settings.elevenlabs_temperature,
+            seed=settings.elevenlabs_seed,
+            remove_filler_words=settings.elevenlabs_remove_filler_words,
+            remove_disfluencies=settings.elevenlabs_remove_disfluencies
         )
         model_load_time = (time.time() - model_start) * 1000
         logger.debug(f"ElevenLabs STT client initialized in {model_load_time:.2f}ms")
@@ -345,7 +348,7 @@ async def _analyze_audio_async(analysis_id: str):
         logger.info(f"Analysis {analysis_id} completed successfully in {total_time:.2f}ms")
         
     except Exception as e:
-        logger.error(f"Analysis {analysis_id} failed: {repr(e)}", exc_info=True)
+        logger.error(f"Analysis {analysis_id} failed: {str(e)}", exc_info=True)
         
         # Update analysis with error
         try:

@@ -13,12 +13,15 @@ from loguru import logger
 class ElevenLabsSTT:
     """ElevenLabs Speech-to-Text API client"""
     
-    def __init__(self, api_key: str, model: str = "scribe_v1", seed: int = 12456, language: str = "tr", temperature: float = 0.0):
+    def __init__(self, api_key: str, model: str = "scribe_v1", seed: int = 12456, language: str = "tr", 
+                 temperature: float = 0.0, remove_filler_words: bool = False, remove_disfluencies: bool = False):
         self.api_key = api_key
         self.model = model
         self.language = language        
         self.temperature = temperature
         self.seed = seed
+        self.remove_filler_words = remove_filler_words
+        self.remove_disfluencies = remove_disfluencies
         self.base_url = "https://api.elevenlabs.io/v1/speech-to-text"
     
     def transcribe_file(self, file_path: str) -> Dict[str, Any]:
@@ -47,11 +50,13 @@ class ElevenLabsSTT:
                 form_data = {
                     "model_id": self.model,
                     "language_code": self.language,
-                    "timestamps_granularity": "character",  # Character-level timestamps
+                    "timestamps_granularity": "word",  # Word-level timestamps (more stable than character-level)
                     "tag_audio_events": "false",  # Disable audio events
-                    "diarize": "false",
-                    "temperature": str(self.temperature),
-                    "seed": self.seed # random seed for reproducibility
+                    "diarize": "false",  # Disable speaker diarization
+                    "temperature": str(self.temperature),  # 0.0 for deterministic results
+                    "seed": str(self.seed),  # Random seed for reproducibility
+                    "remove_filler_words": str(self.remove_filler_words).lower(),  # Keep filler words for analysis
+                    "remove_disfluencies": str(self.remove_disfluencies).lower()  # Keep disfluencies (repetitions)
                 }
                 
                 # Prepare file

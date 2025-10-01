@@ -38,9 +38,12 @@ services:
       - GCS_CREDENTIALS_PATH=./gcs-service-account.json
       - GCS_BUCKET=doky_ai_audio_storage
       - ELEVENLABS_API_KEY=sk_2291141328d63e51f5612c91212a22356ed3e53b73233180
-      - ELEVENLABS_MODEL=scribe_v1
+      - ELEVENLABS_MODEL=scribe_v1_experimental
       - ELEVENLABS_LANGUAGE=tr
       - ELEVENLABS_TEMPERATURE=0.0
+      - ELEVENLABS_SEED=12456
+      - ELEVENLABS_REMOVE_FILLER_WORDS=false
+      - ELEVENLABS_REMOVE_DISFLUENCIES=false
     depends_on:
       - mongodb
       - redis
@@ -62,9 +65,12 @@ services:
       - MONGO_DB=okuma_analizi
       - REDIS_URL=redis://redis:6379
       - ELEVENLABS_API_KEY=sk_2291141328d63e51f5612c91212a22356ed3e53b73233180
-      - ELEVENLABS_MODEL=scribe_v1
+      - ELEVENLABS_MODEL=scribe_v1_experimental
       - ELEVENLABS_LANGUAGE=tr
       - ELEVENLABS_TEMPERATURE=0.0
+      - ELEVENLABS_SEED=12456
+      - ELEVENLABS_REMOVE_FILLER_WORDS=false
+      - ELEVENLABS_REMOVE_DISFLUENCIES=false
     depends_on:
       - mongodb
       - redis

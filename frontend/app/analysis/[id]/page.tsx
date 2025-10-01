@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { apiClient, AnalysisDetail, WordEvent, PauseEvent, Metrics, AnalysisExport } from '@/lib/api';
 import { tokenizeWithSeparators } from '@/lib/tokenize';
@@ -17,6 +17,7 @@ export default function AnalysisDetailPage() {
   const [summaryExpanded, setSummaryExpanded] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioLoading, setAudioLoading] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
   
   // Event data states
   const [wordEvents, setWordEvents] = useState<WordEvent[]>([]);
@@ -59,6 +60,12 @@ export default function AnalysisDetailPage() {
       // Set events and pauses from export data
       setWordEvents(exportData.events);
       setPauseEvents(exportData.pauses);
+      
+      console.log('Export data loaded:', {
+        hasTranscript: !!exportData.transcript,
+        transcriptLength: exportData.transcript?.length || 0,
+        transcriptPreview: exportData.transcript?.substring(0, 50)
+      });
       
       // Create metrics object from export data
       const metricsData: Metrics = {
@@ -112,6 +119,23 @@ export default function AnalysisDetailPage() {
     }
   };
 
+  const handleWordClick = (event: WordEvent) => {
+    if (!audioRef.current || !event.timing?.start_ms) {
+      console.log('Audio element or timing not available', {
+        hasAudio: !!audioRef.current,
+        hasTiming: !!event.timing,
+        timing: event.timing
+      });
+      return;
+    }
+
+    const startTime = event.timing.start_ms / 1000; // Convert ms to seconds
+    audioRef.current.currentTime = startTime;
+    audioRef.current.play();
+    
+    console.log(`Jumped to word "${event.hyp_token || event.ref_token}" at ${startTime}s`);
+  };
+
   const downloadAnalysisAsJSON = async (analysisId: string) => {
     try {
       setDownloading(true);
@@ -158,22 +182,251 @@ export default function AnalysisDetailPage() {
   };
 
 
+  const getSubTypeLabel = (subType: string): string => {
+    const labels: { [key: string]: string } = {
+      'harf_ekleme': 'Harf ekledi',
+      'harf_eksiltme': 'Harf eksik',
+      'harf_değiştirme': 'Harf değiştirdi',
+      'hece_ekleme': 'Hece ekledi',
+      'hece_eksiltme': 'Hece eksik',
+      'tamamen_farklı': 'Tamamen farklı kelime',
+    };
+    return labels[subType] || '';
+  };
+
+  const getRepetitionLabel = (subType: string): string => {
+    const labels: { [key: string]: string } = {
+      'exact_match': 'Aynı kelimeyi tekrar etti',
+      'enhanced_pattern': 'Tekrarlama yaptı',
+      'similar_extra': 'Benzer kelimeyi tekrar etti',
+    };
+    return labels[subType] || 'Tekrar etti';
+  };
+
   const renderTextWithAnalysis = () => {
     if (!analysis) return null;
 
     const tokens = tokenizeWithSeparators(analysis.text.body);
+    const events = exportData?.events || wordEvents;
+
+    // Create a map of ref_token positions to events
+    const refTokenToEvent: { [key: number]: WordEvent } = {};
+    events.forEach((event) => {
+      if (event.ref_idx !== undefined && event.ref_idx >= 0) {
+        refTokenToEvent[event.ref_idx] = event;
+      }
+    });
+
+    let currentRefIdx = 0;
 
     return tokens.map((token, tokenIndex) => {
       if (token.type === 'separator') {
         return <span key={tokenIndex}>{token.content}</span>;
       }
 
+      // Get the event for this token
+      const event = refTokenToEvent[currentRefIdx];
+      currentRefIdx++;
+
+      // Determine styling based on event type
+      let className = '';
+      let title = '';
+      
+      if (event) {
+        switch (event.type) {
+          case 'correct':
+            // Don't color correct words
+            className = '';
+            title = '';
+            break;
+          case 'missing':
+            className = 'bg-red-100 text-red-900 px-1 rounded';
+            const subTypeText = event.sub_type ? ` (${getSubTypeLabel(event.sub_type)})` : '';
+            title = `Atlandı${subTypeText}`;
+            break;
+          case 'substitution':
+            className = 'bg-orange-100 text-orange-900 px-1 rounded border-b-2 border-orange-400';
+            const subLabel = getSubTypeLabel(event.sub_type || '');
+            title = `Yanlış okundu: "${event.ref_token}" yerine "${event.hyp_token}" dedi${subLabel ? ` • ${subLabel}` : ''}`;
+            break;
+          case 'extra':
+            // Extra tokens don't have ref_token, will be shown separately
+            className = '';
+            break;
+          case 'repetition':
+            // Repetitions will be shown on hypothesis side
+            className = '';
+            break;
+          default:
+            className = '';
+        }
+      }
+
+      const tooltipId = `ref-tooltip-${tokenIndex}`;
+      
       return (
-        <span key={tokenIndex}>
+        <span 
+          key={tokenIndex}
+          className={`${className} ${title ? 'cursor-help relative' : ''} ${event?.type === 'missing' ? 'line-through decoration-2 decoration-red-600' : ''} ${event ? 'cursor-pointer hover:bg-yellow-100' : ''}`}
+          onClick={() => event && handleWordClick(event)}
+          onMouseEnter={() => {
+            if (title) {
+              const tooltip = document.getElementById(tooltipId);
+              console.log('Tooltip hover (reference):', tooltipId, tooltip);
+              if (tooltip) {
+                tooltip.style.opacity = '1';
+                tooltip.style.visibility = 'visible';
+                console.log('Tooltip style set:', tooltip.style.opacity, tooltip.style.visibility);
+              }
+            }
+          }}
+          onMouseLeave={() => {
+            if (title) {
+              const tooltip = document.getElementById(tooltipId);
+              if (tooltip) {
+                tooltip.style.opacity = '0';
+                tooltip.style.visibility = 'hidden';
+              }
+            }
+          }}
+        >
           {token.content}
+          {title && (
+            <span 
+              id={tooltipId}
+              className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap shadow-lg transition-opacity pointer-events-none"
+              style={{
+                opacity: 0,
+                visibility: 'hidden',
+                zIndex: 9999
+              }}
+            >
+              {title}
+              <span className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></span>
+            </span>
+          )}
         </span>
       );
     });
+  };
+
+  const renderTranscriptWithAnalysis = () => {
+    if (!exportData?.transcript) {
+      console.log('No transcript in exportData');
+      return null;
+    }
+
+    const events = exportData.events || wordEvents;
+    
+    // Build ordered list of all events (including missing ones)
+    // Sort by hyp_idx, but also include missing events
+    const sortedEvents = [...events].sort((a, b) => {
+      const aIdx = a.hyp_idx !== undefined ? a.hyp_idx : (a.ref_idx || 0) + 1000;
+      const bIdx = b.hyp_idx !== undefined ? b.hyp_idx : (b.ref_idx || 0) + 1000;
+      return aIdx - bIdx;
+    });
+
+    const rendered: JSX.Element[] = [];
+    let wordIndex = 0;
+
+    sortedEvents.forEach((event, eventIdx) => {
+      let className = '';
+      let title = '';
+      let displayText = '';
+      let isMissing = false;
+
+      switch (event.type) {
+        case 'correct':
+          displayText = event.hyp_token || '';
+          className = '';
+          title = `Doğru okundu: "${event.hyp_token}"`;
+          break;
+        case 'missing':
+          // Show missing word as placeholder
+          displayText = event.ref_token || '';
+          className = 'bg-red-100 text-red-900 px-1 rounded italic';
+          title = `Atlanmış kelime: "${event.ref_token}"`;
+          isMissing = true;
+          break;
+        case 'extra':
+          displayText = event.hyp_token || '';
+          className = 'bg-blue-100 text-blue-900 px-1 rounded border-b-2 border-blue-400';
+          title = `Fazladan söyledi: "${event.hyp_token}"`;
+          break;
+        case 'substitution':
+          displayText = event.hyp_token || '';
+          className = 'bg-orange-100 text-orange-900 px-1 rounded border-b-2 border-orange-400';
+          const subLabel = getSubTypeLabel(event.sub_type || '');
+          title = `Yanlış okundu: "${event.ref_token}" yerine "${event.hyp_token}" dedi${subLabel ? ` • ${subLabel}` : ''}`;
+          break;
+        case 'repetition':
+          displayText = event.hyp_token || '';
+          className = 'bg-purple-100 text-purple-900 px-1 rounded border-b-2 border-purple-400';
+          const repLabel = getRepetitionLabel(event.sub_type || '');
+          title = `Tekrar etti: "${event.hyp_token}"${repLabel ? ` • ${repLabel}` : ''}`;
+          break;
+        default:
+          displayText = event.hyp_token || event.ref_token || '';
+      }
+
+      // Only render if we have displayText
+      if (displayText) {
+        const tooltipId = `tooltip-${eventIdx}`;  // eventIdx kullan, wordIndex değil
+        
+        rendered.push(
+          <span 
+            key={`word-${eventIdx}`}
+            className={`${className} ${title ? 'cursor-help relative' : ''} ${isMissing ? 'line-through decoration-2 decoration-red-600' : ''} ${event.timing?.start_ms ? 'cursor-pointer hover:bg-yellow-100' : ''}`}
+            onClick={() => handleWordClick(event)}
+            onMouseEnter={() => {
+              if (title) {
+                const tooltip = document.getElementById(tooltipId);
+                console.log('Tooltip hover (transcript):', tooltipId, tooltip);
+                if (tooltip) {
+                  tooltip.style.opacity = '1';
+                  tooltip.style.visibility = 'visible';
+                  console.log('Tooltip style set:', tooltip.style.opacity, tooltip.style.visibility);
+                }
+              }
+            }}
+            onMouseLeave={() => {
+              if (title) {
+                const tooltip = document.getElementById(tooltipId);
+                if (tooltip) {
+                  tooltip.style.opacity = '0';
+                  tooltip.style.visibility = 'hidden';
+                }
+              }
+            }}
+        >
+          <span className={isMissing ? 'opacity-50' : ''}>
+            {displayText}
+          </span>
+          {title && (
+            <span 
+              id={tooltipId}
+              className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap shadow-lg transition-opacity pointer-events-none"
+              style={{
+                opacity: 0,
+                visibility: 'hidden',
+                zIndex: 9999
+              }}
+            >
+              {title}
+              <span className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></span>
+            </span>
+          )}
+        </span>
+        );
+        
+        // Add space after word (except for last word)
+        if (eventIdx < sortedEvents.length - 1) {
+          rendered.push(<span key={`space-${eventIdx}`}> </span>);
+        }
+      }
+    });
+
+    return rendered;
   };
 
   const getSummaryBreakdown = () => {
@@ -302,7 +555,7 @@ export default function AnalysisDetailPage() {
         <div className="mb-6">
           <p className="text-sm font-medium text-gray-700 mb-2">Ses Dosyası</p>
           {audioUrl ? (
-            <audio controls className="w-full">
+            <audio ref={audioRef} controls className="w-full">
               <source src={audioUrl} type="audio/mpeg" />
               Tarayıcınız ses dosyasını desteklemiyor.
             </audio>
@@ -322,14 +575,50 @@ export default function AnalysisDetailPage() {
           )}
         </div>
 
-        {/* Reference Text with Analysis */}
+        {/* Transcript Text - STT Sonucu */}
+        {exportData?.transcript && (
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-medium text-gray-700">
+                📝 Okunan Metin (STT Sonucu)
+              </p>
+              <div className="flex items-center space-x-2 text-xs">
+                <span className="bg-orange-100 text-orange-900 px-2 py-1 rounded">🔄 Değiştirme</span>
+                <span className="bg-blue-100 text-blue-900 px-2 py-1 rounded">➕ Fazla</span>
+                <span className="bg-purple-100 text-purple-900 px-2 py-1 rounded">🔁 Tekrar</span>
+                <span className="bg-red-100 text-red-900 px-2 py-1 rounded opacity-50 italic line-through decoration-2 decoration-red-600">❌ Atlandı</span>
+              </div>
+            </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+              <div className="text-gray-800 leading-relaxed">
+                {renderTranscriptWithAnalysis()}
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              💡 Renklerin üzerine gelin detayları görün • 🎵 Kelimelere tıklayın ses dosyasında o bölüme gidin
+            </p>
+          </div>
+        )}
+
+        {/* Reference Text - Hedef Metin */}
         <div className="mb-6">
-          <p className="text-sm font-medium text-gray-700 mb-2">Hedef Metin</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium text-gray-700">
+              🎯 Hedef Metin (Okunması Gereken)
+            </p>
+            <div className="flex items-center space-x-2 text-xs">
+              <span className="bg-orange-100 text-orange-900 px-2 py-1 rounded">🔄 Değiştirme</span>
+              <span className="bg-red-100 text-red-900 px-2 py-1 rounded line-through decoration-2 decoration-red-600">❌ Atlandı</span>
+            </div>
+          </div>
           <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
             <div className="text-gray-800 leading-relaxed">
               {renderTextWithAnalysis()}
             </div>
           </div>
+          <p className="text-xs text-gray-500 mt-1">
+            💡 Renklerin üzerine gelin detayları görün • 🎵 Kelimelere tıklayın ses dosyasında o bölüme gidin
+          </p>
         </div>
       </div>
 

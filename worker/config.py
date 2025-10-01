@@ -10,9 +10,12 @@ class Settings(BaseSettings):
     # ElevenLabs Speech-to-Text settings
     long_pause_ms: int = 500
     elevenlabs_api_key: str = ""
-    elevenlabs_model: str = "scribe_v1"
+    elevenlabs_model: str = "scribe_v1"  # or "scribe_v1_experimental" for better quality
     elevenlabs_language: str = "tr"  # Turkish
-    elevenlabs_temperature: float = 0.0
+    elevenlabs_temperature: float = 0.0  # 0.0 for deterministic, 0.2-0.5 for more creative
+    elevenlabs_seed: int = 12456  # Random seed for reproducibility
+    elevenlabs_remove_filler_words: bool = False  # Keep filler words for analysis
+    elevenlabs_remove_disfluencies: bool = False  # Keep disfluencies (repetitions, false starts)
     
     # Database settings
     mongo_uri: str = "mongodb://mongodb:27017"

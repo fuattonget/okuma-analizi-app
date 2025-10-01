@@ -106,6 +106,18 @@ async def export_analysis(analysis_id: str):
         if not is_consistent:
             app_logger.warning(f"Summary consistency validation failed for analysis {analysis_id}")
         
+        # Get STT result for transcript
+        from app.models.documents import SttResultDoc
+        session = await ReadingSessionDoc.get(analysis.session_id)
+        transcript_text = None
+        app_logger.info(f"Getting STT result for session: {session.id if session else 'None'}")
+        if session:
+            stt_result = await SttResultDoc.find_one(SttResultDoc.session_id == session.id)
+            app_logger.info(f"STT result found: {stt_result is not None}")
+            if stt_result:
+                transcript_text = stt_result.transcript
+                app_logger.info(f"Transcript length: {len(transcript_text) if transcript_text else 0}")
+        
         result = {
             "analysis_id": str(analysis.id),
             "text_id": str(analysis.session_id),
@@ -113,6 +125,7 @@ async def export_analysis(analysis_id: str):
             "pauses": pauses_data,
             "summary": analysis.summary or {},
             "metrics": analysis.summary.get("metrics", {}) if analysis.summary else {},
+            "transcript": transcript_text,
             "validation": {
                 "summary_consistent": is_consistent
             }

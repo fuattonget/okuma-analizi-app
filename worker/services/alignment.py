@@ -3,31 +3,11 @@ import re
 import unicodedata
 
 # Normalization and stopword helpers
-_PUNCT = r"[.,!?;:\"\"„…]+"
 _PUNCTUATION = {'.', ',', '!', '?', ';', ':', '"', '"', '"', "'"}
 _STOPWORDS = {"ve", "de", "da", "ile", "mi", "mı", "mu", "mü", "ki"}
 
 # Filler/booster words that should be treated as EXTRA when overused
 FILLERS = {"çok", "yani", "işte", "şey", "eee", "ııı", "hımm", "falan", "filan", "baya", "hakikaten", "gerçekten"}
-
-# POS heuristics patterns
-VERB_PATTERNS = [
-    r".*yor$",  # -yor (present continuous)
-    r".*dı$", r".*di$", r".*du$", r".*dü$",  # -dı/-di/-du/-dü (past tense)
-    r".*acak$", r".*ecek$",  # -acak/-ecek (future tense)
-    r".*mış$", r".*miş$", r".*muş$", r".*müş$",  # -mış/-miş/-muş/-müş (perfect tense)
-    r".*r$",  # -r (aorist)
-    r".*lerdi$", r".*lardı$"  # -lerdi/-lardı (past continuous)
-]
-
-NOUN_PATTERNS = [
-    r".*lar$", r".*ler$",  # -lar/-ler (plural)
-    r".*ı$", r".*i$", r".*u$", r".*ü$",  # -ı/-i/-u/-ü (accusative/possessive)
-    r".*da$", r".*de$",  # -da/-de (locative)
-    r".*dan$", r".*den$",  # -dan/-den (ablative)
-    r".*ın$", r".*in$", r".*un$", r".*ün$",  # -ın/-in/-un/-ün (genitive)
-    r".*ım$", r".*im$", r".*um$", r".*üm$"  # -ım/-im/-um/-üm (possessive 1st person)
-]
 
 def _is_punctuation(tok: str) -> bool:
     """Check if token is punctuation"""
@@ -36,20 +16,6 @@ def _is_punctuation(tok: str) -> bool:
 def _is_filler(tok: str) -> bool:
     """Check if token is a filler/booster word"""
     return _norm_token(tok) in FILLERS
-
-def _is_verb_like(tok: str) -> bool:
-    """Check if token looks like a verb based on Turkish morphemes"""
-    if not tok:
-        return False
-    tok_lower = tok.lower()
-    return any(re.match(pattern, tok_lower) for pattern in VERB_PATTERNS)
-
-def _is_noun_like(tok: str) -> bool:
-    """Check if token looks like a noun based on Turkish morphemes"""
-    if not tok:
-        return False
-    tok_lower = tok.lower()
-    return any(re.match(pattern, tok_lower) for pattern in NOUN_PATTERNS)
 
 def _track_filler_repetitions(hyp_tokens: List[str], word_times: List[Dict[str, Any]]) -> Dict[int, bool]:
     """
@@ -611,19 +577,6 @@ def char_edit_stats(a: str, b: str) -> Tuple[int, int]:
     return edit_distance, length_diff
 
 
-def syllables_tr(word: str) -> int:
-    """Count syllables in Turkish word based on vowels"""
-    vowels = "aeıioöuü"
-    syllable_count = 0
-    
-    for char in word.lower():
-        if char in vowels:
-            syllable_count += 1
-    
-    # Every word has at least one syllable
-    return max(1, syllable_count)
-
-
 def classify_replace(ref: str, hyp: str) -> str:
     """Classify replacement type based on edit distance and character count according to criteria"""
     ed, len_diff = char_edit_stats(ref, hyp)
@@ -966,8 +919,40 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
                         event_type = "repetition"
                         subtype = repetition_info.get("repetition_type")
                     else:
-                        event_type = "extra"
-                        subtype = None
+                        # Check if this extra token is similar to the next token (repetition pattern)
+                        # Example: "hiç hiçbir" where "hiç" is extra and similar to next "hiçbir"
+                        is_extra_repetition = False
+                        if i + 1 < len(alignment):
+                            next_op, next_ref, next_hyp, next_ref_idx, next_hyp_idx = alignment[i + 1]
+                            if next_hyp and hyp_token:
+                                norm_current = _norm_token(hyp_token)
+                                norm_next = _norm_token(next_hyp)
+                                
+                                # Check for exact match
+                                if norm_current == norm_next:
+                                    is_extra_repetition = True
+                                else:
+                                    # Check for substring relationships (one is prefix of other)
+                                    if (norm_current and len(norm_current) >= 3 and norm_next and 
+                                        norm_current in norm_next):
+                                        is_extra_repetition = True
+                                    elif (norm_next and len(norm_next) >= 3 and norm_current and 
+                                          norm_next in norm_current):
+                                        is_extra_repetition = True
+                                    else:
+                                        # Check for high similarity (50%+ threshold)
+                                        lev_dist = char_edit_stats(norm_current, norm_next)[0]
+                                        max_len = max(len(norm_current), len(norm_next), 1)
+                                        similarity = 1.0 - (lev_dist / max_len)
+                                        if similarity >= 0.5:  # 50% similarity threshold
+                                            is_extra_repetition = True
+                        
+                        if is_extra_repetition:
+                            event_type = "repetition"
+                            subtype = "extra_similar_to_next"
+                        else:
+                            event_type = "extra"
+                            subtype = None
                 else:
                     event_type = "extra"
                     subtype = None
