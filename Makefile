@@ -1,7 +1,7 @@
 # Okuma Analizi Makefile
 # Kullanışlı komutlar için
 
-.PHONY: help start stop restart test clean logs build
+.PHONY: help start stop restart test clean logs build model-stable model-experimental model-show
 
 # Varsayılan hedef
 help:
@@ -40,6 +40,11 @@ help:
 	@echo "  make temp-1.5   - Temperature 1.5 (en yüksek yaratıcılık)"
 	@echo "  make temp-custom VALUE=0.8 - Özel temperature değeri (0.0-2.0 arası)"
 	@echo "  make temp-show  - Mevcut temperature değerini göster"
+	@echo ""
+	@echo "🤖 Model Ayarları:"
+	@echo "  make model-stable    - scribe_v1 modeline geç (stabil, önerilen)"
+	@echo "  make model-experimental - scribe_v1_experimental modeline geç (daha iyi kalite)"
+	@echo "  make model-show      - Mevcut model bilgisini göster"
 
 # Servis yönetimi
 start:
@@ -228,3 +233,40 @@ temp-show:
 	@echo ""
 	@echo "Worker config:"
 	@docker exec okuma-analizi-worker python3 -c "from config import settings; print(f'Temperature: {settings.elevenlabs_temperature}')" 2>/dev/null || echo "Could not read worker config"
+
+# Model ayarları
+model-stable:
+	@echo "🤖 scribe_v1 modeline geçiliyor (stabil, üretim için önerilen)..."
+	@sed -i '' 's/ELEVENLABS_MODEL=scribe_v1_experimental$$/ELEVENLABS_MODEL=scribe_v1/g' docker-compose.yml
+	@echo "✅ Model güncellendi: scribe_v1"
+	@echo "🔄 Worker durduruluyor..."
+	@docker-compose stop worker
+	@echo "🗑️  Worker container siliniyor..."
+	@docker-compose rm -f worker
+	@echo "🔨 Worker yeniden oluşturuluyor ve başlatılıyor..."
+	@docker-compose up -d worker
+	@echo "✅ Worker yeni model ile başlatıldı"
+
+model-experimental:
+	@echo "🤖 scribe_v1_experimental modeline geçiliyor (daha iyi kalite)..."
+	@sed -i '' 's/ELEVENLABS_MODEL=scribe_v1$$/ELEVENLABS_MODEL=scribe_v1_experimental/g' docker-compose.yml
+	@echo "✅ Model güncellendi: scribe_v1_experimental"
+	@echo "🔄 Worker durduruluyor..."
+	@docker-compose stop worker
+	@echo "🗑️  Worker container siliniyor..."
+	@docker-compose rm -f worker
+	@echo "🔨 Worker yeniden oluşturuluyor ve başlatılıyor..."
+	@docker-compose up -d worker
+	@echo "✅ Worker yeni model ile başlatıldı"
+
+model-show:
+	@echo "🤖 Mevcut model ayarları:"
+	@echo ""
+	@echo "Docker-compose.yml:"
+	@grep "ELEVENLABS_MODEL" docker-compose.yml || echo "Not found in docker-compose.yml"
+	@echo ""
+	@echo "Container environment:"
+	@docker exec okuma-analizi-worker printenv | grep ELEVENLABS_MODEL || echo "Not found in container"
+	@echo ""
+	@echo "Worker config:"
+	@docker exec okuma-analizi-worker python3 -c "from config import settings; print(f'Model: {settings.elevenlabs_model}')" 2>/dev/null || echo "Could not read worker config"

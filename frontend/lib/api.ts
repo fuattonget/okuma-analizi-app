@@ -272,6 +272,7 @@ export interface AnalysisExport {
     };
   };
   metrics: Record<string, any>;
+  transcript?: string;
   validation: {
     summary_consistent: boolean;
   };
