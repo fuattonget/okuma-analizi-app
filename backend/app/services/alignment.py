@@ -356,13 +356,15 @@ def _norm_token(tok: str) -> str:
     t = ''.join(c for c in t if unicodedata.category(c) != 'Mn')
     t = unicodedata.normalize('NFC', t)
     
-    # Strip trailing dashes and quotes (for repetition detection), keep other punctuation
+    # Strip trailing dashes, quotes, and punctuation (for repetition detection)
     # According to criteria: "Noktalama farkı ("," "." vb.) tek başına hata oluşturmaz"
-    # But quotes are often repetition markers from STT, so strip them
+    # But quotes and dashes are often repetition markers from STT, so strip them
     t = re.sub(r'-+$', '', t)
     t = re.sub(r'^-+', '', t)
     t = re.sub(r'["""]+$', '', t)  # Remove trailing quotes
     t = re.sub(r'^["""]+', '', t)  # Remove leading quotes
+    t = re.sub(r'[.,!?;:]+$', '', t)  # Remove trailing punctuation
+    t = re.sub(r'^[.,!?;:]+', '', t)  # Remove leading punctuation
     
     return t
 
