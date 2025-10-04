@@ -515,7 +515,7 @@ def _post_repair_filler_substitutions(alignment: List[Tuple[str, str, str, int, 
                 if next_op in ["equal", "replace"] and next_ref and next_hyp:
                     # Calculate normalized Levenshtein distance
                     lev_dist = char_edit_stats(ref_token, next_hyp)[0]
-                    max_len = max(len(ref_token), len(next_hyp))
+                    max_len = max(len(ref_token or ""), len(next_hyp))
                     lev_norm = lev_dist / max_len if max_len > 0 else 1.0
                     
                     if lev_norm <= 0.3:  # High similarity threshold
@@ -526,7 +526,7 @@ def _post_repair_filler_substitutions(alignment: List[Tuple[str, str, str, int, 
                     _, _, future_hyp, _, _ = alignment[j]
                     if future_hyp:
                         lev_dist = char_edit_stats(ref_token, future_hyp)[0]
-                        max_len = max(len(ref_token), len(future_hyp))
+                        max_len = max(len(ref_token or ""), len(future_hyp))
                         lev_norm = lev_dist / max_len if max_len > 0 else 1.0
                         if lev_norm <= 0.3:
                             next_similar = True
@@ -548,6 +548,10 @@ def _post_repair_filler_substitutions(alignment: List[Tuple[str, str, str, int, 
 
 def char_edit_stats(a: str, b: str) -> Tuple[int, int]:
     """Calculate Levenshtein distance and length difference"""
+    if a is None:
+        a = ""
+    if b is None:
+        b = ""
     m, n = len(a), len(b)
     
     # Create DP table for Levenshtein distance
@@ -672,7 +676,7 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
                         return True
                     
                     # Check for high similarity (for cases like "eserin-i--" vs "eseriniz")
-                    from services.alignment import char_edit_stats
+                    
                     lev_dist = char_edit_stats(norm_hyp, norm_other)[0]
                     max_len = max(len(norm_hyp), len(norm_other), 1)
                     similarity = 1.0 - (lev_dist / max_len)
@@ -721,7 +725,7 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
                         return True
                     
                     # Check for high similarity
-                    from services.alignment import char_edit_stats
+                    
                     lev_dist = char_edit_stats(norm_hyp_after_dash, norm_ref)[0]
                     max_len = max(len(norm_hyp_after_dash), len(norm_ref), 1)
                     similarity = 1.0 - (lev_dist / max_len)
@@ -752,7 +756,7 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
                         return True
                     
                     # Check for high similarity
-                    from services.alignment import char_edit_stats
+                    
                     lev_dist = char_edit_stats(norm_hyp_rest, norm_ref)[0]
                     max_len = max(len(norm_hyp_rest), len(norm_ref), 1)
                     similarity = 1.0 - (lev_dist / max_len)
@@ -786,7 +790,7 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
                     return True
                 
                 # Check for high similarity only for very similar tokens (80%+ similarity)
-                from services.alignment import char_edit_stats
+                
                 lev_dist = char_edit_stats(norm_hyp, norm_ref)[0]
                 max_len = max(len(norm_hyp), len(norm_ref), 1)
                 similarity = 1.0 - (lev_dist / max_len)
@@ -868,6 +872,32 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
         
         return False
     
+    # Post-repair: Fix repetition events that consumed ref_token
+    # If a repetition event consumed a ref_token, the next extra event might be the correct reading
+    for i in range(len(alignment) - 1):
+        current_op, current_ref, current_hyp, current_ref_idx, current_hyp_idx = alignment[i]
+        next_op, next_ref, next_hyp, next_ref_idx, next_hyp_idx = alignment[i + 1]
+        
+        # If current is repetition and next is extra, check if next should be substitution
+        if (current_op in ["replace", "insert"] and current_ref and 
+            next_op == "insert" and not next_ref and next_hyp):
+            
+            # Check if next_hyp is similar to current_ref (the consumed ref_token)
+            norm_current_ref = _norm_token(current_ref)
+            norm_next_hyp = _norm_token(next_hyp)
+            
+            # Check for high similarity (80%+ threshold)
+            
+            lev_dist = char_edit_stats(norm_current_ref, norm_next_hyp)[0]
+            max_len = max(len(norm_current_ref), len(norm_next_hyp), 1)
+            similarity = 1.0 - (lev_dist / max_len)
+            
+            if similarity >= 0.8:  # 80% similarity threshold
+                # Convert next extra to substitution by giving it the ref_token
+                alignment[i + 1] = ("replace", current_ref, next_hyp, current_ref_idx, next_hyp_idx)
+                # Make current repetition not consume ref_token
+                alignment[i] = (current_op, None, current_hyp, current_ref_idx, current_hyp_idx)
+
     for i, (op, ref_token, hyp_token, ref_idx, hyp_idx) in enumerate(alignment):
         # Initialize subtype for all cases
         subtype = None
@@ -905,12 +935,18 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
             if hyp_token and alignment_idx in repetition_map and repetition_map[alignment_idx]:
                 event_type = "repetition"
                 subtype = None
+                # Repetition olayları ref'i tüketmez - ref_token'ı null yap
+                ref_token = None
             elif check_enhanced_repetition(i, op, ref_token, hyp_token):
                 event_type = "repetition"
                 subtype = "enhanced_pattern"
+                # Repetition olayları ref'i tüketmez - ref_token'ı null yap
+                ref_token = None
             elif check_consecutive_extra_repetition(i, alignment):
                 event_type = "repetition"
                 subtype = "consecutive_extra"
+                # Repetition olayları ref'i tüketmez - ref_token'ı null yap
+                ref_token = None
             else:
                 # Check if this is part of a repetition group
                 if hyp_token and hyp_idx >= 0 and hyp_idx < len(hyp_tokens):
@@ -918,6 +954,8 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
                     if repetition_info["is_repetition"]:
                         event_type = "repetition"
                         subtype = repetition_info.get("repetition_type")
+                        # Repetition olayları ref'i tüketmez - ref_token'ı null yap
+                        ref_token = None
                     else:
                         # Check if this extra token is similar to the next token (repetition pattern)
                         # Example: "hiç hiçbir" where "hiç" is extra and similar to next "hiçbir"
@@ -950,6 +988,8 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
                         if is_extra_repetition:
                             event_type = "repetition"
                             subtype = "extra_similar_to_next"
+                            # Repetition olayları ref'i tüketmez - ref_token'ı null yap
+                            ref_token = None
                         else:
                             event_type = "extra"
                             subtype = None
@@ -967,14 +1007,20 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
                 if hyp_token and "--" in hyp_token:
                     event_type = "repetition"
                     subtype = "enhanced_pattern"
+                    # Repetition olayları ref'i tüketmez - ref_token'ı null yap
+                    ref_token = None
                 # Check for middle-dash patterns (like "u-üzerindeki")
                 elif hyp_token and "-" in hyp_token and not hyp_token.startswith("-") and not hyp_token.endswith("-"):
                     event_type = "repetition"
                     subtype = "enhanced_pattern"
+                    # Repetition olayları ref'i tüketmez - ref_token'ı null yap
+                    ref_token = None
                 # Check for other enhanced repetition patterns
                 elif check_enhanced_repetition(i, op, ref_token, hyp_token):
                     event_type = "repetition"
                     subtype = "enhanced_pattern"
+                    # Repetition olayları ref'i tüketmez - ref_token'ı null yap
+                    ref_token = None
                 else:
                     # For replace operations, treat as substitution
                     event_type = "substitution"
@@ -984,7 +1030,7 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
                     
                     # Calculate char_diff and cer_local for substitutions
                     char_diff = char_edit_stats(ref_token, hyp_token)[0]
-                    cer_local = char_diff / max(len(ref_token), 1)
+                    cer_local = char_diff / max(len(ref_token or ""), 1)
         else:
             event_type = "substitution"  # fallback for unknown operations
             subtype = None

@@ -2,15 +2,34 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { apiClient, AnalysisDetail, WordEvent, PauseEvent, Metrics, AnalysisExport } from '@/lib/api';
+import { apiClient, AnalysisDetail, WordEvent, PauseEvent, Metrics, AnalysisExport, Student } from '@/lib/api';
 import { tokenizeWithSeparators } from '@/lib/tokenize';
 import { formatTurkishDate } from '@/lib/dateUtils';
+import { useAuth } from '@/lib/useAuth';
+import { useRoles } from '@/lib/useRoles';
 import classNames from 'classnames';
+import Navigation from '@/components/Navigation';
+import Breadcrumbs from '@/components/Breadcrumbs';
+import { themeColors, combineThemeClasses, componentClasses } from '@/lib/theme';
+import {
+  BookIcon,
+  CrossIcon,
+  TargetIcon,
+  GradeIcon,
+  RefreshIcon,
+  LightbulbIcon,
+  MusicIcon,
+  PlusIcon,
+  HomeIcon
+} from '@/components/Icon';
 
-export default function AnalysisDetailPage() {
+export default function StudentAnalysisDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { isAuthenticated, isAuthLoading } = useAuth();
+  const { hasPermission } = useRoles();
   const [analysis, setAnalysis] = useState<AnalysisDetail | null>(null);
+  const [student, setStudent] = useState<Student | null>(null);
   const [exportData, setExportData] = useState<AnalysisExport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,16 +47,27 @@ export default function AnalysisDetailPage() {
   const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
-    if (params.id) {
-      loadAnalysis(params.id as string);
+    if (isAuthenticated && params.analysisId) {
+      loadAnalysis(params.analysisId as string);
     }
-  }, [params.id]);
+  }, [isAuthenticated, params.analysisId]);
 
   const loadAnalysis = async (id: string) => {
     try {
       setLoading(true);
       const analysisData = await apiClient.getAnalysis(id);
       setAnalysis(analysisData);
+      
+      // Load student data if student_id exists
+      if (analysisData.student_id) {
+        try {
+          const studentData = await apiClient.getStudent(analysisData.student_id);
+          setStudent(studentData);
+        } catch (err) {
+          console.error('Failed to load student data:', err);
+          // Don't set error for student loading failure
+        }
+      }
       
       // Load export data if analysis is completed
       if (analysisData.status === 'done') {
@@ -168,15 +198,15 @@ export default function AnalysisDetailPage() {
 
   const getStatusBadge = (status: string) => {
     const statusClasses = {
-      queued: 'bg-gray-100 text-gray-800',
-      running: 'bg-yellow-100 text-yellow-800',
-      done: 'bg-green-100 text-green-800',
-      failed: 'bg-red-100 text-red-800',
+      queued: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
+      running: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
+      done: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+      failed: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
     };
     
     return (
-      <span className={classNames('badge', statusClasses[status as keyof typeof statusClasses] || 'bg-gray-100 text-gray-800')}>
-        {status}
+      <span className={classNames('px-2 py-1 text-xs font-medium rounded-full', statusClasses[status as keyof typeof statusClasses] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200')}>
+        {status === 'done' ? 'Tamamlandı' : status === 'running' ? 'Çalışıyor' : status === 'failed' ? 'Başarısız' : status === 'queued' ? 'Beklemede' : status}
       </span>
     );
   };
@@ -240,12 +270,12 @@ export default function AnalysisDetailPage() {
             title = '';
             break;
           case 'missing':
-            className = 'bg-red-100 text-red-900 px-1 rounded';
+            className = 'bg-red-100 dark:bg-red-900/30 text-red-900 dark:text-red-300 px-1 rounded italic';
             const subTypeText = event.sub_type ? ` (${getSubTypeLabel(event.sub_type)})` : '';
             title = `Atlandı${subTypeText}`;
             break;
           case 'substitution':
-            className = 'bg-orange-100 text-orange-900 px-1 rounded border-b-2 border-orange-400';
+            className = 'bg-orange-100 dark:bg-orange-900/30 text-orange-900 dark:text-orange-300 px-1 rounded border-b-2 border-orange-400 dark:border-orange-600';
             const subLabel = getSubTypeLabel(event.sub_type || '');
             title = `Yanlış okundu: "${event.ref_token}" yerine "${event.hyp_token}" dedi${subLabel ? ` • ${subLabel}` : ''}`;
             break;
@@ -267,7 +297,7 @@ export default function AnalysisDetailPage() {
       return (
         <span 
           key={tokenIndex}
-          className={`${className} ${title ? 'cursor-help relative' : ''} ${event?.type === 'missing' ? 'line-through decoration-2 decoration-red-600' : ''} ${event ? 'cursor-pointer hover:bg-yellow-100' : ''}`}
+          className={`${className} ${event?.type === 'missing' ? 'line-through decoration-2 decoration-red-600' : ''}`}
           onClick={() => event && handleWordClick(event)}
           onMouseEnter={() => {
             if (title) {
@@ -475,6 +505,20 @@ export default function AnalysisDetailPage() {
     return `${(ms / 1000).toFixed(1)}s`;
   };
 
+  // Show loading spinner while checking authentication
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  // If not authenticated, don't render anything (will redirect)
+  if (!isAuthenticated) {
+    return null;
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -488,31 +532,43 @@ export default function AnalysisDetailPage() {
       <div className="text-center py-8">
         <p className="text-red-600 mb-4">{error || 'Analiz bulunamadı'}</p>
         <button
-          onClick={() => router.push('/analyses')}
-          className="btn btn-primary"
+          onClick={() => router.push(`/students/${params.id}`)}
+          className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-400"
         >
-          Geçmiş Analizlere Dön
+          Öğrenci Profiline Dön
         </button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className={combineThemeClasses('min-h-screen', themeColors.background.secondary)}>
+      <Navigation />
+      <div className="container mx-auto px-4 py-6 space-y-6">
+        {/* Breadcrumbs */}
+        <Breadcrumbs 
+          items={[
+            { label: 'Ana Sayfa', href: '/', icon: <HomeIcon size="sm" /> },
+            { label: 'Öğrenciler', href: '/students', icon: <HomeIcon size="sm" /> },
+            { label: student ? `${student.first_name} ${student.last_name}` : 'Öğrenci', href: `/students/${params.id}` },
+            { label: 'Analiz Detayı' }
+          ]}
+        />
+        
+        {/* Header */}
+        <div className="flex items-center justify-between">
         <button
-          onClick={() => router.push('/analyses')}
-          className="btn btn-secondary"
+          onClick={() => router.push(`/students/${params.id}`)}
+          className="px-4 py-2 bg-gray-200 text-gray-800 font-medium rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 dark:focus:ring-slate-400"
         >
-          ← Geri
+          ← Öğrenci Profiline Dön
         </button>
         <div className="flex items-center space-x-3">
-          {analysis.status === 'done' && (
+          {analysis.status === 'done' && hasPermission('analysis:read') && (
             <button
               onClick={() => downloadAnalysisAsJSON(analysis.id)}
               disabled={downloading}
-              className="btn btn-primary btn-sm"
+              className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-400"
             >
               {downloading ? 'İndiriliyor...' : 'Sonucu JSON Olarak İndir'}
             </button>
@@ -523,7 +579,44 @@ export default function AnalysisDetailPage() {
 
       {/* Analysis Info */}
       <div className="card">
-        <h1 className="text-xl font-semibold mb-4">{analysis.text.title}</h1>
+        <div className="mb-4">
+          {student ? (
+            <div>
+              <h1 className="text-xl font-semibold mb-2 flex items-center space-x-3">
+                <span className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                  <span className="text-sm font-bold text-blue-600">
+                    {student.first_name.charAt(0)}{student.last_name.charAt(0)}
+                  </span>
+                </span>
+                <span>{student.first_name} {student.last_name}</span>
+              </h1>
+              <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
+                <div className="text-gray-500">
+                  <GradeIcon size="sm" className="inline mr-1" />
+                  {student.grade === 0 ? 'Diğer' : `${student.grade}. Sınıf`}
+                </div>
+                <div className="text-gray-500">
+                  <BookIcon size="sm" className="inline mr-1" />
+                  Kayıt No: #{student.registration_number}
+                </div>
+              </div>
+              <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
+                <h2 className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 flex items-center">
+                  <BookIcon size="sm" className="inline mr-1" />
+                  Metin Bilgileri
+                </h2>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Metin:</span> {analysis.text.title}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Sınıf:</span> {analysis.text.grade === 0 ? 'Diğer' : (analysis.text.grade ? `${analysis.text.grade}. Sınıf` : 'Belirtilmemiş')}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <h1 className="text-xl font-semibold mb-2">{analysis.text.title}</h1>
+          )}
+        </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div>
@@ -579,14 +672,27 @@ export default function AnalysisDetailPage() {
         {exportData?.transcript && (
           <div className="mb-6">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-gray-700">
-                📝 Okunan Metin (STT Sonucu)
+              <p className="text-sm font-medium text-gray-700 dark:text-slate-300">
+                <BookIcon size="sm" className="inline mr-1" />
+                Okunan Metin (STT Sonucu)
               </p>
               <div className="flex items-center space-x-2 text-xs">
-                <span className="bg-orange-100 text-orange-900 px-2 py-1 rounded">🔄 Değiştirme</span>
-                <span className="bg-blue-100 text-blue-900 px-2 py-1 rounded">➕ Fazla</span>
-                <span className="bg-purple-100 text-purple-900 px-2 py-1 rounded">🔁 Tekrar</span>
-                <span className="bg-red-100 text-red-900 px-2 py-1 rounded opacity-50 italic line-through decoration-2 decoration-red-600">❌ Atlandı</span>
+                <span className="bg-orange-100 text-orange-900 px-2 py-1 rounded flex items-center">
+                  <RefreshIcon size="xs" className="inline mr-1" />
+                  Değiştirme
+                </span>
+                <span className="bg-blue-100 text-blue-900 px-2 py-1 rounded flex items-center">
+                  <PlusIcon size="xs" className="inline mr-1" />
+                  Fazla
+                </span>
+                <span className="bg-purple-100 text-purple-900 px-2 py-1 rounded flex items-center">
+                  <RefreshIcon size="xs" className="inline mr-1" />
+                  Tekrar
+                </span>
+                <span className="bg-red-100 text-red-900 px-2 py-1 rounded opacity-50 italic line-through decoration-2 decoration-red-600 flex items-center">
+                  <CrossIcon size="xs" className="inline mr-1" />
+                  Atlandı
+                </span>
               </div>
             </div>
             <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
@@ -594,8 +700,11 @@ export default function AnalysisDetailPage() {
                 {renderTranscriptWithAnalysis()}
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              💡 Renklerin üzerine gelin detayları görün • 🎵 Kelimelere tıklayın ses dosyasında o bölüme gidin
+            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+              <LightbulbIcon size="sm" className="inline mr-1" />
+              Renklerin üzerine gelin detayları görün • 
+              <MusicIcon size="sm" className="inline mx-1" />
+              Kelimelere tıklayın ses dosyasında o bölüme gidin
             </p>
           </div>
         )}
@@ -603,21 +712,21 @@ export default function AnalysisDetailPage() {
         {/* Reference Text - Hedef Metin */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-medium text-gray-700">
-              🎯 Hedef Metin (Okunması Gereken)
+            <p className="text-sm font-medium text-gray-700 dark:text-slate-300">
+              <TargetIcon size="sm" className="inline mr-2" />
+              Hedef Metin (Okunması Gereken)
             </p>
-            <div className="flex items-center space-x-2 text-xs">
-              <span className="bg-orange-100 text-orange-900 px-2 py-1 rounded">🔄 Değiştirme</span>
-              <span className="bg-red-100 text-red-900 px-2 py-1 rounded line-through decoration-2 decoration-red-600">❌ Atlandı</span>
-            </div>
           </div>
-          <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
-            <div className="text-gray-800 leading-relaxed">
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-6 shadow-sm">
+            <div className="text-gray-800 dark:text-slate-200 leading-relaxed text-base">
               {renderTextWithAnalysis()}
             </div>
           </div>
-          <p className="text-xs text-gray-500 mt-1">
-            💡 Renklerin üzerine gelin detayları görün • 🎵 Kelimelere tıklayın ses dosyasında o bölüme gidin
+          <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+            <LightbulbIcon size="sm" className="inline mr-1" />
+            Renklerin üzerine gelin detayları görün • 
+            <MusicIcon size="sm" className="inline mx-1" />
+            Kelimelere tıklayın ses dosyasında o bölüme gidin
           </p>
         </div>
       </div>
@@ -840,7 +949,7 @@ export default function AnalysisDetailPage() {
           )}
         </div>
       )}
-      
+      </div>
     </div>
   );
 }

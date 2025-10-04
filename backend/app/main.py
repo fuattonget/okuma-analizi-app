@@ -13,7 +13,7 @@ from datetime import datetime
 from loguru import logger
 from app.config import settings
 from app.db import connect_to_mongo, close_mongo_connection, connect_to_redis, redis_conn
-from app.routers import texts, analyses, upload, audio, sessions
+from app.routers import texts, analyses, upload, audio, sessions, auth, students, users, roles
 
 
 # Configure loguru based on settings
@@ -310,6 +310,44 @@ app.include_router(
     responses={
         404: {"description": "Session not found"},
         400: {"description": "Invalid session ID"}
+    }
+)
+app.include_router(
+    auth.router, 
+    prefix="/v1/auth", 
+    tags=["authentication"],
+    responses={
+        401: {"description": "Invalid credentials"},
+        403: {"description": "Access denied"}
+    }
+)
+app.include_router(
+    students.router, 
+    prefix="/v1/students", 
+    tags=["students"],
+    responses={
+        404: {"description": "Student not found"},
+        400: {"description": "Invalid student data"}
+    }
+)
+app.include_router(
+    users.router, 
+    prefix="/v1/users", 
+    tags=["users"],
+    responses={
+        404: {"description": "User not found"},
+        400: {"description": "Invalid user data"},
+        403: {"description": "Access denied"}
+    }
+)
+app.include_router(
+    roles.router, 
+    prefix="/v1/roles", 
+    tags=["roles"],
+    responses={
+        404: {"description": "Role not found"},
+        400: {"description": "Invalid role data"},
+        403: {"description": "Access denied"}
     }
 )
 

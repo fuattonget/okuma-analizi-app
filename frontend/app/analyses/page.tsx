@@ -2,31 +2,31 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiClient, AnalysisSummary } from '@/lib/api';
+import { apiClient, AnalysisSummary, Student } from '@/lib/api';
 import { formatTurkishDate } from '@/lib/dateUtils';
 import { useAnalysisStore } from '@/lib/store';
+import { useAuth } from '@/lib/useAuth';
 import classNames from 'classnames';
+import Navigation from '@/components/Navigation';
+import Breadcrumbs from '@/components/Breadcrumbs';
+import { themeColors, combineThemeClasses, componentClasses } from '@/lib/theme';
 
 export default function AnalysesPage() {
   const router = useRouter();
   const { analyses, setAnalyses, updateAnalysis, startPolling, stopPolling, stopAllPolling } = useAnalysisStore();
+  const { isAuthenticated, isAuthLoading } = useAuth();
   
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'queued' | 'running' | 'done' | 'failed'>('all');
-
-  useEffect(() => {
-    loadAnalyses();
-    
-    // Cleanup polling on unmount
-    return () => {
-      stopAllPolling();
-    };
-  }, []);
+  const [students, setStudents] = useState<Student[]>([]);
 
   const loadAnalyses = useCallback(async () => {
     try {
       setLoading(true);
-      const analysesData = await apiClient.getAnalyses(50); // Load more analyses
+      console.log('🔄 Loading analyses...');
+      const analysesData = await apiClient.getAnalyses(50);
+      console.log('📊 Analyses data:', analysesData);
+      console.log('📊 First analysis student_id:', analysesData[0]?.student_id);
       setAnalyses(analysesData);
       
       // Start polling for running/queued analyses
@@ -38,7 +38,6 @@ export default function AnalysesPage() {
               updateAnalysis(analysis.id, { status: updatedAnalysis.status });
               
               if (updatedAnalysis.status === 'done' || updatedAnalysis.status === 'failed') {
-                // Reload full analysis data
                 updateAnalysis(analysis.id, updatedAnalysis);
                 stopPolling(analysis.id);
               }
@@ -56,6 +55,41 @@ export default function AnalysesPage() {
     }
   }, [setAnalyses, startPolling, updateAnalysis, stopPolling]);
 
+  const loadStudents = useCallback(async () => {
+    try {
+      console.log('🔄 Loading students...');
+      const response = await apiClient.getStudents();
+      console.log('👥 Students response:', response);
+      const studentsData = Array.isArray(response) ? response : response.students || [];
+      console.log('👥 Students data:', studentsData);
+      console.log('👥 Students count:', studentsData?.length || 0);
+      setStudents(studentsData);
+    } catch (error) {
+      console.error('Failed to load students:', error);
+      setStudents([]);
+    }
+  }, []);
+
+  // Handle token expiration and redirect
+  useEffect(() => {
+    if (!isAuthLoading && !isAuthenticated) {
+      console.log('🔍 AnalysesPage: User not authenticated, redirecting to login');
+      router.push('/login');
+    }
+  }, [isAuthenticated, isAuthLoading, router]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadAnalyses();
+      loadStudents();
+    }
+    
+    // Cleanup polling on unmount
+    return () => {
+      stopAllPolling();
+    };
+  }, [isAuthenticated, loadAnalyses, loadStudents, stopAllPolling]);
+
   const getStatusBadge = (status: string) => {
     const statusClasses = {
       queued: 'bg-gray-100 text-gray-800',
@@ -65,10 +99,48 @@ export default function AnalysesPage() {
     };
     
     return (
-      <span className={classNames('badge', statusClasses[status as keyof typeof statusClasses] || 'bg-gray-100 text-gray-800')}>
-        {status}
+      <span className={classNames('px-2 py-1 text-xs font-medium rounded-full', statusClasses[status as keyof typeof statusClasses] || 'bg-gray-100 text-gray-800')}>
+        {status === 'queued' && 'Bekleyen'}
+        {status === 'running' && 'Çalışıyor'}
+        {status === 'done' && 'Tamamlandı'}
+        {status === 'failed' && 'Başarısız'}
       </span>
     );
+  };
+
+  const getStudentInfo = (studentId?: string) => {
+    if (!studentId) return null;
+    const student = students.find(s => s.id === studentId);
+    if (!student) return null;
+    
+    return (
+      <div className="flex items-center space-x-2">
+        <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+          <span className="text-xs font-bold text-blue-600">
+            {student.first_name.charAt(0)}{student.last_name.charAt(0)}
+          </span>
+        </div>
+        <span className="text-sm text-gray-700">
+          {student.first_name} {student.last_name}
+        </span>
+        <span className="text-xs text-gray-500">
+          ({student.grade === 0 ? 'Diğer' : `${student.grade}. Sınıf`})
+        </span>
+      </div>
+    );
+  };
+
+  const getAnalysisTitle = (analysis: AnalysisSummary) => {
+    console.log('🔍 getAnalysisTitle called for analysis:', analysis.id, 'student_id:', analysis.student_id);
+    console.log('👥 Available students:', students.length, students.map(s => ({ id: s.id, name: `${s.first_name} ${s.last_name}` })));
+    if (analysis.student_id) {
+      const student = students.find(s => s.id === analysis.student_id);
+      console.log('👤 Found student:', student);
+      if (student) {
+        return `${student.first_name} ${student.last_name} - ${analysis.text_title}`;
+      }
+    }
+    return analysis.text_title;
   };
 
   const filteredAnalyses = analyses.filter(analysis => {
@@ -89,147 +161,131 @@ export default function AnalysesPage() {
 
   const statusCounts = getStatusCounts();
 
+  // Show loading spinner while checking authentication
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  // If not authenticated, show loading or redirect
+  if (!isAuthenticated) {
+    if (isAuthLoading) {
+      console.log('🔍 AnalysesPage: Showing auth loading spinner');
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Kimlik doğrulanıyor...</p>
+          </div>
+        </div>
+      );
+    }
+    
+    console.log('🔍 AnalysesPage: Not authenticated, redirecting to login');
+    return null; // Will redirect via useEffect
+  }
+
   if (loading) {
     return (
-      <div className="space-y-8">
-        {/* Navigation */}
-        <div className="flex justify-center space-x-4 mb-8">
-          <a href="/" className="btn btn-secondary">Ana Sayfa</a>
-          <a href="/analyses" className="btn btn-primary">Geçmiş Analizler</a>
-          <a href="/texts" className="btn btn-secondary">Metin Yönetimi</a>
-        </div>
-        
-        <div className="flex justify-center items-center h-64">
-          <div className="text-gray-500">Yükleniyor...</div>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Geçmiş Analizler</h1>
-        <p className="text-gray-600">Tüm ses dosyası analizlerinizi buradan görüntüleyebilirsiniz</p>
-      </div>
+    <div className={combineThemeClasses('min-h-screen', themeColors.background.secondary)}>
+      <Navigation />
 
-      {/* Status Filter */}
-      <div className="card">
-        <div className="flex flex-wrap gap-2 justify-center">
-          {[
-            { key: 'all', label: 'Tümü', count: statusCounts.all },
-            { key: 'queued', label: 'Bekleyen', count: statusCounts.queued },
-            { key: 'running', label: 'Çalışıyor', count: statusCounts.running },
-            { key: 'done', label: 'Tamamlandı', count: statusCounts.done },
-            { key: 'failed', label: 'Başarısız', count: statusCounts.failed },
-          ].map(({ key, label, count }) => (
-            <button
-              key={key}
-              onClick={() => setFilter(key as any)}
-              className={classNames(
-                'btn btn-sm',
-                filter === key ? 'btn-primary' : 'btn-secondary'
-              )}
-            >
-              {label} ({count})
-            </button>
-          ))}
-        </div>
-      </div>
-
-
-      {/* Analyses List */}
-      <div className="card">
-        {filteredAnalyses.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500 text-lg mb-4">
-              {filter === 'all' ? 'Henüz analiz bulunmuyor' : `${filter} durumunda analiz bulunmuyor`}
-            </p>
-            <a href="/" className="btn btn-primary">
-              İlk Analizi Başlat
-            </a>
+      {/* Content */}
+      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div className="space-y-6">
+          {/* Breadcrumbs */}
+          <Breadcrumbs />
+          
+          {/* Status Filter */}
+          <div className="bg-white shadow rounded-lg p-6">
+            <div className="flex flex-wrap gap-2 justify-center">
+              {[
+                { key: 'all', label: 'Tümü', count: statusCounts.all },
+                { key: 'queued', label: 'Bekleyen', count: statusCounts.queued },
+                { key: 'running', label: 'Çalışıyor', count: statusCounts.running },
+                { key: 'done', label: 'Tamamlandı', count: statusCounts.done },
+                { key: 'failed', label: 'Başarısız', count: statusCounts.failed },
+              ].map(({ key, label, count }) => (
+                <button
+                  key={key}
+                  onClick={() => setFilter(key as any)}
+                  className={classNames(
+                    'px-4 py-2 rounded-md text-sm font-medium transition-colors',
+                    filter === key 
+                      ? 'bg-indigo-600 text-white' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  )}
+                >
+                  {label} ({count})
+                </button>
+              ))}
+            </div>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredAnalyses.map((analysis) => (
-              <div
-                key={analysis.id}
-                onClick={() => router.push(`/analysis/${analysis.id}`)}
-                className="border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-all duration-200 cursor-pointer bg-white"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <h3 className="font-semibold text-gray-900 truncate text-lg">
-                    {analysis.text_title}
-                  </h3>
-                  {getStatusBadge(analysis.status)}
-                </div>
-                
-                <div className="space-y-3">
-                  <p className="text-sm text-gray-500">
-                    <span className="font-medium">Tarih:</span> {formatTurkishDate(analysis.created_at)}
-                  </p>
-                  
-                  {analysis.status === 'done' && (
-                    <div className="bg-green-50 p-3 rounded-lg">
-                      <div className="text-sm font-medium text-green-800 mb-2">Analiz Sonuçları:</div>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div>
-                          <span className="text-gray-600">WER:</span>
-                          <span className="font-medium ml-1">{analysis.summary?.wer?.toFixed(3) || analysis.wer?.toFixed(3) || 'N/A'}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Doğruluk:</span>
-                          <span className="font-medium ml-1">%{analysis.summary?.accuracy?.toFixed(1) || analysis.accuracy?.toFixed(1) || 'N/A'}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">WPM:</span>
-                          <span className="font-medium ml-1">{analysis.summary?.wpm?.toFixed(0) || analysis.wpm?.toFixed(0) || 'N/A'}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Duraksama:</span>
-                          <span className="font-medium ml-1">{analysis.summary?.long_pauses?.count || 0}</span>
-                        </div>
+
+          {/* Analyses List */}
+          {filteredAnalyses.length === 0 ? (
+            <div className="bg-white shadow rounded-lg p-8 text-center">
+              <div className="text-gray-500 text-lg">
+                {filter === 'all' ? 'Henüz analiz bulunmuyor' : `${filter} durumunda analiz bulunmuyor`}
+              </div>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {filteredAnalyses.map((analysis) => (
+                <div
+                  key={analysis.id}
+                  onClick={() => router.push(`/analyses/${analysis.id}`)}
+                  className="bg-white shadow rounded-lg p-6 cursor-pointer hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-medium text-gray-900">
+                        {getAnalysisTitle(analysis)}
+                      </h3>
+                      <div className="flex items-center space-x-4 mt-1">
+                        <p className="text-sm text-gray-500">
+                          {formatTurkishDate(analysis.created_at)}
+                        </p>
+                        {getStudentInfo(analysis.student_id)}
                       </div>
                     </div>
-                  )}
-                  
-                  {analysis.status === 'running' && (
-                    <div className="bg-yellow-50 p-3 rounded-lg">
-                      <div className="text-sm text-yellow-800">
-                        <div className="animate-pulse">Analiz devam ediyor...</div>
-                      </div>
+                    <div className="flex items-center space-x-4">
+                      {getStatusBadge(analysis.status)}
+                      {analysis.status === 'running' && (
+                        <div className="text-sm text-gray-600">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600 inline-block mr-2"></div>
+                          İşleniyor...
+                        </div>
+                      )}
+                      {analysis.status === 'queued' && (
+                        <div className="text-sm text-gray-600">
+                          Kuyrukta bekliyor...
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                   
-                  {analysis.status === 'failed' && (
-                    <div className="bg-red-50 p-3 rounded-lg">
-                      <div className="text-sm text-red-800">
-                        Analiz başarısız oldu
-                      </div>
+                  <div className="mt-4 pt-3 border-t border-gray-100">
+                    <div className="text-xs text-gray-500 text-center">
+                      Detayları görmek için tıklayın
                     </div>
-                  )}
-                  
-                  {analysis.status === 'queued' && (
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <div className="text-sm text-gray-600">
-                        Kuyrukta bekliyor...
-                      </div>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="mt-4 pt-3 border-t border-gray-100">
-                  <div className="text-xs text-gray-500 text-center">
-                    Detayları görmek için tıklayın
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-
     </div>
   );
 }

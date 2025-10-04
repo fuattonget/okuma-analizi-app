@@ -4,18 +4,22 @@
 
 /**
  * Converts a date string to Turkish timezone
- * @param dateString - The date string to convert (assumed to be UTC)
+ * @param dateString - The date string to convert (already in Turkish timezone from backend)
  * @returns Date string with Turkish timezone (+03:00)
  */
 export function toTurkishTime(dateString: string): string {
   if (!dateString) return '';
   
-  // Parse the date and convert to Turkish timezone
+  // Parse the date - backend already sends Turkish timezone
   const date = new Date(dateString);
   
-  // Convert to Turkish timezone by adding 3 hours
-  const turkishTime = new Date(date.getTime() + (3 * 60 * 60 * 1000));
+  // If the date string already has timezone info, use it as is
+  if (dateString.includes('+03:00') || dateString.includes('+03')) {
+    return dateString;
+  }
   
+  // Otherwise, assume it's UTC and convert to Turkish timezone
+  const turkishTime = new Date(date.getTime() + (3 * 60 * 60 * 1000));
   return turkishTime.toISOString().replace('Z', '+03:00');
 }
 
