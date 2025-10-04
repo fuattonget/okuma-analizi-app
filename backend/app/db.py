@@ -9,6 +9,9 @@ from app.models.documents import (
     ReadingSessionDoc, WordEventDoc,
     PauseEventDoc, SttResultDoc
 )
+from app.models.user import UserDoc
+from app.models.role import RoleDoc
+from app.models.student import StudentDoc
 from app.db_init_guard import normalize_all_documents
 from loguru import logger
 
@@ -107,7 +110,10 @@ async def connect_to_mongo():
                         ReadingSessionDoc,
                         WordEventDoc,
                         PauseEventDoc,
-                        SttResultDoc
+                        SttResultDoc,
+                        RoleDoc,
+                        UserDoc,
+                        StudentDoc
                     ]
                 )
                 print("✅ Beanie ODM initialized successfully")

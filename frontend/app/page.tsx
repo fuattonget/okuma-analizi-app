@@ -1,14 +1,24 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { apiClient, Text, AnalysisSummary } from '@/lib/api';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { apiClient, Text, AnalysisSummary, Student } from '@/lib/api';
 import { useAnalysisStore } from '@/lib/store';
+import { useAuth } from '@/lib/useAuth';
+import { useRoles } from '@/lib/useRoles';
 import classNames from 'classnames';
+import Navigation from '@/components/Navigation';
+import Loading, { SkeletonCard, SkeletonList } from '@/components/Loading';
+import Error, { ErrorToast, SuccessToast } from '@/components/Error';
+import { AudioIcon, UserIcon, GradeIcon, BookIcon, AnalysisIcon } from '@/components/Icon';
+import { themeColors, combineThemeClasses } from '@/lib/theme';
 
 export default function HomePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { analyses, setAnalyses, addAnalysis, updateAnalysis, startPolling, stopPolling, stopAllPolling } = useAnalysisStore();
+  const { isAuthenticated, isAuthLoading } = useAuth();
+  const { hasPermission } = useRoles();
   
   const [texts, setTexts] = useState<Text[]>([]);
   const [filteredTexts, setFilteredTexts] = useState<Text[]>([]);
@@ -16,62 +26,114 @@ export default function HomePage() {
   const [customText, setCustomText] = useState('');
   const [grade, setGrade] = useState<string>('');
   
+  // Student selection
+  const [students, setStudents] = useState<Student[]>([]);
+  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   
   const [isUploading, setIsUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [loadingTexts, setLoadingTexts] = useState(false);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showErrorToast, setShowErrorToast] = useState(false);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [formErrors, setFormErrors] = useState({
     file: '',
     text: '',
     grade: ''
   });
 
-  // Load texts and analyses on mount
+
+  // Handle token expiration and redirect
   useEffect(() => {
-    loadTexts();
-    loadAnalyses();
+    if (!isAuthLoading && !isAuthenticated) {
+      console.log('🔍 HomePage: User not authenticated, redirecting to login');
+      router.push('/login');
+    }
+  }, [isAuthenticated, isAuthLoading, router]);
+
+  // Load data when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadTexts();
+      loadAnalyses();
+      loadStudents();
+    }
     
     // Cleanup polling on unmount
     return () => {
       stopAllPolling();
     };
-  }, []);
+  }, [isAuthenticated]);
+
+  // Set selected student from URL parameter
+  useEffect(() => {
+    const studentId = searchParams.get('student_id');
+    console.log('🔗 URL student_id parameter:', studentId);
+    if (studentId) {
+      console.log('✅ Setting selected student ID:', studentId);
+      setSelectedStudentId(studentId);
+    }
+  }, [searchParams]);
 
   // Filter texts by grade
   useEffect(() => {
+    console.log('🔍 Filtering texts:', { grade, textsCount: texts.length });
     if (grade && grade !== '') {
       const filtered = texts.filter(t => t.grade === parseInt(grade));
+      console.log('📋 Filtered texts:', filtered);
       setFilteredTexts(filtered);
     } else {
+      console.log('📋 All texts:', texts);
       setFilteredTexts(texts);
     }
-  }, [grade, texts]);
-
-  // Update customText when a text is selected
-  useEffect(() => {
-    if (selectedTextId && texts.length > 0) {
-      const selectedText = texts.find(t => t.id === selectedTextId);
-      if (selectedText) {
-        setCustomText(selectedText.body);
-        // Don't override user's grade selection
-        // setGrade(selectedText.grade);
-      }
-    }
-  }, [selectedTextId, texts]);
+  }, [texts, grade]);
 
   const loadTexts = useCallback(async () => {
     try {
+      setLoadingTexts(true);
+      setError(null);
+      console.log('🔄 Loading texts...');
       const textsData = await apiClient.getTexts();
+      console.log('📚 Texts loaded:', textsData);
       setTexts(textsData);
-    } catch (error) {
-      console.error('Failed to load texts:', error);
+    } catch (error: any) {
+      console.error('❌ Failed to load texts:', error);
+      const errorMessage = error.response?.data?.detail || 'Metinler yüklenirken bir hata oluştu';
+      setError(errorMessage);
+      setShowErrorToast(true);
+    } finally {
+      setLoadingTexts(false);
+    }
+  }, []);
+
+  const loadStudents = useCallback(async () => {
+    try {
+      setLoadingStudents(true);
+      setError(null);
+      console.log('🔄 Loading students...');
+      const response = await apiClient.getStudents();
+      console.log('👥 Students response:', response);
+      const studentsData = Array.isArray(response) ? response : response.students || [];
+      console.log('👥 Students data:', studentsData);
+      console.log('👥 Students count:', studentsData?.length || 0);
+      setStudents(studentsData);
+    } catch (error: any) {
+      console.error('❌ Failed to load students:', error);
+      const errorMessage = error.response?.data?.detail || 'Öğrenciler yüklenirken bir hata oluştu';
+      setError(errorMessage);
+      setShowErrorToast(true);
+      setStudents([]);
+    } finally {
+      setLoadingStudents(false);
     }
   }, []);
 
   const loadAnalyses = useCallback(async () => {
     try {
-      const analysesData = await apiClient.getAnalyses(20);
+      const analysesData = await apiClient.getAnalyses(50);
       setAnalyses(analysesData);
       
       // Start polling for running/queued analyses
@@ -83,7 +145,6 @@ export default function HomePage() {
               updateAnalysis(analysis.id, { status: updatedAnalysis.status });
               
               if (updatedAnalysis.status === 'done' || updatedAnalysis.status === 'failed') {
-                // Reload full analysis data
                 updateAnalysis(analysis.id, updatedAnalysis);
                 stopPolling(analysis.id);
               }
@@ -152,48 +213,54 @@ export default function HomePage() {
     setSelectedFile(file);
   };
 
+  const validateForm = () => {
+    const errors = { ...formErrors };
+    let isValid = true;
+    
+    // File validation
+    if (!selectedFile) {
+      errors.file = 'Lütfen bir ses dosyası seçin';
+      isValid = false;
+    }
+    
+    // Text validation
+    if (!selectedTextId && !customText.trim()) {
+      errors.text = 'Lütfen bir metin seçin veya özel metin girin';
+      isValid = false;
+    }
+    
+    // Grade validation
+    if (!grade) {
+      errors.grade = 'Lütfen sınıf seviyesi seçin';
+      isValid = false;
+    }
+    
+    setFormErrors(errors);
+    return isValid;
+  };
+
   // Sanitize input
   const sanitizeInput = (input: string) => {
     return input
       .trim()
       .replace(/[<>]/g, '') // Remove potential HTML tags
       .replace(/javascript:/gi, '') // Remove javascript: protocol
-      .replace(/on\w+=/gi, ''); // Remove event handlers
+      .replace(/on\w+=/gi, '') // Remove event handlers
+      .replace(/'/g, "'") // Normalize curly quotes to ASCII apostrophe
+      .replace(/"/g, '"') // Normalize curly quotes to ASCII quote
+      .replace(/"/g, '"') // Normalize curly quotes to ASCII quote
+      .replace(/'/g, "'") // Normalize curly quotes to ASCII apostrophe
+      .replace(/…/g, '...') // Normalize ellipsis
+      .replace(/–/g, '-') // Normalize en dash to hyphen
+      .replace(/—/g, '-') // Normalize em dash to hyphen
+      .replace(/[\u2018\u2019]/g, "'") // Normalize smart quotes
+      .replace(/[\u201C\u201D]/g, '"') // Normalize smart quotes
+      .replace(/[\u2026]/g, '...') // Normalize ellipsis
+      .replace(/[\u2013\u2014]/g, '-') // Normalize dashes
+      .replace(/[\u00A0]/g, ' ') // Normalize non-breaking space
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .trim();
   };
-
-  // Form validation
-  const validateForm = () => {
-    const errors = { file: '', text: '', grade: '' };
-    let isValid = true;
-
-    // File validation
-    if (!selectedFile) {
-      errors.file = 'Ses dosyası seçilmelidir';
-      isValid = false;
-    }
-
-    // Text validation
-    if (!customText.trim()) {
-      errors.text = 'Hedef metin gereklidir';
-      isValid = false;
-    } else if (customText.trim().length < 10) {
-      errors.text = 'Hedef metin en az 10 karakter olmalıdır';
-      isValid = false;
-    } else if (customText.trim().length > 10000) {
-      errors.text = 'Hedef metin en fazla 10,000 karakter olabilir';
-      isValid = false;
-    }
-
-    // Grade validation
-    if (!grade || grade === '' || ![1, 2, 3, 4].includes(parseInt(grade))) {
-      errors.grade = 'Geçerli bir sınıf seviyesi seçilmelidir';
-      isValid = false;
-    }
-
-    setFormErrors(errors);
-    return isValid;
-  };
-
 
   const startAnalysis = async () => {
     // Validate form before proceeding
@@ -214,18 +281,21 @@ export default function HomePage() {
           grade: parseInt(grade),
           body: sanitizedText.trim(),
         });
-        textId = tempText.id; // Use id for upload
-        // Add to local texts list
+        textId = tempText.id;
         setTexts([tempText, ...texts]);
       } else if (selectedTextId) {
-        // Find the selected text and use its id
         const selectedText = texts.find(t => t.id === selectedTextId);
         if (selectedText) {
           textId = selectedText.id;
         }
       }
       
-      const response = await apiClient.uploadAudio(selectedFile, textId);
+      console.log('🚀 Starting analysis with:', {
+        textId,
+        selectedStudentId,
+        hasStudentId: !!selectedStudentId
+      });
+      const response = await apiClient.uploadAudio(selectedFile, textId, selectedStudentId || undefined);
       
       // Add to analyses list immediately
       const newAnalysis = {
@@ -244,40 +314,37 @@ export default function HomePage() {
           updateAnalysis(response.analysis_id, { status: analysis.status });
           
           if (analysis.status === 'done' || analysis.status === 'failed') {
-            // Reload full analysis data
             updateAnalysis(response.analysis_id, analysis);
             stopPolling(response.analysis_id);
           }
         } catch (error) {
-          console.error('Failed to poll analysis status:', error);
+          console.error(`Failed to poll analysis ${response.analysis_id}:`, error);
           stopPolling(response.analysis_id);
         }
       });
+      
+      // Show success message
+      setShowSuccessToast(true);
+      setTimeout(() => setShowSuccessToast(false), 5000);
       
       // Reset form
       setSelectedFile(null);
       setSelectedTextId('');
       setCustomText('');
       setGrade('');
-      
-      // Show success message
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 5000);
+      setFormErrors({ file: '', text: '', grade: '' });
       
     } catch (error: any) {
-      console.error('Failed to start analysis:', error);
+      console.error('Analysis failed:', error);
+      let errorMessage = 'Analiz başlatılamadı. Lütfen tekrar deneyin.';
       
-      // More specific error messages
-      let errorMessage = 'Analiz başlatılırken hata oluştu.';
-      
-      if (error.response?.status === 422) {
-        errorMessage = 'Metin bilgileri eksik veya hatalı. Lütfen tüm alanları doldurun.';
-      } else if (error.response?.status === 400) {
-        errorMessage = 'Ses dosyası veya metin formatı desteklenmiyor.';
+      if (error.response?.status === 401) {
+        errorMessage = 'Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.';
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
+        router.push('/login');
       } else if (error.response?.status === 413) {
         errorMessage = 'Dosya boyutu çok büyük. Lütfen daha küçük bir dosya seçin.';
-      } else if (error.response?.status === 415) {
-        errorMessage = 'Desteklenmeyen dosya türü. Lütfen ses dosyası seçin.';
       } else if (error.response?.status >= 500) {
         errorMessage = 'Sunucu hatası. Lütfen daha sonra tekrar deneyin.';
       } else if (!navigator.onLine) {
@@ -286,202 +353,309 @@ export default function HomePage() {
         errorMessage = error.response.data.detail;
       }
       
-      // Show error in a better way
-      setFormErrors(prev => ({
-        ...prev,
-        file: errorMessage
-      }));
+      setError(errorMessage);
+      setShowErrorToast(true);
     } finally {
       setIsUploading(false);
     }
   };
 
 
-  const getStatusBadge = (status: string) => {
-    const statusClasses = {
-      queued: 'bg-gray-100 text-gray-800',
-      running: 'bg-yellow-100 text-yellow-800',
-      done: 'bg-green-100 text-green-800',
-      failed: 'bg-red-100 text-red-800',
-    };
-    
+  // Show loading spinner while checking authentication
+  if (isAuthLoading) {
     return (
-      <span className={classNames('badge', statusClasses[status as keyof typeof statusClasses] || 'bg-gray-100 text-gray-800')}>
-        {status}
-      </span>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600"></div>
+      </div>
     );
-  };
+  }
+
+  // If not authenticated, show loading or redirect
+  if (!isAuthenticated) {
+    if (isAuthLoading) {
+      console.log('🔍 HomePage: Showing auth loading spinner');
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Kimlik doğrulanıyor...</p>
+          </div>
+        </div>
+      );
+    }
+    
+    console.log('🔍 HomePage: Not authenticated, redirecting to login');
+    return null; // Will redirect via useEffect
+  }
 
   return (
-    <div className="space-y-8">
-      {/* Upload Section */}
-      <div className="card max-w-4xl mx-auto">
-        <h2 className="text-2xl font-semibold mb-8 text-center">Ses Dosyası Analizi</h2>
-        
+    <div className={combineThemeClasses('min-h-screen', themeColors.background.secondary)}>
+      <Navigation />
+
+      {/* Content */}
+      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="space-y-8">
-          {/* File Upload */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-4">
-              Ses Dosyası <span className="text-red-500">*</span>
-            </label>
-            <div
-              className={classNames(
-                'border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors',
-                dragActive ? 'border-blue-400 bg-blue-50' : 'border-gray-300',
-                selectedFile ? 'border-green-400 bg-green-50' : '',
-                formErrors.file ? 'border-red-400 bg-red-50' : ''
-              )}
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-              onClick={() => document.getElementById('file-input')?.click()}
-            >
-              <input
-                id="file-input"
-                type="file"
-                accept="audio/*"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
-              {selectedFile ? (
+          {/* Upload Section */}
+          <div className="bg-white shadow rounded-lg">
+            <div className="px-6 py-8">
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-semibold flex items-center justify-center">
+                  <span className="text-2xl mr-2">🎤</span>
+                  Ses Dosyası Analizi
+                </h2>
+              </div>
+        
+              <div className="space-y-8">
+                {/* File Upload */}
                 <div>
-                  <div className="text-green-600 text-4xl mb-2">🎵</div>
-                  <p className="text-green-600 font-medium text-lg">{selectedFile.name}</p>
-                  <p className="text-sm text-gray-500">Dosya seçildi - Analiz için hazır</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-4">
+                    <AudioIcon size="sm" className="mr-2" />
+                    Ses Dosyası <span className="text-red-500">*</span>
+                  </label>
+                  <div
+                    className={classNames(
+                      'border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors',
+                      dragActive ? 'border-blue-400 bg-blue-50' : 'border-gray-300',
+                      selectedFile ? 'border-green-400 bg-green-50' : '',
+                      formErrors.file ? 'border-red-400 bg-red-50' : ''
+                    )}
+                    onDragEnter={handleDrag}
+                    onDragLeave={handleDrag}
+                    onDragOver={handleDrag}
+                    onDrop={handleDrop}
+                    onClick={() => document.getElementById('file-upload')?.click()}
+                  >
+                    <input
+                      id="file-upload"
+                      type="file"
+                      accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                    <div className="space-y-2">
+                      <AudioIcon size="xl" />
+                      <div className="text-lg font-medium text-gray-900">
+                        {selectedFile ? selectedFile.name : 'Ses dosyasını buraya sürükleyin veya tıklayın'}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        MP3, WAV, M4A, AAC, OGG, FLAC formatları desteklenir
+                      </div>
+                      <div className="text-xs text-blue-600 mt-2">🤙</div>
+                      {formErrors.file && (
+                        <Error 
+                          message={formErrors.file} 
+                          type="warning" 
+                          size="sm" 
+                          showIcon={true}
+                        />
+                      )}
+                    </div>
+                  </div>
                 </div>
-              ) : (
+
+                {/* Text Selection */}
                 <div>
-                  <div className="text-gray-400 text-4xl mb-2">📁</div>
-                  <p className="text-gray-600 text-lg">Dosyayı buraya sürükleyin veya tıklayın</p>
-                  <p className="text-sm text-gray-500">MP3, WAV, M4A desteklenir</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-4">
+                    Metin Seçimi <span className="text-red-500">*</span>
+                  </label>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <UserIcon size="sm" className="mr-2" />
+                        Öğrenci Seçimi (İsteğe Bağlı)
+                      </label>
+                      {loadingStudents ? (
+                        <div className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50">
+                          <Loading variant="dots" size="sm" text="Öğrenciler yükleniyor..." />
+                        </div>
+                      ) : (
+                        <select
+                          value={selectedStudentId}
+                          onChange={(e) => {
+                            console.log('👥 Student selected:', e.target.value);
+                            setSelectedStudentId(e.target.value);
+                          }}
+                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        >
+                          <option value="">Öğrenci seçin (isteğe bağlı)</option>
+                          {students && students.length > 0 ? students
+                            .filter(student => student.is_active)
+                            .map((student) => (
+                              <option key={student.id} value={student.id}>
+                                {student.first_name} {student.last_name} - {student.grade === 0 ? 'Diğer' : `${student.grade}. Sınıf`}
+                              </option>
+                            )) : null}
+                        </select>
+                      )}
+                    </div>
+
+                    {/* Selected Student Preview */}
+                    {selectedStudentId && students && students.length > 0 && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          👤 Seçilen Öğrenci
+                        </label>
+                        <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <span className="text-sm font-bold text-blue-600">
+                                {students.find(s => s.id === selectedStudentId)?.first_name.charAt(0)}
+                                {students.find(s => s.id === selectedStudentId)?.last_name.charAt(0)}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-blue-900">
+                                {students.find(s => s.id === selectedStudentId)?.first_name} {students.find(s => s.id === selectedStudentId)?.last_name}
+                              </p>
+                              <p className="text-xs text-blue-600">
+                                {students.find(s => s.id === selectedStudentId)?.grade === 0 ? 'Diğer' : `${students.find(s => s.id === selectedStudentId)?.grade}. Sınıf`}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <GradeIcon size="sm" className="mr-2" />
+                        Sınıf Seviyesi
+                      </label>
+                      <select
+                        value={grade}
+                        onChange={(e) => setGrade(e.target.value)}
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      >
+                        <option value="">Sınıf seçin</option>
+                        <option value="1">1. Sınıf</option>
+                        <option value="2">2. Sınıf</option>
+                        <option value="3">3. Sınıf</option>
+                        <option value="4">4. Sınıf</option>
+                        <option value="5">5. Sınıf</option>
+                        <option value="6">6. Sınıf</option>
+                        <option value="0">Diğer</option>
+                      </select>
+                      {formErrors.grade && (
+                        <Error 
+                          message={formErrors.grade} 
+                          type="warning" 
+                          size="sm" 
+                          showIcon={true}
+                        />
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <BookIcon size="sm" className="mr-2" />
+                        Hazır Metinler
+                      </label>
+                      {loadingTexts ? (
+                        <div className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50">
+                          <Loading variant="dots" size="sm" text="Metinler yükleniyor..." />
+                        </div>
+                      ) : (
+                        <select
+                          value={selectedTextId}
+                          onChange={(e) => {
+                            console.log('📝 Text selected:', e.target.value);
+                            setSelectedTextId(e.target.value);
+                            setCustomText('');
+                          }}
+                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        >
+                          <option value="">Metin seçin</option>
+                          {filteredTexts.map((text) => (
+                            <option key={text.id} value={text.id}>
+                              {text.title} (Sınıf {text.grade})
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+
+                    {/* Selected Text Preview */}
+                    {selectedTextId && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <BookIcon size="sm" className="mr-2" />
+                          Seçilen Metin
+                        </label>
+                        <div className="bg-gray-50 border border-gray-200 rounded-md p-4 max-h-40 overflow-y-auto">
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                            {texts.find(t => t.id === selectedTextId)?.body || 'Metin yükleniyor...'}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <BookIcon size="sm" className="mr-2" />
+                        Veya Özel Metin Girin
+                      </label>
+                      <textarea
+                        value={customText}
+                        onChange={(e) => {
+                          setCustomText(e.target.value);
+                          setSelectedTextId('');
+                        }}
+                        placeholder="Okuma analizi yapılacak metni buraya yazın..."
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        rows={4}
+                      />
+                      {formErrors.text && (
+                        <Error 
+                          message={formErrors.text} 
+                          type="warning" 
+                          size="sm" 
+                          showIcon={true}
+                        />
+                      )}
+                    </div>
+                  </div>
                 </div>
-              )}
+
+                {/* Submit Button */}
+                {hasPermission('analysis:create') && (
+                  <div className="flex justify-center">
+                    <button
+                      onClick={startAnalysis}
+                      disabled={isUploading}
+                      className="px-6 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                    >
+                      {isUploading ? (
+                        <Loading variant="spinner" size="sm" text="Analiz Ediliyor..." />
+                      ) : (
+                        <>
+                          <AnalysisIcon size="sm" className="mr-2" />
+                          Analiz Et
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
-            {formErrors.file && (
-              <p className="text-red-500 text-sm mt-2">{formErrors.file}</p>
-            )}
-          </div>
-          
-          {/* Text Selection */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Sınıf Seviyesi <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={grade}
-                onChange={(e) => {
-                  setGrade(e.target.value);
-                  setSelectedTextId(''); // Reset selection when grade changes
-                  // Clear grade error when user selects
-                  if (formErrors.grade) {
-                    setFormErrors(prev => ({ ...prev, grade: '' }));
-                  }
-                }}
-                className={`select text-lg py-3 ${formErrors.grade ? 'border-red-500' : ''}`}
-                style={{backgroundColor: grade === '' ? '#f9f9f9' : 'white'}}
-              >
-                <option value="">Sınıf seçiniz</option>
-                <option value={1}>1. Sınıf</option>
-                <option value={2}>2. Sınıf</option>
-                <option value={3}>3. Sınıf</option>
-                <option value={4}>4. Sınıf</option>
-              </select>
-              {formErrors.grade && (
-                <p className="text-red-500 text-sm mt-1">{formErrors.grade}</p>
-              )}
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Örnek Metin Seç
-              </label>
-              <select
-                value={selectedTextId}
-                onChange={(e) => setSelectedTextId(e.target.value)}
-                className="select text-lg py-3"
-                disabled={!grade || grade === ''}
-              >
-                <option value="">{grade && grade !== '' ? 'Metin seçiniz' : 'Önce sınıf seçiniz'}</option>
-                {filteredTexts.map((text) => (
-                  <option key={text.id} value={text.id}>
-                    {text.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          
-          {/* Target Text Input */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Hedef Metin <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              value={customText}
-              onChange={(e) => {
-                setCustomText(e.target.value);
-                // Clear text error when user types
-                if (formErrors.text) {
-                  setFormErrors(prev => ({ ...prev, text: '' }));
-                }
-              }}
-              placeholder="Analiz edilecek metni buraya yazın veya yukarıdan seçin..."
-              className={`textarea h-32 text-lg ${formErrors.text ? 'border-red-500' : ''}`}
-              maxLength={10000}
-            />
-            <div className="flex justify-between items-center mt-1">
-              {formErrors.text && (
-                <p className="text-red-500 text-sm">{formErrors.text}</p>
-              )}
-              <p className="text-sm text-gray-500 ml-auto">
-                {customText.length}/10,000 karakter
-              </p>
-            </div>
-            <p className="text-sm text-gray-500 mt-1">
-              Metin seçtiyseniz otomatik doldurulur, isterseniz düzenleyebilirsiniz.
-            </p>
-          </div>
-          
-          {/* Analyze Button */}
-          <div className="text-center">
-            <button
-              onClick={startAnalysis}
-              disabled={!selectedFile || !customText.trim() || isUploading}
-              className={classNames(
-                'btn text-lg px-8 py-4',
-                (!selectedFile || !customText.trim() || isUploading) 
-                  ? 'btn-secondary' 
-                  : 'btn-primary'
-              )}
-            >
-              {isUploading ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                  Analiz Ediliyor...
-                </div>
-              ) : (
-                'Analiz Et'
-              )}
-            </button>
           </div>
         </div>
       </div>
       
-      {/* Success Message */}
-      {showSuccess && (
-        <div className="fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50">
-          <div className="flex items-center">
-            <div className="text-2xl mr-2">✅</div>
-            <div>
-              <div className="font-medium">Analiz Başlatıldı!</div>
-              <div className="text-sm">Geçmiş Analizler sayfasından takip edebilirsiniz.</div>
-            </div>
-          </div>
-        </div>
+      {/* Toast Messages */}
+      {showErrorToast && (
+        <ErrorToast 
+          message={error || 'Bir hata oluştu'} 
+          onDismiss={() => setShowErrorToast(false)} 
+        />
       )}
       
+      {showSuccessToast && (
+        <SuccessToast 
+          message="Analiz başlatıldı! Geçmiş Analizler sayfasından takip edebilirsiniz." 
+          onDismiss={() => setShowSuccessToast(false)} 
+        />
+      )}
+
     </div>
   );
 }

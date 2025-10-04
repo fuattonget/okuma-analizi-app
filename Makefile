@@ -270,3 +270,23 @@ model-show:
 	@echo ""
 	@echo "Worker config:"
 	@docker exec okuma-analizi-worker python3 -c "from config import settings; print(f'Model: {settings.elevenlabs_model}')" 2>/dev/null || echo "Could not read worker config"
+
+# Admin user management
+create-admin:
+	@echo "👤 Creating admin user..."
+	@read -p "Enter admin email: " email; \
+	read -s -p "Enter admin password: " password; \
+	echo ""; \
+	docker exec okuma-analizi-api python3 /app/scripts/create_admin.py "$$email" "$$password"
+
+# Database management
+db-create-indexes:
+	@echo "📊 Creating database indexes..."
+	@docker exec okuma-analizi-api python3 -c "from app.db import db; import asyncio; asyncio.run(db.create_indexes())"
+
+# Auth testing
+test-auth:
+	@echo "🔐 Testing authentication..."
+	@curl -X POST "http://localhost:8000/v1/auth/login" \
+		-H "Content-Type: application/json" \
+		-d '{"email": "test@example.com", "password": "test123"}' || echo "Auth test failed"
