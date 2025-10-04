@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiClient, User, Role } from '@/lib/api';
+import { apiClient, User } from '@/lib/api';
+import { Role } from '@/lib/useRoles';
 import { useAuth } from '@/lib/useAuth';
 import { useRoles } from '@/lib/useRoles';
 import Navigation from '@/components/Navigation';
