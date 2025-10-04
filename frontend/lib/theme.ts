@@ -142,7 +142,7 @@ export const componentClasses = {
     ),
     row: combineThemeClasses(
       themeColors.background.primary,
-      themeColors.hoverLight,
+      themeColors.background.hoverLight,
       'transition-colors duration-200 border-b border-slate-100 dark:border-slate-700'
     ),
     cell: combineThemeClasses(
