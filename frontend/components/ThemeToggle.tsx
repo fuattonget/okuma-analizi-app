@@ -3,7 +3,7 @@
 import React from 'react';
 import { useTheme } from '@/lib/useTheme';
 import { themeColors, combineThemeClasses } from '@/lib/theme';
-import { Icon } from './Icon';
+import Icon from './Icon';
 
 export function ThemeToggle() {
   const { theme, setTheme, resolvedTheme } = useTheme();
