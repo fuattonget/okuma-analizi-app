@@ -81,14 +81,11 @@ export function useRoles() {
   }, [effectiveUser]);
 
   const hasPermission = useCallback((permission: keyof Permission): boolean => {
-    console.log('🔍 hasPermission called with:', permission, 'effectiveUser:', effectiveUser);
     if (!effectiveUser) {
-      console.log('❌ No effectiveUser, returning false');
       return false;
     }
 
-    const role = effectiveUser.role as Role;
-    console.log('🔍 User role:', role);
+    const role = effectiveUser.role;
     
     // Admin has all permissions
     if (role === 'admin') {
@@ -196,6 +193,34 @@ export function useRoles() {
         text_management: false,
         analysis_management: false,
         system_access: false,
+        'student:create': false,
+        'student:read': false,
+        'student:view': false,
+        'student:update': false,
+        'student:delete': false,
+        'text:create': false,
+        'text:read': false,
+        'text:view': false,
+        'text:update': false,
+        'text:delete': false,
+        'analysis:create': false,
+        'analysis:read': false,
+        'analysis:view': false,
+        'analysis:update': false,
+        'analysis:delete': false,
+        'user:create': false,
+        'user:read': false,
+        'user:view': false,
+        'user:update': false,
+        'user:delete': false,
+        'role:create': false,
+        'role:read': false,
+        'role:view': false,
+        'role:update': false,
+        'role:delete': false,
+        'system:settings': false,
+        'system:logs': false,
+        'system:status': false,
       };
     }
 
@@ -206,6 +231,34 @@ export function useRoles() {
       text_management: hasPermission('text_management'),
       analysis_management: hasPermission('analysis_management'),
       system_access: hasPermission('system_access'),
+      'student:create': hasPermission('student:create'),
+      'student:read': hasPermission('student:read'),
+      'student:view': hasPermission('student:view'),
+      'student:update': hasPermission('student:update'),
+      'student:delete': hasPermission('student:delete'),
+      'text:create': hasPermission('text:create'),
+      'text:read': hasPermission('text:read'),
+      'text:view': hasPermission('text:view'),
+      'text:update': hasPermission('text:update'),
+      'text:delete': hasPermission('text:delete'),
+      'analysis:create': hasPermission('analysis:create'),
+      'analysis:read': hasPermission('analysis:read'),
+      'analysis:view': hasPermission('analysis:view'),
+      'analysis:update': hasPermission('analysis:update'),
+      'analysis:delete': hasPermission('analysis:delete'),
+      'user:create': hasPermission('user:create'),
+      'user:read': hasPermission('user:read'),
+      'user:view': hasPermission('user:view'),
+      'user:update': hasPermission('user:update'),
+      'user:delete': hasPermission('user:delete'),
+      'role:create': hasPermission('role:create'),
+      'role:read': hasPermission('role:read'),
+      'role:view': hasPermission('role:view'),
+      'role:update': hasPermission('role:update'),
+      'role:delete': hasPermission('role:delete'),
+      'system:settings': hasPermission('system:settings'),
+      'system:logs': hasPermission('system:logs'),
+      'system:status': hasPermission('system:status'),
     };
   }, [effectiveUser, hasPermission]);
 
