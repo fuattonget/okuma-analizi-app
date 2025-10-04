@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { XIcon, WarningIcon, InfoIcon, CheckIcon, ErrorIcon } from '@/components/Icon';
+import { WarningIcon, InfoIcon, CheckIcon, ErrorIcon } from '@/components/Icon';
 import classNames from 'classnames';
 
 interface ConfirmationDialogProps {
