@@ -29,10 +29,8 @@ import {
   CrossIcon,
   CheckIcon
 } from '@/components/Icon';
-// import LoadingSpinner from '@/components/LoadingSpinner';
 import classNames from 'classnames';
 import { formatTurkishDate } from '@/lib/dateUtils';
-// import { useToast } from '@/components/Toast';
 import { themeColors, combineThemeClasses, componentClasses } from '@/lib/theme';
 
 export default function StudentsPage() {

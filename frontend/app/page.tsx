@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { apiClient, Text, AnalysisSummary, Student } from '@/lib/api';
 import { useAnalysisStore } from '@/lib/store';
 import { useAuth } from '@/lib/useAuth';
@@ -15,7 +15,6 @@ import { themeColors, combineThemeClasses } from '@/lib/theme';
 
 export default function HomePage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { analyses, setAnalyses, addAnalysis, updateAnalysis, startPolling, stopPolling, stopAllPolling } = useAnalysisStore();
   const { isAuthenticated, isAuthLoading } = useAuth();
   const { hasPermission } = useRoles();
@@ -68,15 +67,6 @@ export default function HomePage() {
     };
   }, [isAuthenticated]);
 
-  // Set selected student from URL parameter
-  useEffect(() => {
-    const studentId = searchParams.get('student_id');
-    console.log('🔗 URL student_id parameter:', studentId);
-    if (studentId) {
-      console.log('✅ Setting selected student ID:', studentId);
-      setSelectedStudentId(studentId);
-    }
-  }, [searchParams]);
 
   // Filter texts by grade
   useEffect(() => {
