@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { Role } from './useRoles';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -338,6 +337,15 @@ export interface User {
   username: string;
   role: string;
   is_active: boolean;
+  created_at: string;
+}
+
+export interface Role {
+  id: string;
+  name: string;
+  display_name?: string;
+  description?: string;
+  permissions?: string[];
   created_at: string;
 }
 
