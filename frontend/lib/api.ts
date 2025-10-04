@@ -32,7 +32,6 @@ api.interceptors.response.use(
     
     // Handle token expiration
     if (error.response?.status === 401) {
-      console.log('🔐 Token expired or unauthorized, redirecting to login');
       // Clear stored auth data
       if (typeof window !== 'undefined') {
         localStorage.removeItem('auth_token');

@@ -8,18 +8,13 @@ export function useAuth() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    console.log('🔍 useAuth useEffect triggered');
-    
     // Check if we're in browser environment
     if (typeof window === 'undefined') {
-      console.log('🔍 useAuth: Server side, setting loading false');
       setIsAuthLoading(false);
       return;
     }
 
-    console.log('🔍 useAuth: Client side, checking token');
     const token = localStorage.getItem('auth_token');
-    console.log('🔍 useAuth: Token found:', !!token);
     
     if (token) {
       // Check if token is expired
@@ -28,7 +23,6 @@ export function useAuth() {
         const currentTime = Math.floor(Date.now() / 1000);
         
         if (payload.exp && payload.exp < currentTime) {
-          console.log('🔍 useAuth: Token expired, clearing and redirecting');
           localStorage.removeItem('auth_token');
           localStorage.removeItem('user');
           setIsAuthenticated(false);
@@ -36,7 +30,6 @@ export function useAuth() {
           setUser(null);
           router.push('/login');
         } else {
-          console.log('🔍 useAuth: Token valid, setting authenticated true');
           setIsAuthenticated(true);
           setIsAuthLoading(false);
           // Load user data from localStorage
@@ -50,7 +43,6 @@ export function useAuth() {
           }
         }
       } catch (error) {
-        console.log('🔍 useAuth: Invalid token format, clearing and redirecting');
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user');
         setIsAuthenticated(false);
@@ -59,7 +51,6 @@ export function useAuth() {
         router.push('/login');
       }
     } else {
-      console.log('🔍 useAuth: No token, setting authenticated false');
       setIsAuthenticated(false);
       setIsAuthLoading(false);
       setUser(null);
