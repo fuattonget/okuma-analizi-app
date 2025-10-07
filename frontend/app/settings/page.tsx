@@ -10,7 +10,9 @@ import Breadcrumbs from '@/components/Breadcrumbs';
 import { formatTurkishDate } from '@/lib/dateUtils';
 import { themeColors, combineThemeClasses, componentClasses } from '@/lib/theme';
 import { PERMISSION_GROUPS, GROUP_COLORS, getPermissionLabel } from '@/lib/permissions';
-import {
+import * as Icons from '@/components/Icon';
+
+const {
   UserIcon,
   SearchIcon,
   PlusIcon,
@@ -25,8 +27,11 @@ import {
   EyeIcon,
   EyeOffIcon,
   SettingsIcon,
-  ShieldIcon
-} from '@/components/Icon';
+  ShieldIcon,
+  StudentsIcon,
+  TextsIcon,
+  AnalysesIcon
+} = Icons;
 
 type TabType = 'users' | 'roles';
 
@@ -624,13 +629,14 @@ export default function SettingsPage() {
                             <div className="flex flex-wrap gap-2">
                               {permissionsByGroup.map(group => {
                                 const groupColor = GROUP_COLORS[group.color as keyof typeof GROUP_COLORS];
+                                const GroupIcon = (Icons as any)[group.icon] || ShieldIcon;
                                 return (
                                   <div
                                     key={group.id}
                                     className={`inline-flex items-center space-x-1 px-2 py-1 rounded-md text-xs font-medium ${groupColor.badge}`}
                                     title={`${group.label}: ${group.count} yetki`}
                                   >
-                                    <span>{group.icon}</span>
+                                    <GroupIcon size="xs" />
                                     <span>{group.count}</span>
                                   </div>
                                 );
@@ -866,11 +872,14 @@ export default function SettingsPage() {
                         roleForm.permissions.includes(p.key)
                       ).length;
                       
+                      // Get icon component dynamically
+                      const IconComponent = (Icons as any)[group.icon] || ShieldIcon;
+                      
                       return (
                         <div key={group.id} className={`border ${groupColor.border} rounded-lg p-4 ${groupColor.bg}`}>
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center space-x-2">
-                              <span className="text-2xl">{group.icon}</span>
+                              <IconComponent size="md" className={groupColor.text} />
                               <h4 className={`font-semibold ${groupColor.text}`}>
                                 {group.label}
                               </h4>
