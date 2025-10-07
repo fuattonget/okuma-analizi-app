@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { apiClient, Student, AnalysisSummary, Text } from '@/lib/api';
 import { useAuth } from '@/lib/useAuth';
+import { useRoles } from '@/lib/useRoles';
 import { useAnalysisStore } from '@/lib/store';
 import Navigation from '@/components/Navigation';
 import Breadcrumbs from '@/components/Breadcrumbs';
@@ -33,6 +34,7 @@ export default function StudentProfilePage() {
   const params = useParams();
   const router = useRouter();
   const { isAuthenticated, isAuthLoading } = useAuth();
+  const { hasPermission } = useRoles();
   const { startPolling, stopPolling, stopAllPolling, updateAnalysis } = useAnalysisStore();
   
   const [student, setStudent] = useState<Student | null>(null);
@@ -73,36 +75,45 @@ export default function StudentProfilePage() {
       setStudent(studentData);
       console.log('👤 Student loaded:', studentData);
       
-      // Load student's analyses
-      const studentAnalyses = await apiClient.getAnalyses(50, studentId);
-      setAnalyses(studentAnalyses);
-      console.log('📊 Student analyses loaded:', studentAnalyses);
-      
-      // Start polling for running/queued analyses
-      studentAnalyses.forEach(analysis => {
-        if (analysis.status === 'running' || analysis.status === 'queued') {
-          console.log('🔄 Starting polling for analysis:', analysis.id, 'status:', analysis.status);
-          startPolling(analysis.id, async () => {
-            try {
-              const updatedAnalysis = await apiClient.getAnalysis(analysis.id);
-              console.log('📊 Polling update for analysis:', analysis.id, 'new status:', updatedAnalysis.status);
-              
-              // Update local state
-              setAnalyses(prev => prev.map(a => 
-                a.id === analysis.id ? { ...a, status: updatedAnalysis.status } : a
-              ));
-              
-              if (updatedAnalysis.status === 'done' || updatedAnalysis.status === 'failed') {
-                console.log('✅ Analysis completed, stopping polling for:', analysis.id);
-                stopPolling(analysis.id);
-              }
-            } catch (error) {
-              console.error(`❌ Failed to poll analysis ${analysis.id}:`, error);
-              stopPolling(analysis.id);
+      // Load student's analyses only if user has permission
+      if (hasPermission('analysis:read') || hasPermission('analysis_management')) {
+        try {
+          const studentAnalyses = await apiClient.getAnalyses(50, studentId);
+          setAnalyses(studentAnalyses);
+          console.log('📊 Student analyses loaded:', studentAnalyses);
+          
+          // Start polling for running/queued analyses
+          studentAnalyses.forEach(analysis => {
+            if (analysis.status === 'running' || analysis.status === 'queued') {
+              console.log('🔄 Starting polling for analysis:', analysis.id, 'status:', analysis.status);
+              startPolling(analysis.id, async () => {
+                try {
+                  const updatedAnalysis = await apiClient.getAnalysis(analysis.id);
+                  console.log('📊 Polling update for analysis:', analysis.id, 'new status:', updatedAnalysis.status);
+                  
+                  // Update local state
+                  setAnalyses(prev => prev.map(a => 
+                    a.id === analysis.id ? { ...a, status: updatedAnalysis.status } : a
+                  ));
+                  
+                  if (updatedAnalysis.status === 'done' || updatedAnalysis.status === 'failed') {
+                    console.log('✅ Analysis completed, stopping polling for:', analysis.id);
+                    stopPolling(analysis.id);
+                  }
+                } catch (error) {
+                  console.error(`❌ Failed to poll analysis ${analysis.id}:`, error);
+                  stopPolling(analysis.id);
+                }
+              });
             }
           });
+        } catch (err) {
+          console.error('❌ Failed to load analyses:', err);
+          // Don't fail the whole page if analyses can't be loaded
         }
-      });
+      } else {
+        console.log('ℹ️ User does not have permission to view analyses');
+      }
       
     } catch (err) {
       console.error('❌ Error loading student data:', err);
@@ -110,7 +121,7 @@ export default function StudentProfilePage() {
     } finally {
       setLoading(false);
     }
-  }, [startPolling, stopPolling]);
+  }, [startPolling, stopPolling, hasPermission]);
 
   useEffect(() => {
     if (isAuthenticated && params.id) {
@@ -457,13 +468,15 @@ export default function StudentProfilePage() {
               </button>
             )}
             
-            <button
-              onClick={handleOpenAnalysisModal}
-              className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-400 flex items-center"
-            >
-              <AnalysisIcon size="sm" className="inline mr-2" />
-              Yeni Analiz Yap
-            </button>
+            {(hasPermission('analysis:create') || hasPermission('analysis_management')) && (
+              <button
+                onClick={handleOpenAnalysisModal}
+                className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-400 flex items-center"
+              >
+                <AnalysisIcon size="sm" className="inline mr-2" />
+                Yeni Analiz Yap
+              </button>
+            )}
           </div>
         </div>
 
@@ -507,27 +520,30 @@ export default function StudentProfilePage() {
         </div>
 
         {/* Analysis History */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">
-              <AnalysisIcon size="sm" className="inline mr-2" />
-              Analiz Geçmişi ({analyses.length})
-            </h2>
-          </div>
-          
-          {analyses.length === 0 ? (
-            <div className="p-6 text-center">
-              <div className="mb-4">
-                <AnalysisIcon size="xl" className="text-gray-400" />
-              </div>
-              <p className="text-gray-500 mb-4">Bu öğrenci için henüz analiz yapılmamış</p>
-              <button
-                onClick={handleStartNewAnalysis}
-                className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-400"
-              >
-                🚀 İlk Analizi Başlat
-              </button>
+        {(hasPermission('analysis:read') || hasPermission('analysis_management')) ? (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">
+                <AnalysisIcon size="sm" className="inline mr-2" />
+                Analiz Geçmişi ({analyses.length})
+              </h2>
             </div>
+            
+            {analyses.length === 0 ? (
+              <div className="p-6 text-center">
+                <div className="mb-4">
+                  <AnalysisIcon size="xl" className="text-gray-400" />
+                </div>
+                <p className="text-gray-500 mb-4">Bu öğrenci için henüz analiz yapılmamış</p>
+                {(hasPermission('analysis:create') || hasPermission('analysis_management')) && (
+                  <button
+                    onClick={handleStartNewAnalysis}
+                    className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-400"
+                  >
+                    🚀 İlk Analizi Başlat
+                  </button>
+                )}
+              </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -589,7 +605,22 @@ export default function StudentProfilePage() {
               </table>
             </div>
           )}
-        </div>
+          </div>
+        ) : (
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6">
+            <div className="flex items-center">
+              <LockIcon size="lg" className="text-yellow-600 dark:text-yellow-400 mr-4" />
+              <div>
+                <h3 className="text-lg font-semibold text-yellow-800 dark:text-yellow-200">
+                  Yetki Gerekli
+                </h3>
+                <p className="text-yellow-700 dark:text-yellow-300 mt-1">
+                  Analiz geçmişini görüntülemek için <strong className="font-semibold">"Analiz Listele"</strong> yetkisine ihtiyacınız var.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Analysis Modal */}
