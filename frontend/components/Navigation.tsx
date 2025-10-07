@@ -229,7 +229,7 @@ export default function Navigation() {
                   'text-xl font-semibold flex items-center',
                   themeColors.text.primary
                 )}>
-                  <span className="text-2xl mr-2">{currentItem.icon}</span>
+                  <span className="mr-2">{currentItem.icon({ size: "lg" })}</span>
                   {currentItem.label}
                 </h2>
               </div>
