@@ -81,10 +81,14 @@ export default function SettingsPage() {
     }
   }, [isAuthenticated, isAuthLoading, router]);
 
-  // Check permissions
+  // Check permissions - allow access if user has any read or management permission
   useEffect(() => {
     if (!isAuthLoading && isAuthenticated) {
-      if (!hasPermission('user_management') && !hasPermission('role_management')) {
+      const canAccess = hasPermission('user_management') || 
+                       hasPermission('role_management') ||
+                       hasPermission('user:read') ||
+                       hasPermission('role:read');
+      if (!canAccess) {
         router.push('/');
       }
     }
