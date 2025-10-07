@@ -9,6 +9,7 @@ import Navigation from '@/components/Navigation';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { formatTurkishDate } from '@/lib/dateUtils';
 import { themeColors, combineThemeClasses, componentClasses } from '@/lib/theme';
+import { PERMISSION_GROUPS, GROUP_COLORS, getPermissionLabel } from '@/lib/permissions';
 import {
   UserIcon,
   SearchIcon,
@@ -565,83 +566,104 @@ export default function SettingsPage() {
                 )}
               </div>
 
-              {/* Roles List */}
-              <div className="bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden">
+              {/* Roles List - Card View */}
+              <div>
                 {roles.length === 0 ? (
-                  <div className="text-center py-12">
+                  <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-lg shadow">
                     <ShieldIcon size="lg" className="mx-auto text-gray-400" />
                     <p className="mt-2 text-gray-600 dark:text-gray-400">Henüz rol bulunmuyor</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                      <thead className="bg-gray-50 dark:bg-slate-700">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                            Rol Adı
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                            Açıklama
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                            Yetki Sayısı
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                            Oluşturulma
-                          </th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                            İşlemler
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700">
-                        {roles.map((role) => (
-                          <tr key={role.id} className="hover:bg-gray-50 dark:hover:bg-slate-700">
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center">
-                                <ShieldIcon size="sm" className="text-gray-400 mr-3" />
-                                <div className="text-sm font-medium text-gray-900 dark:text-white">
-                                  {role.name}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {roles.map((role) => {
+                      // Grup bazında permission sayılarını hesapla
+                      const permissionsByGroup = PERMISSION_GROUPS.map(group => ({
+                        ...group,
+                        count: role.permissions?.filter(p => 
+                          group.permissions.some(gp => gp.key === p)
+                        ).length || 0
+                      })).filter(g => g.count > 0);
+
+                      return (
+                        <div 
+                          key={role.id} 
+                          className="bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-lg transition-shadow p-6 border border-gray-200 dark:border-gray-700"
+                        >
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-center space-x-3">
+                              <div className="flex-shrink-0">
+                                <div className="w-12 h-12 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                                  <ShieldIcon size="md" className="text-indigo-600 dark:text-indigo-400" />
                                 </div>
                               </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="text-sm text-gray-500 dark:text-gray-400">
-                                {role.description || 'Açıklama yok'}
+                              <div>
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                  {role.display_name || role.name}
+                                </h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                  {role.name}
+                                </p>
                               </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                            </div>
+                          </div>
+
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 min-h-[40px]">
+                            {role.description || 'Açıklama yok'}
+                          </p>
+
+                          {/* Permission Groups Summary */}
+                          <div className="mb-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                Yetkiler
+                              </span>
+                              <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
                                 {role.permissions?.length || 0} yetki
                               </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {permissionsByGroup.map(group => {
+                                const groupColor = GROUP_COLORS[group.color as keyof typeof GROUP_COLORS];
+                                return (
+                                  <div
+                                    key={group.id}
+                                    className={`inline-flex items-center space-x-1 px-2 py-1 rounded-md text-xs font-medium ${groupColor.badge}`}
+                                    title={`${group.label}: ${group.count} yetki`}
+                                  >
+                                    <span>{group.icon}</span>
+                                    <span>{group.count}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
                               {formatTurkishDate(role.created_at)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                              <div className="flex justify-end space-x-2">
-                                {hasPermission('role_management') && (
-                                  <>
-                                    <button
-                                      onClick={() => openRoleModal(role)}
-                                      className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
-                                    >
-                                      <EditIcon size="sm" />
-                                    </button>
-                                    <button
-                                      onClick={() => handleDeleteRole(role.id)}
-                                      className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                                    >
-                                      <DeleteIcon size="sm" />
-                                    </button>
-                                  </>
-                                )}
+                            </div>
+                            {hasPermission('role_management') && (
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => openRoleModal(role)}
+                                  className="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-md transition-colors"
+                                  title="Düzenle"
+                                >
+                                  <EditIcon size="sm" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteRole(role.id)}
+                                  className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors"
+                                  title="Sil"
+                                >
+                                  <DeleteIcon size="sm" />
+                                </button>
                               </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -825,23 +847,66 @@ export default function SettingsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                     Yetkiler
+                    <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">
+                      ({roleForm.permissions.length} yetki seçili)
+                    </span>
                   </label>
-                  <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-md p-3">
-                    {availablePermissions.map((permission) => (
-                      <label key={permission} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={roleForm.permissions.includes(permission)}
-                          onChange={() => togglePermission(permission)}
-                          className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                        />
-                        <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                          {permission}
-                        </span>
-                      </label>
-                    ))}
+                  <div className="space-y-4 max-h-96 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg p-4">
+                    {PERMISSION_GROUPS.map((group) => {
+                      const groupColor = GROUP_COLORS[group.color as keyof typeof GROUP_COLORS];
+                      const groupPermissions = group.permissions.filter(p => 
+                        availablePermissions.includes(p.key)
+                      );
+                      
+                      if (groupPermissions.length === 0) return null;
+                      
+                      const selectedInGroup = groupPermissions.filter(p => 
+                        roleForm.permissions.includes(p.key)
+                      ).length;
+                      
+                      return (
+                        <div key={group.id} className={`border ${groupColor.border} rounded-lg p-4 ${groupColor.bg}`}>
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-2xl">{group.icon}</span>
+                              <h4 className={`font-semibold ${groupColor.text}`}>
+                                {group.label}
+                              </h4>
+                            </div>
+                            {selectedInGroup > 0 && (
+                              <span className={`text-xs px-2 py-1 rounded-full ${groupColor.badge}`}>
+                                {selectedInGroup}/{groupPermissions.length}
+                              </span>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            {groupPermissions.map((permission) => (
+                              <label 
+                                key={permission.key} 
+                                className="flex items-start space-x-3 p-2 rounded-md hover:bg-white/50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={roleForm.permissions.includes(permission.key)}
+                                  onChange={() => togglePermission(permission.key)}
+                                  className="h-4 w-4 mt-0.5 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded"
+                                />
+                                <div className="flex-1">
+                                  <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                    {permission.label}
+                                  </div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                                    {permission.description}
+                                  </div>
+                                </div>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
