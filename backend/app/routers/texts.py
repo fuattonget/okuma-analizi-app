@@ -1,7 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, List
 from app.models.documents import TextDoc, CanonicalTokens
+from app.models.user import UserDoc, get_current_user
+from app.models.rbac import require_permission
 from app.utils.text_tokenizer import tokenize_turkish_text, normalize_turkish_text
 from typing import Union
 from loguru import logger
@@ -41,7 +43,8 @@ class TextUpdate(BaseModel):
 
 
 @router.get("/", response_model=List[TextResponse])
-async def get_texts():
+@require_permission("text:read")
+async def get_texts(current_user: UserDoc = Depends(get_current_user)):
     """Get all active texts, newest first (excluding temporary texts)"""
     texts = await TextDoc.find(TextDoc.active == True).sort("-created_at").to_list()
     logger.info(f"DEBUG: Found {len(texts)} active texts")
@@ -78,7 +81,8 @@ def generate_text_id(title: str, grade: int) -> str:
     return hash_object.hexdigest()[:12]
 
 @router.post("/", response_model=TextResponse)
-async def create_text(text_data: TextCreate):
+@require_permission("text:create")
+async def create_text(text_data: TextCreate, current_user: UserDoc = Depends(get_current_user)):
     """Create a new text"""
     # Generate slug for uniqueness check
     slug = f"{text_data.grade}-{text_data.title.lower().replace(' ', '-')}"
@@ -135,7 +139,8 @@ async def create_text(text_data: TextCreate):
     )
 
 @router.post("/copy", response_model=TextResponse)
-async def copy_text(text_data: TextCopyCreate):
+@require_permission("text:create")
+async def copy_text(text_data: TextCopyCreate, current_user: UserDoc = Depends(get_current_user)):
     """Copy external text for analysis"""
     try:
         # Generate slug for uniqueness check
@@ -192,7 +197,8 @@ async def copy_text(text_data: TextCopyCreate):
 
 
 @router.get("/{text_id}")
-async def get_text(text_id: str):
+@require_permission("text:view")
+async def get_text(text_id: str, current_user: UserDoc = Depends(get_current_user)):
     """Get a specific text by text_id (which is now the same as _id)"""
     try:
         from bson import ObjectId
@@ -214,7 +220,8 @@ async def get_text(text_id: str):
 
 
 @router.put("/{text_id}", response_model=TextResponse)
-async def update_text(text_id: str, text_data: TextUpdate):
+@require_permission("text:update")
+async def update_text(text_id: str, text_data: TextUpdate, current_user: UserDoc = Depends(get_current_user)):
     """Update a specific text by text_id (which is now the same as _id)"""
     try:
         from bson import ObjectId
@@ -255,7 +262,8 @@ async def update_text(text_id: str, text_data: TextUpdate):
 
 
 @router.delete("/{text_id}")
-async def delete_text(text_id: str):
+@require_permission("text:delete")
+async def delete_text(text_id: str, current_user: UserDoc = Depends(get_current_user)):
     """Deactivate a specific text by text_id (soft delete)"""
     try:
         from bson import ObjectId

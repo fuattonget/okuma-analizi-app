@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Form, Request
+from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Form, Request, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
@@ -10,6 +10,8 @@ from app.utils.timezone import to_turkish_isoformat, get_utc_now
 import soundfile as sf
 from bson import ObjectId
 from app.models.documents import AnalysisDoc, TextDoc, AudioFileDoc, WordEventDoc, PauseEventDoc, ReadingSessionDoc
+from app.models.user import UserDoc, get_current_user
+from app.models.rbac import require_permission
 from app.config import settings
 from app.storage import upload_audio_file
 from app.storage.gcs import generate_signed_url
@@ -27,7 +29,8 @@ async def test_export():
 
 
 @router.get("/{analysis_id}/export")
-async def export_analysis(analysis_id: str):
+@require_permission("analysis:view")
+async def export_analysis(analysis_id: str, current_user: UserDoc = Depends(get_current_user)):
     """Export complete analysis data as JSON"""
     app_logger.info(f"Export analysis called with ID: {analysis_id}")
     
@@ -188,9 +191,11 @@ class AnalyzeResponse(BaseModel):
 
 
 @router.get("/", response_model=List[AnalysisSummary])
+@require_permission("analysis:read")
 async def get_analyses(
     limit: int = Query(20, ge=1, le=100),
-    student_id: Optional[str] = Query(None, description="Filter analyses by student ID")
+    student_id: Optional[str] = Query(None, description="Filter analyses by student ID"),
+    current_user: UserDoc = Depends(get_current_user)
 ):
     """Get analyses list with pagination and lookups"""
     
@@ -435,8 +440,10 @@ async def get_analysis_metrics(analysis_id: str):
 
 
 @router.post("/file", response_model=AnalyzeResponse)
+@require_permission("analysis:create")
 async def analyze_file(
     request: Request,
+    current_user: UserDoc = Depends(get_current_user),
     file: UploadFile = File(...),
     text_id: Optional[str] = Form(None),
     custom_text: Optional[str] = Form(None),
@@ -776,13 +783,15 @@ async def get_analysis_audio_url(analysis_id: str, expiration_hours: int = Query
 
 
 @router.delete("/{analysis_id}")
-async def delete_analysis(analysis_id: str):
+@require_permission("analysis:delete")
+async def delete_analysis(analysis_id: str, current_user: UserDoc = Depends(get_current_user)):
     """Delete a specific analysis by ID"""
     return {"message": f"Delete analysis {analysis_id} - to be implemented"}
 
 
 @router.get("/{analysis_id}", response_model=AnalysisDetail)
-async def get_analysis(analysis_id: str):
+@require_permission("analysis:view")
+async def get_analysis(analysis_id: str, current_user: UserDoc = Depends(get_current_user)):
     """Get detailed analysis by ID"""
     
     try:
