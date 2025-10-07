@@ -435,37 +435,39 @@ export default function StudentProfilePage() {
             ← Öğrenci Listesi
           </button>
           <div className="flex items-center space-x-3">
-            <button
-              onClick={handleEditClick}
-              disabled={isUpdating}
-              className="px-4 py-2 bg-gray-600 text-white font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors dark:bg-gray-600 dark:hover:bg-gray-700 dark:focus:ring-gray-400 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-              Düzenle
-            </button>
+            {(hasPermission('student:update') || hasPermission('student_management')) && (
+              <button
+                onClick={handleEditClick}
+                disabled={isUpdating}
+                className="px-4 py-2 bg-gray-600 text-white font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors dark:bg-gray-600 dark:hover:bg-gray-700 dark:focus:ring-gray-400 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <EditIcon size="sm" className="inline mr-2" />
+                Düzenle
+              </button>
+            )}
             
-            {student?.is_active ? (
-              <button
-                onClick={() => handleStatusChange('deactivate')}
-                disabled={isUpdating}
-                className="px-4 py-2 bg-red-600 text-white font-medium rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-400 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <LockIcon size="sm" className="inline mr-2" />
-                Pasife Düşür
-              </button>
-            ) : (
-              <button
-                onClick={() => handleStatusChange('activate')}
-                disabled={isUpdating}
-                className="px-4 py-2 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors dark:bg-green-600 dark:hover:bg-green-700 dark:focus:ring-green-400 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Aktifleştir
-              </button>
+            {(hasPermission('student:update') || hasPermission('student_management')) && (
+              student?.is_active ? (
+                <button
+                  onClick={() => handleStatusChange('deactivate')}
+                  disabled={isUpdating}
+                  className="px-4 py-2 bg-red-600 text-white font-medium rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-400 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <LockIcon size="sm" className="inline mr-2" />
+                  Pasife Düşür
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleStatusChange('activate')}
+                  disabled={isUpdating}
+                  className="px-4 py-2 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors dark:bg-green-600 dark:hover:bg-green-700 dark:focus:ring-green-400 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Aktifleştir
+                </button>
+              )
             )}
             
             {(hasPermission('analysis:create') || hasPermission('analysis_management')) && (
