@@ -15,7 +15,7 @@ import math
 router = APIRouter()
 
 @router.get("/", response_model=StudentListResponse)
-@require_permission("student:view")
+@require_permission("student:read")
 async def get_students(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Number of students per page"),

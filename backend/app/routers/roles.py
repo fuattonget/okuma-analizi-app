@@ -39,7 +39,7 @@ class RoleListResponse(BaseModel):
     page_size: int
 
 @router.get("/", response_model=RoleListResponse)
-@require_permission("role:view")
+@require_permission("role:read")
 async def get_roles(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
