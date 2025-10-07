@@ -446,7 +446,7 @@ export default function StudentProfilePage() {
               </button>
             )}
             
-            {(hasPermission('student:update') || hasPermission('student_management')) && (
+            {(hasPermission('student:delete') || hasPermission('student_management')) && (
               student?.is_active ? (
                 <button
                   onClick={() => handleStatusChange('deactivate')}
