@@ -111,13 +111,20 @@ export default function SettingsPage() {
   }, [searchTerm, roleFilter]);
 
   const loadRoles = useCallback(async () => {
+    // Only load roles if user has permission
+    if (!hasPermission('role:read') && !hasPermission('role_management')) {
+      setRoles([]);
+      return;
+    }
+    
     try {
       const response = await apiClient.getRoles();
       setRoles(response.roles);
     } catch (error) {
       console.error('Failed to load roles:', error);
+      setRoles([]);
     }
-  }, []);
+  }, [hasPermission]);
 
   const loadAvailablePermissions = useCallback(async () => {
     try {
