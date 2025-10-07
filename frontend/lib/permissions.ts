@@ -1,4 +1,5 @@
 // Permission grupları ve Türkçe çevirileri
+import { ComponentType } from 'react';
 
 export interface PermissionInfo {
   key: string;
@@ -9,7 +10,7 @@ export interface PermissionInfo {
 export interface PermissionGroup {
   id: string;
   label: string;
-  icon: string;
+  icon: string; // Icon component name
   color: string;
   permissions: PermissionInfo[];
 }
@@ -18,7 +19,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   {
     id: 'student',
     label: 'Öğrenci Yönetimi',
-    icon: '👨‍🎓',
+    icon: 'StudentsIcon',
     color: 'blue',
     permissions: [
       {
@@ -51,7 +52,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   {
     id: 'text',
     label: 'Metin Yönetimi',
-    icon: '📚',
+    icon: 'TextsIcon',
     color: 'green',
     permissions: [
       {
@@ -84,7 +85,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   {
     id: 'analysis',
     label: 'Analiz Yönetimi',
-    icon: '📊',
+    icon: 'AnalysesIcon',
     color: 'purple',
     permissions: [
       {
@@ -117,7 +118,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   {
     id: 'user',
     label: 'Kullanıcı Yönetimi',
-    icon: '👤',
+    icon: 'UserIcon',
     color: 'yellow',
     permissions: [
       {
@@ -150,7 +151,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   {
     id: 'role',
     label: 'Rol Yönetimi',
-    icon: '🛡️',
+    icon: 'ShieldIcon',
     color: 'red',
     permissions: [
       {
@@ -183,7 +184,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
   {
     id: 'system',
     label: 'Sistem Yönetimi',
-    icon: '⚙️',
+    icon: 'SettingsIcon',
     color: 'gray',
     permissions: [
       {
@@ -225,6 +226,19 @@ export function getPermissionDescription(key: string): string {
     }
   }
   return '';
+}
+
+// Icon name'den component'e mapping
+export function getIconComponent(iconName: string): any {
+  const iconMap: Record<string, string> = {
+    'StudentsIcon': 'StudentsIcon',
+    'TextsIcon': 'TextsIcon',
+    'AnalysesIcon': 'AnalysesIcon',
+    'UserIcon': 'UserIcon',
+    'ShieldIcon': 'ShieldIcon',
+    'SettingsIcon': 'SettingsIcon'
+  };
+  return iconMap[iconName] || 'ShieldIcon';
 }
 
 // Grup renklerini tanımla
