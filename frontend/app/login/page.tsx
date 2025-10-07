@@ -30,9 +30,12 @@ export default function LoginPage() {
     try {
       const response = await apiClient.login(formData.email, formData.password);
       
-      // Store token in localStorage
+      // Store token and user in localStorage
       localStorage.setItem('auth_token', response.access_token);
       localStorage.setItem('user', JSON.stringify(response.user));
+      
+      // Initialize last activity timestamp for inactivity tracking
+      localStorage.setItem('last_activity', Date.now().toString());
       
       // Redirect to home page
       router.push('/');
