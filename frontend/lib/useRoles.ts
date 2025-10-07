@@ -103,21 +103,31 @@ export function useRoles() {
       // Map permission key to backend permission string
       let permissionString = permission.toString();
       
-      // Map legacy permissions to granular ones
+      // Map legacy permissions to granular ones (require WRITE permissions, not just READ/VIEW)
       if (permissionString === 'user_management') {
-        return userWithRole.role_permissions.some(p => p.startsWith('user:'));
+        return userWithRole.role_permissions.some(p => 
+          p === 'user:create' || p === 'user:update' || p === 'user:delete'
+        );
       }
       if (permissionString === 'role_management') {
-        return userWithRole.role_permissions.some(p => p.startsWith('role:'));
+        return userWithRole.role_permissions.some(p => 
+          p === 'role:create' || p === 'role:update' || p === 'role:delete'
+        );
       }
       if (permissionString === 'student_management') {
-        return userWithRole.role_permissions.some(p => p.startsWith('student:'));
+        return userWithRole.role_permissions.some(p => 
+          p === 'student:create' || p === 'student:update' || p === 'student:delete'
+        );
       }
       if (permissionString === 'text_management') {
-        return userWithRole.role_permissions.some(p => p.startsWith('text:'));
+        return userWithRole.role_permissions.some(p => 
+          p === 'text:create' || p === 'text:update' || p === 'text:delete'
+        );
       }
       if (permissionString === 'analysis_management') {
-        return userWithRole.role_permissions.some(p => p.startsWith('analysis:'));
+        return userWithRole.role_permissions.some(p => 
+          p === 'analysis:create' || p === 'analysis:update' || p === 'analysis:delete'
+        );
       }
       if (permissionString === 'system_access') {
         return userWithRole.role_permissions.some(p => p.startsWith('system:'));

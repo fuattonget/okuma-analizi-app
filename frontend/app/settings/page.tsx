@@ -112,13 +112,20 @@ export default function SettingsPage() {
 
   const loadRoles = useCallback(async () => {
     // Only load roles if user has permission
-    if (!hasPermission('role:read') && !hasPermission('role_management')) {
+    const hasRoleRead = hasPermission('role:read');
+    const hasRoleMgmt = hasPermission('role_management');
+    console.log('🔍 loadRoles: Checking permissions', { hasRoleRead, hasRoleMgmt });
+    
+    if (!hasRoleRead && !hasRoleMgmt) {
+      console.log('⛔ No permission to load roles');
       setRoles([]);
       return;
     }
     
     try {
+      console.log('✅ Loading roles...');
       const response = await apiClient.getRoles();
+      console.log('✅ Roles loaded:', response.roles.length);
       setRoles(response.roles);
     } catch (error) {
       console.error('Failed to load roles:', error);
