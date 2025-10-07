@@ -17,24 +17,45 @@ export default function Navigation() {
 
   const menuItems = [
     { href: '/', label: 'Ana Sayfa', icon: HomeIcon, permission: null },
-    { href: '/analyses', label: 'Geçmiş Analizler', icon: AnalysesIcon, permission: 'analysis_management' },
-    { href: '/texts', label: 'Metin Yönetimi', icon: TextsIcon, permission: 'text_management' },
-    { href: '/students', label: 'Öğrenci Yönetimi', icon: StudentsIcon, permission: 'student_management' },
+    { href: '/analyses', label: 'Geçmiş Analizler', icon: AnalysesIcon, permission: 'analyses_access' },
+    { href: '/texts', label: 'Metin Yönetimi', icon: TextsIcon, permission: 'texts_access' },
+    { href: '/students', label: 'Öğrenci Yönetimi', icon: StudentsIcon, permission: 'students_access' },
     { href: '/settings', label: 'Sistem Ayarları', icon: SettingsIcon, permission: 'settings_access' },
   ];
   
-  // Custom permission check for settings (needs either user or role read permission)
+  // Custom permission checks for menu items
   const canAccessSettings = () => {
     return hasPermission('user_management' as any) || 
            hasPermission('role_management' as any) ||
            hasPermission('user:read' as any) ||
            hasPermission('role:read' as any);
   };
+  
+  const canAccessStudents = () => {
+    return hasPermission('student_management' as any) ||
+           hasPermission('student:read' as any) ||
+           hasPermission('student:view' as any);
+  };
+  
+  const canAccessTexts = () => {
+    return hasPermission('text_management' as any) ||
+           hasPermission('text:read' as any) ||
+           hasPermission('text:view' as any);
+  };
+  
+  const canAccessAnalyses = () => {
+    return hasPermission('analysis_management' as any) ||
+           hasPermission('analysis:read' as any) ||
+           hasPermission('analysis:view' as any);
+  };
 
   // Filter menu items based on permissions
   const filteredMenuItems = menuItems.filter(item => {
     if (!item.permission) return true;
     if (item.permission === 'settings_access') return canAccessSettings();
+    if (item.permission === 'students_access') return canAccessStudents();
+    if (item.permission === 'texts_access') return canAccessTexts();
+    if (item.permission === 'analyses_access') return canAccessAnalyses();
     return hasPermission(item.permission as keyof import('@/lib/useRoles').Permission);
   });
   
