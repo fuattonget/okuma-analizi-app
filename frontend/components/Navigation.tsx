@@ -206,13 +206,13 @@ export default function Navigation() {
                 themeColors.text.primary
               )}>
                 <span className="text-3xl mr-3">📚</span>
-                Okuma Analizi
+                DOKY
               </h1>
               <p className={combineThemeClasses(
                 'mt-1 text-sm',
                 themeColors.text.tertiary
               )}>
-                Ses dosyası yükleyin ve okuma analizi yapın
+                Ses dosyası yükleyin ve Doky analizi yapın
               </p>
             </div>
           </div>

@@ -15,6 +15,7 @@ class LoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: dict
+    expires_at: float  # Unix timestamp when token expires
 
 class UserResponse(BaseModel):
     id: str
@@ -49,9 +50,14 @@ async def login(login_data: LoginRequest):
     # Create JWT token
     access_token = create_access_token(str(user.id), role_name)
     
+    # Calculate expiration timestamp (3 hours from now)
+    from datetime import datetime, timezone, timedelta
+    expires_at = (datetime.now(timezone.utc) + timedelta(hours=3)).timestamp()
+    
     return LoginResponse(
         access_token=access_token,
         token_type="bearer",
+        expires_at=expires_at,
         user={
             "id": str(user.id),
             "email": user.email,

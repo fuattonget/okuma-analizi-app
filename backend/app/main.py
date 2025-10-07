@@ -187,7 +187,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Okuma Analizi API",
+    title="Doky API",
     description="API for reading analysis and assessment",
     version="1.0.0",
     lifespan=lifespan,
