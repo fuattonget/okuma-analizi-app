@@ -23,6 +23,7 @@ class UserResponse(BaseModel):
     role: str
     is_active: bool
     created_at: str
+    role_permissions: list[str] = []
 
 @router.post("/login", response_model=LoginResponse)
 async def login(login_data: LoginRequest):
@@ -42,6 +43,9 @@ async def login(login_data: LoginRequest):
     role = await user.get_role()
     role_name = role.name if role else "user"
     
+    # Get effective permissions
+    role_permissions = await user.get_effective_permissions()
+    
     # Create JWT token
     access_token = create_access_token(str(user.id), role_name)
     
@@ -54,7 +58,8 @@ async def login(login_data: LoginRequest):
             "username": user.username,
             "role": role_name,
             "is_active": user.is_active,
-            "created_at": user.created_at.isoformat()
+            "created_at": user.created_at.isoformat(),
+            "role_permissions": role_permissions
         }
     )
 
@@ -67,13 +72,17 @@ async def get_current_user_info(current_user: UserDoc = Depends(get_current_user
     role = await current_user.get_role()
     role_name = role.name if role else "user"
     
+    # Get effective permissions
+    role_permissions = await current_user.get_effective_permissions()
+    
     return UserResponse(
         id=str(current_user.id),
         email=current_user.email,
         username=current_user.username,
         role=role_name,
         is_active=current_user.is_active,
-        created_at=current_user.created_at.isoformat()
+        created_at=current_user.created_at.isoformat(),
+        role_permissions=role_permissions
     )
 
 @router.post("/logout")

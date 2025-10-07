@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiClient, User } from './api';
 import { useAuth } from './useAuth';
 
-export type Role = 'admin' | 'manager' | 'teacher';
+export type Role = 'admin' | 'manager' | 'teacher' | string;
 
 export interface Permission {
   user_management: boolean;
@@ -40,6 +40,11 @@ export interface Permission {
   'system:settings': boolean;
   'system:logs': boolean;
   'system:status': boolean;
+}
+
+// Extended User type with role permissions
+export interface UserWithRole extends User {
+  role_permissions?: string[];
 }
 
 export function useRoles() {
@@ -87,6 +92,42 @@ export function useRoles() {
 
     const role = effectiveUser.role;
     
+    // If user has role_permissions from backend, use those
+    const userWithRole = effectiveUser as UserWithRole;
+    if (userWithRole.role_permissions && userWithRole.role_permissions.length > 0) {
+      // Check if user has wildcard permission (full admin)
+      if (userWithRole.role_permissions.includes('*')) {
+        return true;
+      }
+      
+      // Map permission key to backend permission string
+      let permissionString = permission.toString();
+      
+      // Map legacy permissions to granular ones
+      if (permissionString === 'user_management') {
+        return userWithRole.role_permissions.some(p => p.startsWith('user:'));
+      }
+      if (permissionString === 'role_management') {
+        return userWithRole.role_permissions.some(p => p.startsWith('role:'));
+      }
+      if (permissionString === 'student_management') {
+        return userWithRole.role_permissions.some(p => p.startsWith('student:'));
+      }
+      if (permissionString === 'text_management') {
+        return userWithRole.role_permissions.some(p => p.startsWith('text:'));
+      }
+      if (permissionString === 'analysis_management') {
+        return userWithRole.role_permissions.some(p => p.startsWith('analysis:'));
+      }
+      if (permissionString === 'system_access') {
+        return userWithRole.role_permissions.some(p => p.startsWith('system:'));
+      }
+      
+      // Check direct permission match
+      return userWithRole.role_permissions.includes(permissionString);
+    }
+    
+    // Fallback to hardcoded role-based permissions for backwards compatibility
     // Admin has all permissions
     if (role === 'admin') {
       return true;
@@ -271,20 +312,22 @@ export function useRoles() {
       case 'teacher':
         return 'Öğretmen';
       default:
-        return role;
+        // Capitalize first letter for custom roles
+        return role.charAt(0).toUpperCase() + role.slice(1);
     }
   }, []);
 
   const getRoleColor = useCallback((role: string): string => {
     switch (role) {
       case 'admin':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
       case 'manager':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
       case 'teacher':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
       default:
-        return 'bg-gray-100 text-gray-800';
+        // Custom roles get purple color
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300';
     }
   }, []);
 
