@@ -338,6 +338,7 @@ export interface User {
   role: string;
   is_active: boolean;
   created_at: string;
+  role_permissions?: string[];
 }
 
 export interface Role {
