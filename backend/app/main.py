@@ -203,9 +203,32 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_exception_handler(Exception, global_exception_handler)
 
 # Add CORS middleware
+# Note: Using regex pattern to allow any local network IP (192.168.x.x)
+# For production, specify exact domains instead
+import re
+
+origins_patterns = [
+    re.compile(r"^http://localhost:\d+$"),
+    re.compile(r"^http://127\.0\.0\.1:\d+$"),
+    re.compile(r"^http://192\.168\.\d{1,3}\.\d{1,3}:\d+$"),  # Allow any 192.168.x.x IP
+]
+
+class CORSMiddlewareWithRegex(CORSMiddleware):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.allow_origin_patterns = origins_patterns
+    
+    def is_allowed_origin(self, origin: str) -> bool:
+        if origin in self.allow_origins:
+            return True
+        for pattern in self.allow_origin_patterns:
+            if pattern.match(origin):
+                return True
+        return False
+
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001"],
+    CORSMiddlewareWithRegex,
+    allow_origins=[],  # Empty because we use patterns
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
