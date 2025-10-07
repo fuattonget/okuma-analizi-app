@@ -76,7 +76,7 @@ export default function StudentProfilePage() {
       console.log('👤 Student loaded:', studentData);
       
       // Load student's analyses only if user has permission
-      if (hasPermission('analysis:read') || hasPermission('analysis_management')) {
+      if (hasPermission('analysis:read')) {
         try {
           const studentAnalyses = await apiClient.getAnalyses(50, studentId);
           setAnalyses(studentAnalyses);
@@ -435,7 +435,7 @@ export default function StudentProfilePage() {
             ← Öğrenci Listesi
           </button>
           <div className="flex items-center space-x-3">
-            {(hasPermission('student:update') || hasPermission('student_management')) && (
+            {hasPermission('student:update') && (
               <button
                 onClick={handleEditClick}
                 disabled={isUpdating}
@@ -446,7 +446,7 @@ export default function StudentProfilePage() {
               </button>
             )}
             
-            {(hasPermission('student:delete') || hasPermission('student_management')) && (
+            {hasPermission('student:delete') && (
               student?.is_active ? (
                 <button
                   onClick={() => handleStatusChange('deactivate')}
@@ -470,7 +470,7 @@ export default function StudentProfilePage() {
               )
             )}
             
-            {(hasPermission('analysis:create') || hasPermission('analysis_management')) && (
+            {hasPermission('analysis:create') && (
               <button
                 onClick={handleOpenAnalysisModal}
                 className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-400 flex items-center"
@@ -522,7 +522,7 @@ export default function StudentProfilePage() {
         </div>
 
         {/* Analysis History */}
-        {(hasPermission('analysis:read') || hasPermission('analysis_management')) ? (
+        {hasPermission('analysis:read') ? (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             <div className="px-6 py-4 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900">
@@ -537,7 +537,7 @@ export default function StudentProfilePage() {
                   <AnalysisIcon size="xl" className="text-gray-400" />
                 </div>
                 <p className="text-gray-500 mb-4">Bu öğrenci için henüz analiz yapılmamış</p>
-                {(hasPermission('analysis:create') || hasPermission('analysis_management')) && (
+                {hasPermission('analysis:create') && (
                   <button
                     onClick={handleStartNewAnalysis}
                     className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-400"
