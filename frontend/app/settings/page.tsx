@@ -583,7 +583,10 @@ export default function SettingsPage() {
                         Yetki Gerekli
                       </h3>
                       <p className="text-yellow-700 dark:text-yellow-300 mt-1">
-                        Rol listesini görüntülemek için <code className="bg-yellow-100 dark:bg-yellow-900 px-2 py-0.5 rounded">role:read</code> yetkisine ihtiyacınız var.
+                        Rol listesini görüntülemek için <strong className="font-semibold">"Rol Listele"</strong> yetkisine ihtiyacınız var.
+                      </p>
+                      <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-2">
+                        Sistem yöneticinizle iletişime geçerek bu yetkiyi talep edebilirsiniz.
                       </p>
                     </div>
                   </div>
