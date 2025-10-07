@@ -375,7 +375,7 @@ export default function SettingsPage() {
                     Sistem kullanıcılarını yönetin
                   </p>
                 </div>
-                {hasPermission('user_management') && (
+                {(hasPermission('user:create') || hasPermission('user_management')) && (
                   <button
                     onClick={() => openUserModal()}
                     className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
@@ -513,27 +513,32 @@ export default function SettingsPage() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                               <div className="flex justify-end space-x-2">
-                                {hasPermission('user_management') && (
-                                  <>
-                                    <button
-                                      onClick={() => openUserModal(user)}
-                                      className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
-                                    >
-                                      <EditIcon size="sm" />
-                                    </button>
-                                    <button
-                                      onClick={() => handleResetPassword(user.id)}
-                                      className="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300"
-                                    >
-                                      <LockIcon size="sm" />
-                                    </button>
-                                    <button
-                                      onClick={() => handleDeleteUser(user.id)}
-                                      className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                                    >
-                                      <DeleteIcon size="sm" />
-                                    </button>
-                                  </>
+                                {(hasPermission('user:update') || hasPermission('user_management')) && (
+                                  <button
+                                    onClick={() => openUserModal(user)}
+                                    className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                    title="Düzenle"
+                                  >
+                                    <EditIcon size="sm" />
+                                  </button>
+                                )}
+                                {(hasPermission('user:update') || hasPermission('user_management')) && (
+                                  <button
+                                    onClick={() => handleResetPassword(user.id)}
+                                    className="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300"
+                                    title="Şifre Sıfırla"
+                                  >
+                                    <LockIcon size="sm" />
+                                  </button>
+                                )}
+                                {(hasPermission('user:delete') || hasPermission('user_management')) && (
+                                  <button
+                                    onClick={() => handleDeleteUser(user.id)}
+                                    className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                                    title="Sil"
+                                  >
+                                    <DeleteIcon size="sm" />
+                                  </button>
                                 )}
                               </div>
                             </td>
@@ -550,29 +555,46 @@ export default function SettingsPage() {
           {/* Roles Tab */}
           {activeTab === 'roles' && (
             <div>
-              {/* Roles Header */}
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                    Rol Yönetimi
-                  </h2>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Sistem rollerini ve yetkilerini yönetin
-                  </p>
+              {/* Check if user has permission to view roles */}
+              {!hasPermission('role:read') && !hasPermission('role_management') ? (
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6">
+                  <div className="flex items-center">
+                    <ShieldIcon size="lg" className="text-yellow-600 dark:text-yellow-400 mr-4" />
+                    <div>
+                      <h3 className="text-lg font-semibold text-yellow-800 dark:text-yellow-200">
+                        Yetki Gerekli
+                      </h3>
+                      <p className="text-yellow-700 dark:text-yellow-300 mt-1">
+                        Rol listesini görüntülemek için <code className="bg-yellow-100 dark:bg-yellow-900 px-2 py-0.5 rounded">role:read</code> yetkisine ihtiyacınız var.
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                {hasPermission('role_management') && (
-                  <button
-                    onClick={() => openRoleModal()}
-                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                  >
-                    <PlusIcon size="sm" className="mr-2" />
-                    Yeni Rol
-                  </button>
-                )}
-              </div>
+              ) : (
+                <>
+                  {/* Roles Header */}
+                  <div className="flex justify-between items-center mb-6">
+                    <div>
+                      <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                        Rol Yönetimi
+                      </h2>
+                      <p className="text-gray-600 dark:text-gray-400">
+                        Sistem rollerini ve yetkilerini yönetin
+                      </p>
+                    </div>
+                    {(hasPermission('role:create') || hasPermission('role_management')) && (
+                      <button
+                        onClick={() => openRoleModal()}
+                        className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      >
+                        <PlusIcon size="sm" className="mr-2" />
+                        Yeni Rol
+                      </button>
+                    )}
+                  </div>
 
-              {/* Roles List - Card View */}
-              <div>
+                  {/* Roles List - Card View */}
+                  <div>
                 {roles.length === 0 ? (
                   <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-lg shadow">
                     <ShieldIcon size="lg" className="mx-auto text-gray-400" />
@@ -648,22 +670,26 @@ export default function SettingsPage() {
                             <div className="text-xs text-gray-500 dark:text-gray-400">
                               {formatTurkishDate(role.created_at)}
                             </div>
-                            {hasPermission('role_management') && (
+                            {(hasPermission('role:update') || hasPermission('role:delete') || hasPermission('role_management')) && (
                               <div className="flex space-x-2">
-                                <button
-                                  onClick={() => openRoleModal(role)}
-                                  className="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-md transition-colors"
-                                  title="Düzenle"
-                                >
-                                  <EditIcon size="sm" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteRole(role.id)}
-                                  className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors"
-                                  title="Sil"
-                                >
-                                  <DeleteIcon size="sm" />
-                                </button>
+                                {(hasPermission('role:update') || hasPermission('role_management')) && (
+                                  <button
+                                    onClick={() => openRoleModal(role)}
+                                    className="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-md transition-colors"
+                                    title="Düzenle"
+                                  >
+                                    <EditIcon size="sm" />
+                                  </button>
+                                )}
+                                {(hasPermission('role:delete') || hasPermission('role_management')) && (
+                                  <button
+                                    onClick={() => handleDeleteRole(role.id)}
+                                    className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors"
+                                    title="Sil"
+                                  >
+                                    <DeleteIcon size="sm" />
+                                  </button>
+                                )}
                               </div>
                             )}
                           </div>
@@ -673,6 +699,8 @@ export default function SettingsPage() {
                   </div>
                 )}
               </div>
+                </>
+              )}
             </div>
           )}
         </div>
