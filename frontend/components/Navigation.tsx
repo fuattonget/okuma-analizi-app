@@ -20,13 +20,23 @@ export default function Navigation() {
     { href: '/analyses', label: 'Geçmiş Analizler', icon: AnalysesIcon, permission: 'analysis_management' },
     { href: '/texts', label: 'Metin Yönetimi', icon: TextsIcon, permission: 'text_management' },
     { href: '/students', label: 'Öğrenci Yönetimi', icon: StudentsIcon, permission: 'student_management' },
-    { href: '/settings', label: 'Sistem Ayarları', icon: SettingsIcon, permission: 'user_management' },
+    { href: '/settings', label: 'Sistem Ayarları', icon: SettingsIcon, permission: 'settings_access' },
   ];
+  
+  // Custom permission check for settings (needs either user or role read permission)
+  const canAccessSettings = () => {
+    return hasPermission('user_management' as any) || 
+           hasPermission('role_management' as any) ||
+           hasPermission('user:read' as any) ||
+           hasPermission('role:read' as any);
+  };
 
   // Filter menu items based on permissions
-  const filteredMenuItems = menuItems.filter(item => 
-    !item.permission || hasPermission(item.permission as keyof import('@/lib/useRoles').Permission)
-  );
+  const filteredMenuItems = menuItems.filter(item => {
+    if (!item.permission) return true;
+    if (item.permission === 'settings_access') return canAccessSettings();
+    return hasPermission(item.permission as keyof import('@/lib/useRoles').Permission);
+  });
   
   const currentItem = filteredMenuItems.find(item => item.href === pathname);
 
