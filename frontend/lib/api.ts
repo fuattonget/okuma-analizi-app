@@ -560,8 +560,14 @@ export const apiClient = {
     await api.delete(`/v1/users/${userId}`);
   },
 
-  async resetUserPassword(userId: string, newPassword: string): Promise<void> {
-    await api.post(`/v1/users/${userId}/reset-password`, { new_password: newPassword });
+  async resetUserPassword(userId: string, newPassword: string): Promise<{
+    message: string;
+    new_password: string;
+    user_email: string;
+    user_username: string;
+  }> {
+    const response = await api.post(`/v1/users/${userId}/reset-password`, { new_password: newPassword });
+    return response.data;
   },
 
   async getAvailableRoles(): Promise<string[]> {

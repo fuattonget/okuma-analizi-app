@@ -2,8 +2,10 @@ from fastapi import APIRouter, HTTPException, Depends, status, Query
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from datetime import datetime, timezone
-from app.models.user import UserDoc, get_current_user, create_access_token
+from app.models.user import UserDoc, get_current_user, create_access_token, get_password_hash
 from app.models.rbac import require_permission
+import secrets
+import string
 
 router = APIRouter()
 
@@ -291,6 +293,22 @@ async def delete_user(
     await user.delete()
     return {"message": "User deleted successfully"}
 
+def generate_random_password(length: int = 7) -> str:
+    """Generate a random password with letters and numbers"""
+    # Use a mix of uppercase, lowercase, and digits
+    alphabet = string.ascii_uppercase + string.ascii_lowercase + string.digits
+    # Ensure at least one uppercase, one lowercase, and one digit
+    password = [
+        secrets.choice(string.ascii_uppercase),
+        secrets.choice(string.ascii_lowercase),
+        secrets.choice(string.digits),
+    ]
+    # Fill the rest randomly
+    password += [secrets.choice(alphabet) for _ in range(length - 3)]
+    # Shuffle to avoid predictable pattern
+    secrets.SystemRandom().shuffle(password)
+    return ''.join(password)
+
 @router.post("/{user_id}/reset-password")
 @require_permission("user:update")
 async def reset_user_password(
@@ -298,7 +316,8 @@ async def reset_user_password(
     current_user: UserDoc = Depends(get_current_user)
 ):
     """
-    Reset user password to default
+    Reset user password to a random 7-character password
+    Returns the new password in the response (display only once to admin)
     """
     user = await UserDoc.get(user_id)
     if not user:
@@ -307,13 +326,20 @@ async def reset_user_password(
             detail="User not found"
         )
     
-    # Reset to default password
-    default_password = "password123"
-    user.password_hash = UserDoc.hash_password(default_password)
+    # Generate random 7-character password
+    new_password = generate_random_password(7)
+    
+    # Hash and save
+    user.password_hash = get_password_hash(new_password)
     user.updated_at = datetime.now(timezone.utc)
     await user.save()
     
-    return {"message": f"Password reset to: {default_password}"}
+    return {
+        "message": "Şifre başarıyla sıfırlandı",
+        "new_password": new_password,
+        "user_email": user.email,
+        "user_username": user.username
+    }
 
 @router.get("/roles/available")
 @require_permission("user:read")
