@@ -544,7 +544,7 @@ export default function StudentAnalysisDetailPage() {
   return (
     <div className={combineThemeClasses('min-h-screen', themeColors.background.secondary)}>
       <Navigation />
-      <div className="container mx-auto px-4 py-6 space-y-6">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
         {/* Breadcrumbs */}
         <Breadcrumbs 
           items={[
@@ -556,21 +556,21 @@ export default function StudentAnalysisDetailPage() {
         />
         
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
         <button
           onClick={() => router.push(`/students/${params.id}`)}
-          className="px-4 py-2 bg-gray-200 text-gray-800 font-medium rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 dark:focus:ring-slate-400"
+          className="w-full sm:w-auto px-4 py-2 bg-gray-200 text-gray-800 font-medium rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 dark:focus:ring-slate-400 text-sm sm:text-base"
         >
-          ← Öğrenci Profiline Dön
+          ← Geri
         </button>
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
           {analysis.status === 'done' && hasPermission('analysis:view') && (
             <button
               onClick={() => downloadAnalysisAsJSON(analysis.id)}
               disabled={downloading}
-              className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-400"
+              className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-400"
             >
-              {downloading ? 'İndiriliyor...' : 'Sonucu JSON Olarak İndir'}
+              {downloading ? 'İndiriliyor...' : <><span className="hidden sm:inline">Sonucu JSON Olarak İndir</span><span className="sm:hidden">JSON İndir</span></>}
             </button>
           )}
           {getStatusBadge(analysis.status)}
@@ -582,43 +582,43 @@ export default function StudentAnalysisDetailPage() {
         <div className="mb-4">
           {student ? (
             <div>
-              <h1 className="text-xl font-semibold mb-2 flex items-center space-x-3">
-                <span className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-sm font-bold text-blue-600">
+              <h1 className="text-lg sm:text-xl font-semibold mb-2 flex items-center space-x-2 sm:space-x-3">
+                <span className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-xs sm:text-sm font-bold text-blue-600 dark:text-blue-300">
                     {student.first_name.charAt(0)}{student.last_name.charAt(0)}
                   </span>
                 </span>
-                <span>{student.first_name} {student.last_name}</span>
+                <span className="truncate">{student.first_name} {student.last_name}</span>
               </h1>
-              <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
-                <div className="text-gray-500">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3">
+                <div className="text-gray-500 dark:text-gray-400">
                   <GradeIcon size="sm" className="inline mr-1" />
                   {student.grade === 0 ? 'Diğer' : `${student.grade}. Sınıf`}
                 </div>
-                <div className="text-gray-500">
+                <div className="text-gray-500 dark:text-gray-400">
                   <BookIcon size="sm" className="inline mr-1" />
                   Kayıt No: #{student.registration_number}
                 </div>
               </div>
-              <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
-                <h2 className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 flex items-center">
+              <div className="bg-gray-50 dark:bg-slate-700/50 border border-gray-200 dark:border-slate-600 rounded-md p-3">
+                <h2 className="text-xs sm:text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 flex items-center">
                   <BookIcon size="sm" className="inline mr-1" />
                   Metin Bilgileri
                 </h2>
-                <p className="text-sm text-gray-600">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 line-clamp-1">
                   <span className="font-medium">Metin:</span> {analysis.text.title}
                 </p>
-                <p className="text-sm text-gray-600">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                   <span className="font-medium">Sınıf:</span> {analysis.text.grade === 0 ? 'Diğer' : (analysis.text.grade ? `${analysis.text.grade}. Sınıf` : 'Belirtilmemiş')}
                 </p>
               </div>
             </div>
           ) : (
-            <h1 className="text-xl font-semibold mb-2">{analysis.text.title}</h1>
+            <h1 className="text-lg sm:text-xl font-semibold mb-2 truncate">{analysis.text.title}</h1>
           )}
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div>
             <p className="text-sm text-gray-600">Oluşturulma</p>
             <p className="font-medium">{formatTurkishDate(analysis.created_at)}</p>
@@ -645,23 +645,23 @@ export default function StudentAnalysisDetailPage() {
         )}
 
         {/* Audio Player */}
-        <div className="mb-6">
-          <p className="text-sm font-medium text-gray-700 mb-2">Ses Dosyası</p>
+        <div className="mb-4 sm:mb-6">
+          <p className="text-xs sm:text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Ses Dosyası</p>
           {audioUrl ? (
             <audio ref={audioRef} controls className="w-full">
               <source src={audioUrl} type="audio/mpeg" />
               Tarayıcınız ses dosyasını desteklemiyor.
             </audio>
           ) : (
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-2">
               <button
                 onClick={() => loadAudioUrl(analysis.id)}
                 disabled={audioLoading}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+                className="w-full sm:w-auto px-4 py-2 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 disabled:opacity-50 dark:bg-blue-600 dark:hover:bg-blue-700"
               >
                 {audioLoading ? 'Yükleniyor...' : 'Ses Dosyasını Yükle'}
               </button>
-              <span className="text-sm text-gray-500">
+              <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                 (1 saat geçerli güvenli bağlantı)
               </span>
             </div>
@@ -670,22 +670,23 @@ export default function StudentAnalysisDetailPage() {
 
         {/* Transcript Text - STT Sonucu */}
         {exportData?.transcript && (
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-gray-700 dark:text-slate-300">
+          <div className="mb-4 sm:mb-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 mb-2">
+              <p className="text-xs sm:text-sm font-medium text-gray-700 dark:text-slate-300">
                 <BookIcon size="sm" className="inline mr-1" />
                 Okunan Metin (STT Sonucu)
               </p>
-              <div className="flex items-center space-x-2 text-xs">
-                <span className="bg-orange-100 text-orange-900 px-2 py-1 rounded flex items-center">
+              <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs">
+                <span className="bg-orange-100 dark:bg-orange-900/30 text-orange-900 dark:text-orange-300 px-2 py-1 rounded flex items-center">
                   <RefreshIcon size="xs" className="inline mr-1" />
-                  Değiştirme
+                  <span className="hidden sm:inline">Değiştirme</span>
+                  <span className="sm:hidden">Değ.</span>
                 </span>
-                <span className="bg-blue-100 text-blue-900 px-2 py-1 rounded flex items-center">
+                <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-300 px-2 py-1 rounded flex items-center">
                   <PlusIcon size="xs" className="inline mr-1" />
                   Fazla
                 </span>
-                <span className="bg-purple-100 text-purple-900 px-2 py-1 rounded flex items-center">
+                <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-900 dark:text-purple-300 px-2 py-1 rounded flex items-center">
                   <RefreshIcon size="xs" className="inline mr-1" />
                   Tekrar
                 </span>
