@@ -101,14 +101,14 @@ export default function AnalysesPage() {
 
   const getStatusBadge = (status: string) => {
     const statusClasses = {
-      queued: 'bg-gray-100 text-gray-800',
-      running: 'bg-yellow-100 text-yellow-800',
-      done: 'bg-green-100 text-green-800',
-      failed: 'bg-red-100 text-red-800',
+      queued: 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300',
+      running: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300',
+      done: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300',
+      failed: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300',
     };
     
     return (
-      <span className={classNames('px-2 py-1 text-xs font-medium rounded-full', statusClasses[status as keyof typeof statusClasses] || 'bg-gray-100 text-gray-800')}>
+      <span className={classNames('px-2 py-1 text-xs font-medium rounded-full', statusClasses[status as keyof typeof statusClasses] || 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300')}>
         {status === 'queued' && 'Bekleyen'}
         {status === 'running' && 'Çalışıyor'}
         {status === 'done' && 'Tamamlandı'}
@@ -124,17 +124,19 @@ export default function AnalysesPage() {
     
     return (
       <div className="flex items-center space-x-2">
-        <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-          <span className="text-xs font-bold text-blue-600">
+        <div className="w-6 h-6 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center flex-shrink-0">
+          <span className="text-xs font-bold text-blue-600 dark:text-blue-300">
             {student.first_name.charAt(0)}{student.last_name.charAt(0)}
           </span>
         </div>
-        <span className="text-sm text-gray-700">
-          {student.first_name} {student.last_name}
-        </span>
-        <span className="text-xs text-gray-500">
-          ({student.grade === 0 ? 'Diğer' : `${student.grade}. Sınıf`})
-        </span>
+        <div className="min-w-0 flex-1">
+          <span className="text-sm text-gray-700 dark:text-slate-300 truncate block">
+            {student.first_name} {student.last_name}
+          </span>
+          <span className="text-xs text-gray-500 dark:text-slate-400">
+            ({student.grade === 0 ? 'Diğer' : `${student.grade}. Sınıf`})
+          </span>
+        </div>
       </div>
     );
   };
@@ -248,13 +250,13 @@ export default function AnalysesPage() {
       <Navigation />
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="space-y-6">
+      <div className="max-w-7xl mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8">
+        <div className="space-y-4 sm:space-y-6">
           {/* Breadcrumbs */}
           <Breadcrumbs />
           
           {/* Status Filter */}
-          <div className="bg-white shadow rounded-lg p-6">
+          <div className="bg-white dark:bg-slate-800 shadow rounded-lg p-4 sm:p-6 border border-gray-200 dark:border-slate-700">
             <div className="flex flex-wrap gap-2 justify-center">
               {[
                 { key: 'all', label: 'Tümü', count: statusCounts.all },
@@ -267,13 +269,15 @@ export default function AnalysesPage() {
                   key={key}
                   onClick={() => setFilter(key as any)}
                   className={classNames(
-                    'px-4 py-2 rounded-md text-sm font-medium transition-colors',
+                    'px-3 sm:px-4 py-2 rounded-md text-sm font-medium transition-colors',
                     filter === key 
                       ? 'bg-indigo-600 text-white' 
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600'
                   )}
                 >
-                  {label} ({count})
+                  <span className="hidden sm:inline">{label}</span>
+                  <span className="sm:hidden">{label.split(' ')[0]}</span>
+                  <span className="ml-1">({count})</span>
                 </button>
               ))}
             </div>
@@ -281,49 +285,49 @@ export default function AnalysesPage() {
 
           {/* Analyses List */}
           {filteredAnalyses.length === 0 ? (
-            <div className="bg-white shadow rounded-lg p-8 text-center">
-              <div className="text-gray-500 text-lg">
+            <div className="bg-white dark:bg-slate-800 shadow rounded-lg p-6 sm:p-8 text-center border border-gray-200 dark:border-slate-700">
+              <div className="text-gray-500 dark:text-slate-400 text-base sm:text-lg">
                 {filter === 'all' ? 'Henüz analiz bulunmuyor' : `${filter} durumunda analiz bulunmuyor`}
               </div>
             </div>
           ) : (
-            <div className="grid gap-4">
+            <div className="grid gap-3 sm:gap-4">
               {filteredAnalyses.map((analysis) => (
                 <div
                   key={analysis.id}
                   onClick={() => router.push(`/analyses/${analysis.id}`)}
-                  className="bg-white shadow rounded-lg p-6 cursor-pointer hover:shadow-md transition-shadow"
+                  className="bg-white dark:bg-slate-800 shadow rounded-lg p-4 sm:p-6 cursor-pointer hover:shadow-md transition-shadow border border-gray-200 dark:border-slate-700"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-medium text-gray-900">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-3 sm:space-y-0">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-slate-100 truncate">
                         {getAnalysisTitle(analysis)}
                       </h3>
-                      <div className="flex items-center space-x-4 mt-1">
-                        <p className="text-sm text-gray-500">
+                      <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-4 mt-1">
+                        <p className="text-sm text-gray-500 dark:text-slate-400">
                           {formatTurkishDate(analysis.created_at)}
                         </p>
                         {getStudentInfo(analysis.student_id)}
                       </div>
                     </div>
-                    <div className="flex items-center space-x-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
                       {getStatusBadge(analysis.status)}
                       {analysis.status === 'running' && (
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-gray-600 dark:text-slate-400 flex items-center">
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600 inline-block mr-2"></div>
                           İşleniyor...
                         </div>
                       )}
                       {analysis.status === 'queued' && (
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-gray-600 dark:text-slate-400">
                           Kuyrukta bekliyor...
                         </div>
                       )}
                     </div>
                   </div>
                   
-                  <div className="mt-4 pt-3 border-t border-gray-100">
-                    <div className="text-xs text-gray-500 text-center">
+                  <div className="mt-4 pt-3 border-t border-gray-100 dark:border-slate-600">
+                    <div className="text-xs text-gray-500 dark:text-slate-400 text-center">
                       Detayları görmek için tıklayın
                     </div>
                   </div>
