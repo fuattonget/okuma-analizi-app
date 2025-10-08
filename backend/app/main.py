@@ -13,7 +13,7 @@ from datetime import datetime
 from loguru import logger
 from app.config import settings
 from app.db import connect_to_mongo, close_mongo_connection, connect_to_redis, redis_conn
-from app.routers import texts, analyses, upload, audio, sessions, auth, students, users, roles
+from app.routers import texts, analyses, upload, audio, sessions, auth, students, users, roles, profile
 
 
 # Configure loguru based on settings
@@ -370,6 +370,16 @@ app.include_router(
     responses={
         404: {"description": "Role not found"},
         400: {"description": "Invalid role data"},
+        403: {"description": "Access denied"}
+    }
+)
+app.include_router(
+    profile.router,
+    prefix="/v1/profile",
+    tags=["profile"],
+    responses={
+        404: {"description": "Profile not found"},
+        400: {"description": "Invalid profile data"},
         403: {"description": "Access denied"}
     }
 )

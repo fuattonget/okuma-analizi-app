@@ -158,7 +158,15 @@ export default function Navigation() {
                     {isAuthenticated && currentUser && currentUser.username && (
                       <>
                         <div className="border-t border-gray-100 dark:border-slate-600 my-2"></div>
-                        <div className="px-4 py-3">
+                        <a
+                          href="/profile"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            window.location.href = '/profile';
+                            setIsOpen(false);
+                          }}
+                          className="block px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-700 transition-all duration-200 cursor-pointer"
+                        >
                           <div className="flex items-center space-x-3">
                             <div className="w-8 h-8 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center">
                               <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-300">
@@ -176,8 +184,9 @@ export default function Navigation() {
                                 {getRoleDisplayName(currentUser.role)}
                               </span>
                             </div>
+                            <span className="text-gray-400 dark:text-gray-500">→</span>
                           </div>
-                        </div>
+                        </a>
                         <div className="border-t border-gray-100 dark:border-slate-600 my-2"></div>
                         <button
                           onClick={() => {
