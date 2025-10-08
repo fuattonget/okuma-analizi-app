@@ -383,31 +383,31 @@ export default function HomePage() {
       <Navigation />
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="space-y-8">
+      <div className="max-w-7xl mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8">
+        <div className="space-y-6 sm:space-y-8">
           {/* Upload Section */}
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-6 py-8">
-              <div className="text-center mb-8">
-                <h2 className="text-2xl font-semibold flex items-center justify-center">
-                  <span className="text-2xl mr-2">🎤</span>
+          <div className="bg-white dark:bg-slate-800 shadow rounded-lg border border-gray-200 dark:border-slate-700">
+            <div className="px-4 sm:px-6 py-6 sm:py-8">
+              <div className="text-center mb-6 sm:mb-8">
+                <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-slate-100 flex items-center justify-center">
+                  <span className="text-xl sm:text-2xl mr-2">🎤</span>
                   Ses Dosyası Analizi
                 </h2>
               </div>
         
-              <div className="space-y-8">
+              <div className="space-y-6 sm:space-y-8">
                 {/* File Upload */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-3 sm:mb-4">
                     <AudioIcon size="sm" className="mr-2" />
                     Ses Dosyası <span className="text-red-500">*</span>
                   </label>
                   <div
                     className={classNames(
-                      'border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors',
-                      dragActive ? 'border-blue-400 bg-blue-50' : 'border-gray-300',
-                      selectedFile ? 'border-green-400 bg-green-50' : '',
-                      formErrors.file ? 'border-red-400 bg-red-50' : ''
+                      'border-2 border-dashed rounded-lg p-4 sm:p-6 lg:p-8 text-center cursor-pointer transition-colors',
+                      dragActive ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-slate-600',
+                      selectedFile ? 'border-green-400 bg-green-50 dark:bg-green-900/20' : '',
+                      formErrors.file ? 'border-red-400 bg-red-50 dark:bg-red-900/20' : ''
                     )}
                     onDragEnter={handleDrag}
                     onDragLeave={handleDrag}
@@ -424,13 +424,13 @@ export default function HomePage() {
                     />
                     <div className="space-y-2">
                       <AudioIcon size="xl" />
-                      <div className="text-lg font-medium text-gray-900">
+                      <div className="text-base sm:text-lg font-medium text-gray-900 dark:text-slate-100">
                         {selectedFile ? selectedFile.name : 'Ses dosyasını buraya sürükleyin veya tıklayın'}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-xs sm:text-sm text-gray-500 dark:text-slate-400">
                         MP3, WAV, M4A, AAC, OGG, FLAC formatları desteklenir
                       </div>
-                      <div className="text-xs text-blue-600 mt-2">🤙</div>
+                      <div className="text-xs text-blue-600 dark:text-blue-400 mt-2">🤙</div>
                       {formErrors.file && (
                         <Error 
                           message={formErrors.file} 
@@ -445,17 +445,17 @@ export default function HomePage() {
 
                 {/* Text Selection */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-3 sm:mb-4">
                     Metin Seçimi <span className="text-red-500">*</span>
                   </label>
-                  <div className="space-y-4">
+                  <div className="space-y-4 sm:space-y-6">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                         <UserIcon size="sm" className="mr-2" />
                         Öğrenci Seçimi (İsteğe Bağlı)
                       </label>
                       {loadingStudents ? (
-                        <div className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50">
+                        <div className="block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm bg-gray-50 dark:bg-slate-700">
                           <Loading variant="dots" size="sm" text="Öğrenciler yükleniyor..." />
                         </div>
                       ) : (
@@ -465,7 +465,7 @@ export default function HomePage() {
                             console.log('👥 Student selected:', e.target.value);
                             setSelectedStudentId(e.target.value);
                           }}
-                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          className="block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                         >
                           <option value="">Öğrenci seçin (isteğe bağlı)</option>
                           {students && students.length > 0 ? students
@@ -482,22 +482,22 @@ export default function HomePage() {
                     {/* Selected Student Preview */}
                     {selectedStudentId && students && students.length > 0 && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                           👤 Seçilen Öğrenci
                         </label>
-                        <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3">
                           <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                              <span className="text-sm font-bold text-blue-600">
+                            <div className="w-8 h-8 bg-blue-100 dark:bg-blue-800 rounded-full flex items-center justify-center flex-shrink-0">
+                              <span className="text-sm font-bold text-blue-600 dark:text-blue-300">
                                 {students.find(s => s.id === selectedStudentId)?.first_name.charAt(0)}
                                 {students.find(s => s.id === selectedStudentId)?.last_name.charAt(0)}
                               </span>
                             </div>
-                            <div>
-                              <p className="text-sm font-medium text-blue-900">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-blue-900 dark:text-blue-100 truncate">
                                 {students.find(s => s.id === selectedStudentId)?.first_name} {students.find(s => s.id === selectedStudentId)?.last_name}
                               </p>
-                              <p className="text-xs text-blue-600">
+                              <p className="text-xs text-blue-600 dark:text-blue-400">
                                 {students.find(s => s.id === selectedStudentId)?.grade === 0 ? 'Diğer' : `${students.find(s => s.id === selectedStudentId)?.grade}. Sınıf`}
                               </p>
                             </div>
@@ -507,14 +507,14 @@ export default function HomePage() {
                     )}
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                         <GradeIcon size="sm" className="mr-2" />
                         Sınıf Seviyesi
                       </label>
                       <select
                         value={grade}
                         onChange={(e) => setGrade(e.target.value)}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        className="block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                       >
                         <option value="">Sınıf seçin</option>
                         <option value="1">1. Sınıf</option>
@@ -536,12 +536,12 @@ export default function HomePage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                         <BookIcon size="sm" className="mr-2" />
                         Hazır Metinler
                       </label>
                       {loadingTexts ? (
-                        <div className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50">
+                        <div className="block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm bg-gray-50 dark:bg-slate-700">
                           <Loading variant="dots" size="sm" text="Metinler yükleniyor..." />
                         </div>
                       ) : (
@@ -552,7 +552,7 @@ export default function HomePage() {
                             setSelectedTextId(e.target.value);
                             setCustomText('');
                           }}
-                          className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          className="block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                         >
                           <option value="">Metin seçin</option>
                           {filteredTexts.map((text) => (
@@ -567,12 +567,12 @@ export default function HomePage() {
                     {/* Selected Text Preview */}
                     {selectedTextId && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                           <BookIcon size="sm" className="mr-2" />
                           Seçilen Metin
                         </label>
-                        <div className="bg-gray-50 border border-gray-200 rounded-md p-4 max-h-40 overflow-y-auto">
-                          <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                        <div className="bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-md p-3 sm:p-4 max-h-32 sm:max-h-40 overflow-y-auto">
+                          <p className="text-sm text-gray-700 dark:text-slate-300 whitespace-pre-wrap">
                             {texts.find(t => t.id === selectedTextId)?.body || 'Metin yükleniyor...'}
                           </p>
                         </div>
@@ -580,7 +580,7 @@ export default function HomePage() {
                     )}
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                         <BookIcon size="sm" className="mr-2" />
                         Veya Özel Metin Girin
                       </label>
@@ -591,8 +591,8 @@ export default function HomePage() {
                           setSelectedTextId('');
                         }}
                         placeholder="Doky analizi yapılacak metni buraya yazın..."
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                        rows={4}
+                        className="block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
+                        rows={3}
                       />
                       {formErrors.text && (
                         <Error 
@@ -612,7 +612,7 @@ export default function HomePage() {
                     <button
                       onClick={startAnalysis}
                       disabled={isUploading}
-                      className="px-6 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                      className="w-full sm:w-auto px-6 py-3 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm flex items-center justify-center"
                     >
                       {isUploading ? (
                         <Loading variant="spinner" size="sm" text="Analiz Ediliyor..." />
