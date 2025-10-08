@@ -679,6 +679,47 @@ export const apiClient = {
     const response = await api.get('/v1/roles/permissions/grouped');
     return response.data;
   },
+
+  // Profile Management
+  async getMyProfile(): Promise<{
+    id: string;
+    email: string;
+    username: string;
+    role_name: string;
+    role_display_name: string;
+    created_at: string;
+    updated_at: string;
+  }> {
+    const response = await api.get('/v1/profile/me');
+    return response.data;
+  },
+
+  async updateMyProfile(profileData: {
+    username?: string;
+    email?: string;
+  }): Promise<{
+    id: string;
+    email: string;
+    username: string;
+    role_name: string;
+    role_display_name: string;
+    created_at: string;
+    updated_at: string;
+  }> {
+    const response = await api.put('/v1/profile/me', profileData);
+    return response.data;
+  },
+
+  async changeMyPassword(passwordData: {
+    current_password: string;
+    new_password: string;
+  }): Promise<{
+    message: string;
+    success: boolean;
+  }> {
+    const response = await api.post('/v1/profile/me/change-password', passwordData);
+    return response.data;
+  },
 };
 
 export default api;

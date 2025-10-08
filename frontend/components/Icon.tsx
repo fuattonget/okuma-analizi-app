@@ -657,3 +657,15 @@ export function ChevronRightIcon({ size = 'md', className }: { size?: 'xs' | 'sm
 export function InfoIcon({ size = 'md', className }: { size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'; className?: string }) {
   return <Icon name="info" size={size} className={className} />;
 }
+
+export function EmailIcon({ size = 'md', className }: { size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'; className?: string }) {
+  return <MailIcon size={size} className={className} />;
+}
+
+export function RoleIcon({ size = 'md', className }: { size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'; className?: string }) {
+  return <ShieldIcon size={size} className={className} />;
+}
+
+export function XIcon({ size = 'md', className }: { size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'; className?: string }) {
+  return <CrossIcon size={size} className={className} />;
+}
