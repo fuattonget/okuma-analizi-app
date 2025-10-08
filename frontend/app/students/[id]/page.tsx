@@ -427,40 +427,50 @@ export default function StudentProfilePage() {
         <Breadcrumbs />
         
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => router.push('/students')}
-            className="px-4 py-2 bg-gray-200 text-gray-800 font-medium rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 dark:focus:ring-slate-400"
-          >
-            ← Öğrenci Listesi
-          </button>
-          <div className="flex items-center space-x-3">
+        <div className="space-y-4">
+          {/* Back Button */}
+          <div className="flex justify-start">
+            <button
+              onClick={() => router.push('/students')}
+              className="px-4 py-2 bg-gray-200 text-gray-800 font-medium rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 dark:focus:ring-slate-400 flex items-center"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Öğrenci Listesi
+            </button>
+          </div>
+          
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+            {/* Edit Button */}
             {hasPermission('student:update') && (
               <button
                 onClick={handleEditClick}
                 disabled={isUpdating}
-                className="px-4 py-2 bg-gray-600 text-white font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors dark:bg-gray-600 dark:hover:bg-gray-700 dark:focus:ring-gray-400 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 sm:flex-none px-4 py-2.5 bg-gray-600 text-white font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors dark:bg-gray-600 dark:hover:bg-gray-700 dark:focus:ring-gray-400 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <EditIcon size="sm" className="inline mr-2" />
+                <EditIcon size="sm" className="mr-2" />
                 Düzenle
               </button>
             )}
             
+            {/* Status Button */}
             {hasPermission('student:delete') && (
               student?.is_active ? (
                 <button
                   onClick={() => handleStatusChange('deactivate')}
                   disabled={isUpdating}
-                  className="px-4 py-2 bg-red-600 text-white font-medium rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-400 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 sm:flex-none px-4 py-2.5 bg-red-600 text-white font-medium rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-400 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <LockIcon size="sm" className="inline mr-2" />
+                  <LockIcon size="sm" className="mr-2" />
                   Pasife Düşür
                 </button>
               ) : (
                 <button
                   onClick={() => handleStatusChange('activate')}
                   disabled={isUpdating}
-                  className="px-4 py-2 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors dark:bg-green-600 dark:hover:bg-green-700 dark:focus:ring-green-400 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 sm:flex-none px-4 py-2.5 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors dark:bg-green-600 dark:hover:bg-green-700 dark:focus:ring-green-400 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -470,12 +480,13 @@ export default function StudentProfilePage() {
               )
             )}
             
+            {/* New Analysis Button */}
             {hasPermission('analysis:create') && (
               <button
                 onClick={handleOpenAnalysisModal}
-                className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-400 flex items-center"
+                className="flex-1 sm:flex-none px-4 py-2.5 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-400 flex items-center justify-center"
               >
-                <AnalysisIcon size="sm" className="inline mr-2" />
+                <AnalysisIcon size="sm" className="mr-2" />
                 Yeni Analiz Yap
               </button>
             )}
@@ -483,39 +494,46 @@ export default function StudentProfilePage() {
         </div>
 
         {/* Student Info Card */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center">
-                <span className="text-2xl font-bold text-indigo-600">
-                  {student.first_name.charAt(0)}{student.last_name.charAt(0)}
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
+            {/* Avatar */}
+            <div className="w-16 h-16 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center flex-shrink-0">
+              <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-300">
+                {student.first_name.charAt(0)}{student.last_name.charAt(0)}
+              </span>
+            </div>
+            
+            {/* Student Info */}
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-slate-100 truncate">
+                {student.first_name} {student.last_name}
+              </h1>
+              
+              {/* First Row - Registration & Grade */}
+              <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 mt-2">
+                <span className="text-sm text-gray-500 dark:text-slate-400 flex items-center">
+                  <BookIcon size="sm" className="mr-1 flex-shrink-0" />
+                  Kayıt No: #{student.registration_number}
                 </span>
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {student.first_name} {student.last_name}
-                </h1>
-                <div className="flex items-center space-x-4 mt-2">
-                  <span className="text-sm text-gray-500">
-                    <BookIcon size="sm" className="inline mr-1" />
-                    Kayıt No: #{student.registration_number}
-                  </span>
-                  <span className="text-sm text-gray-500">
-                    <GradeIcon size="sm" className="inline mr-1" />
-                    {getGradeText(student.grade)}
-                  </span>
+                <span className="text-sm text-gray-500 dark:text-slate-400 flex items-center">
+                  <GradeIcon size="sm" className="mr-1 flex-shrink-0" />
+                  {getGradeText(student.grade)}
+                </span>
+                <div className="flex-shrink-0">
                   {getStatusBadge(student.is_active)}
                 </div>
-                <div className="flex items-center space-x-4 mt-1">
-                  <span className="text-sm text-gray-500">
-                    <CalendarIcon size="sm" className="inline mr-1" />
-                    Kayıt Tarihi: {formatTurkishDate(student.created_at)}
-                  </span>
-                  <span className="text-sm text-gray-500">
-                    <UserIcon size="sm" className="inline mr-1" />
-                    Kayıt Eden: {student.created_by}
-                  </span>
-                </div>
+              </div>
+              
+              {/* Second Row - Dates & Creator */}
+              <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 mt-2">
+                <span className="text-sm text-gray-500 dark:text-slate-400 flex items-center">
+                  <CalendarIcon size="sm" className="mr-1 flex-shrink-0" />
+                  Kayıt: {formatTurkishDate(student.created_at)}
+                </span>
+                <span className="text-sm text-gray-500 dark:text-slate-400 flex items-center">
+                  <UserIcon size="sm" className="mr-1 flex-shrink-0" />
+                  Kayıt Eden: {student.created_by}
+                </span>
               </div>
             </div>
           </div>
@@ -523,10 +541,10 @@ export default function StudentProfilePage() {
 
         {/* Analysis History */}
         {hasPermission('analysis:read') ? (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">
-                <AnalysisIcon size="sm" className="inline mr-2" />
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700">
+            <div className="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100 flex items-center">
+                <AnalysisIcon size="sm" className="mr-2" />
                 Analiz Geçmişi ({analyses.length})
               </h2>
             </div>
@@ -534,9 +552,9 @@ export default function StudentProfilePage() {
             {analyses.length === 0 ? (
               <div className="p-6 text-center">
                 <div className="mb-4">
-                  <AnalysisIcon size="xl" className="text-gray-400" />
+                  <AnalysisIcon size="xl" className="text-gray-400 dark:text-slate-500" />
                 </div>
-                <p className="text-gray-500 mb-4">Bu öğrenci için henüz analiz yapılmamış</p>
+                <p className="text-gray-500 dark:text-slate-400 mb-4">Bu öğrenci için henüz analiz yapılmamış</p>
                 {hasPermission('analysis:create') && (
                   <button
                     onClick={handleStartNewAnalysis}
@@ -548,57 +566,62 @@ export default function StudentProfilePage() {
               </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+                <thead className="bg-gray-50 dark:bg-slate-700">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                       Metin
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                       Durum
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="hidden sm:table-cell px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                       Tarih
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="hidden md:table-cell px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                       Süre
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                       İşlem
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
                   {analyses.map((analysis) => (
-                    <tr key={analysis.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
+                    <tr key={analysis.id} className="hover:bg-gray-50 dark:hover:bg-slate-700">
+                      <td className="px-4 sm:px-6 py-4">
+                        <div className="text-sm font-medium text-gray-900 dark:text-slate-100">
                           {analysis.text_title}
                         </div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-gray-500 dark:text-slate-400">
                           Metin Detayı
                         </div>
+                        {/* Mobile: Show date below text */}
+                        <div className="sm:hidden text-xs text-gray-500 dark:text-slate-400 mt-1">
+                          {formatTurkishDate(analysis.created_at)}
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                         {getAnalysisStatusBadge(analysis.status)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="hidden sm:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-slate-400">
                         {formatTurkishDate(analysis.created_at)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="hidden md:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-slate-400">
                         -
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
                         {analysis.status === 'done' ? (
                           <button
                             onClick={() => router.push(`/students/${params.id}/analysis/${analysis.id}`)}
-                            className="text-indigo-600 hover:text-indigo-900"
+                            className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 flex items-center"
                           >
-                            <ViewIcon size="xs" className="inline mr-1" />
-                            Görüntüle
+                            <ViewIcon size="xs" className="mr-1" />
+                            <span className="hidden sm:inline">Görüntüle</span>
+                            <span className="sm:hidden">Gör</span>
                           </button>
                         ) : (
-                          <span className="text-gray-400">Bekleniyor...</span>
+                          <span className="text-gray-400 dark:text-slate-500">Bekleniyor...</span>
                         )}
                       </td>
                     </tr>
