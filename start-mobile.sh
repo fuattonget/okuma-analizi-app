@@ -51,10 +51,13 @@ EOF
 echo "✅ .env.local güncellendi"
 echo ""
 
-# Docker servisleri yeniden başlat
-echo "🔄 Docker servisleri yeniden başlatılıyor..."
+# Docker servisleri başlat
+echo "🔄 Docker servisleri başlatılıyor..."
 export HOST_IP=$HOST_IP
-docker-compose restart frontend api
+
+# Servisleri durdur ve yeniden başlat
+docker-compose down 2>/dev/null || true
+docker-compose up -d
 
 echo ""
 echo "✅ Sistem hazır!"
