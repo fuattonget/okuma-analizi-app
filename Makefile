@@ -1,7 +1,7 @@
 # Okuma Analizi Makefile
 # Kullanışlı komutlar için
 
-.PHONY: help start stop restart test clean logs build model-stable model-experimental model-show
+.PHONY: help start start-mobile stop restart test clean logs build model-stable model-experimental model-show
 
 # Varsayılan hedef
 help:
@@ -9,11 +9,12 @@ help:
 	@echo "======================================"
 	@echo ""
 	@echo "📦 Servis Yönetimi:"
-	@echo "  make start     - Sistemi başlat"
-	@echo "  make stop      - Sistemi durdur"
-	@echo "  make restart   - Sistemi yeniden başlat"
+	@echo "  make start        - Sistemi başlat (localhost)"
+	@echo "  make start-mobile - Sistemi mobil erişim için başlat"
+	@echo "  make stop         - Sistemi durdur"
+	@echo "  make restart      - Sistemi yeniden başlat"
 	@echo "  make restart-worker - Sadece worker'ı yeniden başlat"
-	@echo "  make build     - Servisleri build et"
+	@echo "  make build        - Servisleri build et"
 	@echo ""
 	@echo "🧪 Test ve Debug:"
 	@echo "  make test      - Sistem testlerini çalıştır"
@@ -48,10 +49,21 @@ help:
 
 # Servis yönetimi
 start:
-	@echo "🚀 Starting Okuma Analizi..."
+	@echo "🚀 Starting Okuma Analizi (localhost mode)..."
 	./start.sh
 	@echo "🔧 Ensuring worker is running..."
 	@docker-compose up -d worker
+
+start-mobile:
+	@echo "📱 Starting Okuma Analizi (mobile access mode)..."
+	@echo "⚠️  This will configure the system for mobile/network access"
+	./start-mobile.sh
+	@echo "🔧 Ensuring worker is running..."
+	@docker-compose up -d worker
+	@echo ""
+	@echo "✅ System started in mobile mode!"
+	@echo "📱 Access from mobile: http://YOUR_IP:3000"
+	@echo "💻 Access from browser: http://localhost:3000"
 
 stop:
 	@echo "🛑 Stopping services..."
