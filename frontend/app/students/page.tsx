@@ -567,28 +567,28 @@ export default function StudentsPage() {
       <Navigation />
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="space-y-6">
+      <div className="max-w-7xl mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8">
+        <div className="space-y-4 sm:space-y-6">
           {/* Breadcrumbs */}
           <Breadcrumbs />
           
           {/* Header with Add Button */}
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 flex items-center space-x-2">
-                <StudentsIcon size="lg" />
-                <span>Öğrenci Yönetimi</span>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-slate-100 flex items-center space-x-2">
+                <StudentsIcon size="lg" className="flex-shrink-0" />
+                <span className="truncate">Öğrenci Yönetimi</span>
               </h1>
-              <p className="mt-1 text-sm text-gray-500 flex items-center space-x-2">
-                <BookIcon size="sm" />
-                <span>Öğrenci bilgilerini kolayca yönetin, ekleyin ve takip edin</span>
+              <p className="mt-1 text-sm text-gray-500 dark:text-slate-400 flex items-center space-x-2">
+                <BookIcon size="sm" className="flex-shrink-0" />
+                <span className="truncate">Öğrenci bilgilerini kolayca yönetin, ekleyin ve takip edin</span>
               </p>
             </div>
             {hasPermission('student:create') && (
               <ActionTooltip content="Yeni öğrenci eklemek için tıklayın">
                 <button
                   onClick={handleOpenModal}
-                  className="px-6 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors text-sm flex items-center space-x-2"
+                  className="w-full sm:w-auto px-4 sm:px-6 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors text-sm flex items-center justify-center space-x-2"
                 >
                   <AddIcon size="sm" className="text-white" />
                   <span>Öğrenci Ekle</span>
@@ -598,16 +598,16 @@ export default function StudentsPage() {
           </div>
 
           {/* Search and Filter Section */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-lg shadow border border-gray-200 dark:border-slate-700">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Search Input */}
-              <div className="md:col-span-2">
+              <div className="sm:col-span-2 lg:col-span-2">
                 <InfoTooltip content="Öğrenci adı, soyadı veya kayıt numarası ile arama yapabilirsiniz">
-                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center space-x-2">
-                    <SearchIcon size="sm" />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2 flex items-center space-x-2">
+                    <SearchIcon size="sm" className="flex-shrink-0" />
                     <span>Arama</span>
                     {filters.search && (
-                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                      <span className="text-xs text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 px-2 py-1 rounded-full">
                         {students.length} sonuç
                       </span>
                     )}
@@ -629,7 +629,7 @@ export default function StudentsPage() {
                           // No need to call API, filters will be applied automatically
                         }
                       }}
-                      className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200 dark:placeholder-slate-400"
+                      className="block w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200 placeholder-gray-500 dark:placeholder-slate-400"
                     />
                     {filters.search && (
                       <button
@@ -651,7 +651,7 @@ export default function StudentsPage() {
                   </div>
                 </form>
                 {filters.search && (
-                  <p className="mt-1 text-xs text-gray-500">
+                  <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
                     💡 Enter tuşuna basarak aramayı hemen başlatabilirsiniz
                   </p>
                 )}
@@ -660,15 +660,15 @@ export default function StudentsPage() {
               {/* Grade Filter */}
               <div>
                 <InfoTooltip content="Belirli bir sınıf seviyesindeki öğrencileri filtreleyin">
-                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center space-x-2">
-                    <GradeIcon size="sm" />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2 flex items-center space-x-2">
+                    <GradeIcon size="sm" className="flex-shrink-0" />
                     <span>Sınıf Filtresi</span>
                   </label>
                 </InfoTooltip>
                 <select
                   value={filters.grade}
                   onChange={(e) => updateFilter('grade', e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className="block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
                 >
                   <option value="all">Tüm Sınıflar</option>
                   <option value={1}>1. Sınıf</option>
@@ -684,15 +684,15 @@ export default function StudentsPage() {
               {/* Status Filter */}
               <div>
                 <InfoTooltip content="Aktif veya pasif öğrencileri filtreleyin">
-                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center space-x-2">
-                    <FilterIcon size="sm" />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2 flex items-center space-x-2">
+                    <FilterIcon size="sm" className="flex-shrink-0" />
                     <span>Durum Filtresi</span>
                   </label>
                 </InfoTooltip>
                 <select
                   value={filters.status}
                   onChange={(e) => updateFilter('status', e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className="block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-200"
                 >
                   <option value="all">Tüm Durumlar</option>
                   <option value="active">Aktif</option>
@@ -848,12 +848,12 @@ export default function StudentsPage() {
               )}
             </div>
           ) : (
-            <div className="bg-white dark:bg-slate-800 shadow rounded-lg overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-600">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-slate-100 flex items-center space-x-2">
-              <BookIcon size="sm" />
-              <span>Öğrenci Listesi ({students.length})</span>
-            </h3>
+            <div className="bg-white dark:bg-slate-800 shadow rounded-lg overflow-hidden border border-gray-200 dark:border-slate-700">
+              <div className="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-slate-600">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-slate-100 flex items-center space-x-2">
+                  <BookIcon size="sm" className="flex-shrink-0" />
+                  <span>Öğrenci Listesi ({students.length})</span>
+                </h3>
               </div>
               
               {/* Table */}
@@ -861,25 +861,25 @@ export default function StudentsPage() {
                 <table className="min-w-full border-collapse">
                   <thead className="bg-gray-50 dark:bg-slate-700">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider border-b border-gray-200 dark:border-slate-600 w-20">
+                      <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider border-b border-gray-200 dark:border-slate-600 w-16 sm:w-20">
                         Kayıt No
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider border-b border-gray-200 dark:border-slate-600 min-w-32 max-w-40">
+                      <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider border-b border-gray-200 dark:border-slate-600 min-w-32 max-w-40">
                         Öğrenci Adı Soyadı
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider border-b border-gray-200 dark:border-slate-600 w-24">
+                      <th className="hidden sm:table-cell px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider border-b border-gray-200 dark:border-slate-600 w-20 sm:w-24">
                         Sınıf
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider border-b border-gray-200 dark:border-slate-600 w-32">
+                      <th className="hidden md:table-cell px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider border-b border-gray-200 dark:border-slate-600 w-28 sm:w-32">
                         Eklenme Tarihi
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider border-b border-gray-200 dark:border-slate-600 w-32">
+                      <th className="hidden lg:table-cell px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider border-b border-gray-200 dark:border-slate-600 w-28 sm:w-32">
                         Kayıt Eden
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider border-b border-gray-200 dark:border-slate-600 w-20">
+                      <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider border-b border-gray-200 dark:border-slate-600 w-16 sm:w-20">
                         Durum
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider border-b border-gray-200 dark:border-slate-600 w-40">
+                      <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase tracking-wider border-b border-gray-200 dark:border-slate-600 w-32 sm:w-40">
                         İşlem
                       </th>
                     </tr>
@@ -891,27 +891,31 @@ export default function StudentsPage() {
                    className={`${hasPermission('student:view') ? 'hover:bg-gray-100 dark:hover:bg-slate-700 cursor-pointer' : 'hover:bg-gray-50 dark:hover:bg-slate-750'} transition-all duration-200 ${index < students.length - 1 ? 'border-b border-gray-200 dark:border-slate-600' : ''}`}
                    onClick={hasPermission('student:view') ? () => router.push(`/students/${student.id}`) : undefined}
                  >
-                        <td className="px-4 py-4 text-sm font-medium text-gray-900 dark:text-slate-100 border-r border-gray-100 dark:border-slate-600">
+                        <td className="px-2 sm:px-4 py-4 text-sm font-medium text-gray-900 dark:text-slate-100 border-r border-gray-100 dark:border-slate-600">
                           #{student.registration_number}
                         </td>
-                        <td className="px-4 py-4 text-sm text-gray-900 dark:text-slate-100 border-r border-gray-100 dark:border-slate-600">
+                        <td className="px-2 sm:px-4 py-4 text-sm text-gray-900 dark:text-slate-100 border-r border-gray-100 dark:border-slate-600">
                           <div className="truncate max-w-48" title={`${student.first_name} ${student.last_name}`}>
                             {student.first_name} {student.last_name}
                           </div>
+                          {/* Mobile: Show grade below name */}
+                          <div className="sm:hidden text-xs text-gray-500 dark:text-slate-400 mt-1">
+                            {student.grade === 0 ? 'Diğer' : `${student.grade}. Sınıf`}
+                          </div>
                         </td>
-                        <td className="px-4 py-4 text-sm text-gray-500 dark:text-slate-400 border-r border-gray-100 dark:border-slate-600">
+                        <td className="hidden sm:table-cell px-2 sm:px-4 py-4 text-sm text-gray-500 dark:text-slate-400 border-r border-gray-100 dark:border-slate-600">
                           {student.grade === 0 ? 'Diğer' : `${student.grade}. Sınıf`}
                         </td>
-                        <td className="px-4 py-4 text-sm text-gray-500 dark:text-slate-400 border-r border-gray-100 dark:border-slate-600">
+                        <td className="hidden md:table-cell px-2 sm:px-4 py-4 text-sm text-gray-500 dark:text-slate-400 border-r border-gray-100 dark:border-slate-600">
                           {new Date(student.created_at).toLocaleDateString('tr-TR')}
                         </td>
-                        <td className="px-4 py-4 text-sm text-gray-500 dark:text-slate-400 border-r border-gray-100 dark:border-slate-600">
+                        <td className="hidden lg:table-cell px-2 sm:px-4 py-4 text-sm text-gray-500 dark:text-slate-400 border-r border-gray-100 dark:border-slate-600">
                           <div className="truncate max-w-32" title={student.created_by}>
                             <UserIcon size="xs" className="inline mr-1" />
                             {student.created_by}
                           </div>
                         </td>
-                        <td className="px-4 py-4 border-r border-gray-100 dark:border-slate-600">
+                        <td className="px-2 sm:px-4 py-4 border-r border-gray-100 dark:border-slate-600">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                             student.is_active 
                               ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' 
@@ -920,7 +924,7 @@ export default function StudentsPage() {
                             {student.is_active ? 'Aktif' : 'Pasif'}
                           </span>
                         </td>
-                        <td className="px-4 py-4 text-sm font-medium">
+                        <td className="px-2 sm:px-4 py-4 text-sm font-medium">
                           <div className="flex flex-col space-y-1" onClick={(e) => e.stopPropagation()}>
                             {hasPermission('student:view') && (
                               <ActionTooltip content="Öğrenci detaylarını görüntüle">
