@@ -390,6 +390,22 @@ export default function ProfilePage() {
             </div>
 
             <div className="p-6 space-y-4">
+              {/* Error message in modal */}
+              {error && (
+                <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-400 p-4 rounded">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-red-800 dark:text-red-200 font-medium">{error}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Current Password */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -398,7 +414,10 @@ export default function ProfilePage() {
                 <input
                   type="password"
                   value={passwordForm.current_password}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, current_password: e.target.value })}
+                  onChange={(e) => {
+                    setPasswordForm({ ...passwordForm, current_password: e.target.value });
+                    setError(''); // Clear error when typing
+                  }}
                   className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
                   placeholder="Mevcut şifreniz"
                 />
@@ -412,7 +431,10 @@ export default function ProfilePage() {
                 <input
                   type="password"
                   value={passwordForm.new_password}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, new_password: e.target.value })}
+                  onChange={(e) => {
+                    setPasswordForm({ ...passwordForm, new_password: e.target.value });
+                    setError(''); // Clear error when typing
+                  }}
                   className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
                   placeholder="Yeni şifreniz (en az 6 karakter)"
                 />
@@ -426,7 +448,10 @@ export default function ProfilePage() {
                 <input
                   type="password"
                   value={passwordForm.confirm_password}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, confirm_password: e.target.value })}
+                  onChange={(e) => {
+                    setPasswordForm({ ...passwordForm, confirm_password: e.target.value });
+                    setError(''); // Clear error when typing
+                  }}
                   className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
                   placeholder="Yeni şifrenizi tekrar girin"
                 />
