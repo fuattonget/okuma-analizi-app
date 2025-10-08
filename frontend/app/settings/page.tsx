@@ -347,7 +347,7 @@ export default function SettingsPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
       <Navigation />
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
         <Breadcrumbs
           items={[
             { label: 'Ana Sayfa', href: '/' },
@@ -355,13 +355,13 @@ export default function SettingsPage() {
           ]}
         />
 
-        <div className="mt-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center">
-              <SettingsIcon size="lg" className="mr-3" />
+        <div className="mt-4 sm:mt-8">
+          <div className="mb-4 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white flex items-center">
+              <SettingsIcon size="lg" className="mr-2 sm:mr-3" />
               Sistem Ayarları
             </h1>
-            <p className="mt-2 text-gray-600 dark:text-gray-400">
+            <p className="mt-2 text-sm sm:text-base text-gray-600 dark:text-gray-400">
               Kullanıcı ve rol yönetimi
             </p>
           </div>
@@ -389,29 +389,31 @@ export default function SettingsPage() {
           )}
 
           {/* Tabs */}
-          <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
-            <nav className="-mb-px flex space-x-8">
+          <div className="border-b border-gray-200 dark:border-gray-700 mb-4 sm:mb-6">
+            <nav className="-mb-px flex space-x-4 sm:space-x-8 overflow-x-auto">
               <button
                 onClick={() => setActiveTab('users')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
                   activeTab === 'users'
                     ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
                 }`}
               >
                 <UserIcon size="sm" className="inline mr-2" />
-                Kullanıcı Yönetimi
+                <span className="hidden sm:inline">Kullanıcı Yönetimi</span>
+                <span className="sm:hidden">Kullanıcılar</span>
               </button>
               <button
                 onClick={() => setActiveTab('roles')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
                   activeTab === 'roles'
                     ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
                 }`}
               >
                 <ShieldIcon size="sm" className="inline mr-2" />
-                Rol Yönetimi
+                <span className="hidden sm:inline">Rol Yönetimi</span>
+                <span className="sm:hidden">Roller</span>
               </button>
             </nav>
           </div>
@@ -420,19 +422,19 @@ export default function SettingsPage() {
           {activeTab === 'users' && (
             <div>
               {/* Users Header */}
-              <div className="flex justify-between items-center mb-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 sm:mb-6">
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
                     Kullanıcı Yönetimi
                   </h2>
-                  <p className="text-gray-600 dark:text-gray-400">
+                  <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
                     Sistem kullanıcılarını yönetin
                   </p>
                 </div>
                 {(hasPermission('user:create') || hasPermission('user_management')) && (
                   <button
                     onClick={() => openUserModal()}
-                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                   >
                     <PlusIcon size="sm" className="mr-2" />
                     Yeni Kullanıcı
@@ -441,8 +443,8 @@ export default function SettingsPage() {
               </div>
 
               {/* Users Filters */}
-              <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6 mb-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-4 sm:p-6 mb-4 sm:mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Arama
@@ -475,13 +477,13 @@ export default function SettingsPage() {
                       ))}
                     </select>
                   </div>
-                  <div className="flex items-end">
+                  <div className="flex items-end lg:col-span-1 sm:col-span-2">
                     <button
                       onClick={() => {
                         setSearchTerm('');
                         setRoleFilter('');
                       }}
-                      className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600"
+                      className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600"
                     >
                       <FilterIcon size="sm" className="mr-2" />
                       Filtreleri Temizle
@@ -509,19 +511,19 @@ export default function SettingsPage() {
                     <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                       <thead className="bg-gray-50 dark:bg-slate-700">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                             Kullanıcı
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                             Rol
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                             Durum
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                             Oluşturulma
                           </th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                          <th className="px-4 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                             İşlemler
                           </th>
                         </tr>
@@ -529,31 +531,43 @@ export default function SettingsPage() {
                       <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-gray-700">
                         {users.map((user) => (
                           <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-slate-700">
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-4 sm:px-6 py-4">
                               <div className="flex items-center">
-                                <div className="flex-shrink-0 h-10 w-10">
-                                  <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
-                                    <span className="text-sm font-medium text-indigo-600 dark:text-indigo-300">
+                                <div className="flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10">
+                                  <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
+                                    <span className="text-xs sm:text-sm font-medium text-indigo-600 dark:text-indigo-300">
                                       {user.username.charAt(0).toUpperCase()}
                                     </span>
                                   </div>
                                 </div>
-                                <div className="ml-4">
-                                  <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                <div className="ml-3 sm:ml-4 min-w-0 flex-1">
+                                  <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
                                     {user.username}
                                   </div>
-                                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                                  <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">
                                     {user.email}
+                                  </div>
+                                  <div className="sm:hidden mt-1 flex flex-wrap gap-1">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                      {user.role}
+                                    </span>
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                      user.is_active
+                                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                    }`}>
+                                      {user.is_active ? 'Aktif' : 'Pasif'}
+                                    </span>
                                   </div>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap">
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
                                 {user.role}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                                 user.is_active
                                   ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
@@ -562,11 +576,11 @@ export default function SettingsPage() {
                                 {user.is_active ? 'Aktif' : 'Pasif'}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                               {formatTurkishDate(user.created_at)}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                              <div className="flex justify-end space-x-2">
+                            <td className="px-4 sm:px-6 py-4 text-right text-sm font-medium">
+                              <div className="flex justify-end flex-col sm:flex-row gap-2">
                                 {(hasPermission('user:update') || hasPermission('user_management')) && (
                                   <button
                                     onClick={() => openUserModal(user)}
@@ -630,19 +644,19 @@ export default function SettingsPage() {
               ) : (
                 <>
                   {/* Roles Header */}
-                  <div className="flex justify-between items-center mb-6">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 sm:mb-6">
                     <div>
-                      <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                      <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
                         Rol Yönetimi
                       </h2>
-                      <p className="text-gray-600 dark:text-gray-400">
+                      <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
                         Sistem rollerini ve yetkilerini yönetin
                       </p>
                     </div>
                     {(hasPermission('role:create') || hasPermission('role_management')) && (
                       <button
                         onClick={() => openRoleModal()}
-                        className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                       >
                         <PlusIcon size="sm" className="mr-2" />
                         Yeni Rol
@@ -655,10 +669,10 @@ export default function SettingsPage() {
                 {roles.length === 0 ? (
                   <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-lg shadow">
                     <ShieldIcon size="lg" className="mx-auto text-gray-400" />
-                    <p className="mt-2 text-gray-600 dark:text-gray-400">Henüz rol bulunmuyor</p>
+                    <p className="mt-2 text-sm sm:text-base text-gray-600 dark:text-gray-400">Henüz rol bulunmuyor</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                     {roles.map((role) => {
                       // Grup bazında permission sayılarını hesapla
                       const permissionsByGroup = PERMISSION_GROUPS.map(group => ({
@@ -671,27 +685,27 @@ export default function SettingsPage() {
                       return (
                         <div 
                           key={role.id} 
-                          className="bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-lg transition-shadow p-6 border border-gray-200 dark:border-gray-700"
+                          className="bg-white dark:bg-slate-800 rounded-lg shadow-md hover:shadow-lg transition-shadow p-4 sm:p-6 border border-gray-200 dark:border-gray-700"
                         >
                           <div className="flex items-start justify-between mb-4">
-                            <div className="flex items-center space-x-3">
+                            <div className="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
                               <div className="flex-shrink-0">
-                                <div className="w-12 h-12 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
                                   <ShieldIcon size="md" className="text-indigo-600 dark:text-indigo-400" />
                                 </div>
                               </div>
-                              <div>
-                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                              <div className="min-w-0 flex-1">
+                                <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate">
                                   {role.display_name || role.name}
                                 </h3>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate">
                                   {role.name}
                                 </p>
                               </div>
                             </div>
                           </div>
 
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 min-h-[40px]">
+                          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-4 min-h-[40px] line-clamp-2">
                             {role.description || 'Açıklama yok'}
                           </p>
 
@@ -723,7 +737,7 @@ export default function SettingsPage() {
                             </div>
                           </div>
 
-                          <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 pt-4 border-t border-gray-200 dark:border-gray-700">
                             <div className="text-xs text-gray-500 dark:text-gray-400">
                               {formatTurkishDate(role.created_at)}
                             </div>
@@ -732,7 +746,7 @@ export default function SettingsPage() {
                                 {(hasPermission('role:update') || hasPermission('role_management')) && (
                                   <button
                                     onClick={() => openRoleModal(role)}
-                                    className="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-md transition-colors"
+                                    className="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 dark:text-indigo-400 rounded-md transition-colors"
                                     title="Düzenle"
                                   >
                                     <EditIcon size="sm" />
@@ -741,7 +755,7 @@ export default function SettingsPage() {
                                 {(hasPermission('role:delete') || hasPermission('role_management')) && (
                                   <button
                                     onClick={() => handleDeleteRole(role.id)}
-                                    className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md transition-colors"
+                                    className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 dark:text-red-400 rounded-md transition-colors"
                                     title="Sil"
                                   >
                                     <DeleteIcon size="sm" />
