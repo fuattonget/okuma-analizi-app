@@ -190,25 +190,25 @@ export default function ProfilePage() {
     <div className={combineThemeClasses('min-h-screen', themeColors.background.primary)}>
       <Navigation />
       
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
         <Breadcrumbs items={[
           { label: 'Ana Sayfa', href: '/' },
           { label: 'Profil', href: '/profile' }
         ]} />
 
         {/* Header */}
-        <div className="mt-6 mb-8 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="w-16 h-16 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center">
-              <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-300">
+        <div className="mt-4 sm:mt-6 mb-6 sm:mb-8 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <div className="flex items-center space-x-3 sm:space-x-4">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center flex-shrink-0">
+              <span className="text-xl sm:text-2xl font-bold text-indigo-600 dark:text-indigo-300">
                 {profile?.username?.charAt(0)?.toUpperCase() || 'U'}
               </span>
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
                 Profil
               </h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-1">
+              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
                 Hesap bilgilerinizi görüntüleyin ve güncelleyin
               </p>
             </div>
@@ -236,25 +236,25 @@ export default function ProfilePage() {
 
         {/* Profile Information Card */}
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden mb-6">
-          <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+          <div className="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white flex items-center">
               <UserIcon size="md" className="mr-2" />
               Profil Bilgileri
             </h2>
             {!isEditing ? (
               <button
                 onClick={handleEditToggle}
-                className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 transition-colors flex items-center"
+                className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 transition-colors flex items-center justify-center"
               >
                 <EditIcon size="sm" className="mr-2" />
                 Düzenle
               </button>
             ) : (
-              <div className="flex space-x-2">
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                 <button
                   onClick={handleSaveProfile}
                   disabled={saving}
-                  className="px-4 py-2 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 transition-colors flex items-center disabled:opacity-50"
+                  className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white font-medium rounded-md hover:bg-green-700 transition-colors flex items-center justify-center disabled:opacity-50"
                 >
                   <CheckIcon size="sm" className="mr-2" />
                   {saving ? 'Kaydediliyor...' : 'Kaydet'}
@@ -262,7 +262,7 @@ export default function ProfilePage() {
                 <button
                   onClick={handleEditToggle}
                   disabled={saving}
-                  className="px-4 py-2 bg-gray-500 text-white font-medium rounded-md hover:bg-gray-600 transition-colors flex items-center disabled:opacity-50"
+                  className="w-full sm:w-auto px-4 py-2 bg-gray-500 text-white font-medium rounded-md hover:bg-gray-600 transition-colors flex items-center justify-center disabled:opacity-50"
                 >
                   <XIcon size="sm" className="mr-2" />
                   İptal
@@ -271,7 +271,7 @@ export default function ProfilePage() {
             )}
           </div>
 
-          <div className="p-6 space-y-6">
+          <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
             {/* Username */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
@@ -352,17 +352,17 @@ export default function ProfilePage() {
 
         {/* Security Card */}
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+          <div className="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white flex items-center">
               <LockIcon size="md" className="mr-2" />
               Güvenlik
             </h2>
           </div>
 
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <button
               onClick={() => setShowPasswordModal(true)}
-              className="px-6 py-3 bg-gray-600 text-white font-medium rounded-md hover:bg-gray-700 transition-colors flex items-center"
+              className="w-full sm:w-auto px-6 py-3 bg-gray-600 text-white font-medium rounded-md hover:bg-gray-700 transition-colors flex items-center justify-center"
             >
               <LockIcon size="sm" className="mr-2" />
               Şifre Değiştir
@@ -372,7 +372,7 @@ export default function ProfilePage() {
 
         {/* Session Info */}
         <div className="mt-6 bg-gray-50 dark:bg-slate-800 rounded-lg p-4 border border-gray-200 dark:border-slate-700">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
             💡 <strong>Oturum Bilgisi:</strong> 3 saat işlem yapmazsanız otomatik olarak çıkış yapılacaktır.
           </p>
         </div>
@@ -381,15 +381,15 @@ export default function ProfilePage() {
       {/* Password Change Modal */}
       {showPasswordModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-md w-full">
-            <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="px-4 sm:px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white flex items-center">
                 <LockIcon size="md" className="mr-2" />
                 Şifre Değiştir
               </h3>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-4 sm:p-6 space-y-4">
               {/* Error message in modal */}
               {error && (
                 <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-400 p-4 rounded">
@@ -485,7 +485,7 @@ export default function ProfilePage() {
               )}
             </div>
 
-            <div className="px-6 py-4 bg-gray-50 dark:bg-slate-700 flex justify-end space-x-3">
+            <div className="px-4 sm:px-6 py-4 bg-gray-50 dark:bg-slate-700 flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
               <button
                 onClick={() => {
                   setShowPasswordModal(false);
@@ -493,14 +493,14 @@ export default function ProfilePage() {
                   setError('');
                 }}
                 disabled={saving}
-                className="px-4 py-2 bg-gray-500 text-white font-medium rounded-md hover:bg-gray-600 transition-colors disabled:opacity-50"
+                className="w-full sm:w-auto px-4 py-2 bg-gray-500 text-white font-medium rounded-md hover:bg-gray-600 transition-colors disabled:opacity-50"
               >
                 İptal
               </button>
               <button
                 onClick={handleChangePassword}
                 disabled={saving}
-                className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center"
+                className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center justify-center"
               >
                 <CheckIcon size="sm" className="mr-2" />
                 {saving ? 'Değiştiriliyor...' : 'Şifreyi Değiştir'}
