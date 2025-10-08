@@ -93,7 +93,7 @@ services:
     environment:
       # Use HOST_IP environment variable, fallback to localhost
       # Set HOST_IP before running: export HOST_IP=$(ipconfig getifaddr en0)
-      - NEXT_PUBLIC_API_URL=http://${HOST_IP:-192.168.1.122}:8000
+      - NEXT_PUBLIC_API_URL=http://${HOST_IP:-localhost}:8000
     depends_on:
       - api
     volumes:
