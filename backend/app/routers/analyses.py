@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Form, Request, Depends
+from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Form, Request, Depends, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
@@ -191,16 +191,37 @@ class AnalyzeResponse(BaseModel):
 
 
 @router.get("/", response_model=List[AnalysisSummary])
-@require_permission("analysis:read_all")
 async def get_analyses(
     limit: int = Query(20, ge=1, le=100),
     student_id: Optional[str] = Query(None, description="Filter analyses by student ID"),
     current_user: UserDoc = Depends(get_current_user)
 ):
-    """Get all analyses list with pagination and lookups (requires analysis:read_all permission)"""
+    """
+    Get analyses list with pagination and lookups.
+    - If student_id provided: requires analysis:read permission (student-specific)
+    - If no student_id: requires analysis:read_all permission (all analyses)
+    """
     
     from app.logging_config import app_logger
-    app_logger.info(f"DEBUG: GET /analyses called with limit={limit}")
+    app_logger.info(f"DEBUG: GET /analyses called with limit={limit}, student_id={student_id}")
+    
+    # Permission check: different permissions for different access patterns
+    if student_id:
+        # Accessing specific student's analyses - requires analysis:read
+        if not await current_user.has_any_permission(["analysis:read", "analysis:read_all", "*"]):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Required permission: analysis:read"
+            )
+        app_logger.info(f"DEBUG: User has permission to view student analyses")
+    else:
+        # Accessing all analyses - requires analysis:read_all
+        if not await current_user.has_any_permission(["analysis:read_all", "*"]):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied. Required permission: analysis:read_all"
+            )
+        app_logger.info(f"DEBUG: User has permission to view all analyses")
     
     # Build query filter
     query_filter = {}
