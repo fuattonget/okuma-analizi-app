@@ -215,14 +215,14 @@ export default function TextsPage() {
       <Navigation />
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="space-y-6">
+      <div className="max-w-7xl mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8">
+        <div className="space-y-4 sm:space-y-6">
           {/* Add Text Button */}
           {hasPermission('text:create') && (
             <div className="flex justify-end">
               <button
                 onClick={handleOpenModal}
-                className="px-6 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors text-sm"
+                className="w-full sm:w-auto px-4 sm:px-6 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors text-sm flex items-center justify-center"
               >
                 <span className="text-lg mr-2">➕</span>
                 Metin Ekle
@@ -232,35 +232,35 @@ export default function TextsPage() {
 
           {/* Texts List */}
           {texts.length === 0 ? (
-            <div className="bg-white shadow rounded-lg p-8 text-center">
-              <div className="text-gray-500 text-lg">
+            <div className="bg-white dark:bg-slate-800 shadow rounded-lg p-6 sm:p-8 text-center border border-gray-200 dark:border-slate-700">
+              <div className="text-gray-500 dark:text-slate-400 text-base sm:text-lg">
                 Henüz metin bulunmuyor
               </div>
-              <div className="text-gray-400 text-sm mt-2">
+              <div className="text-gray-400 dark:text-slate-500 text-sm mt-2">
                 Yeni metin eklemek için yukarıdaki butona tıklayın
               </div>
             </div>
           ) : (
-            <div className="grid gap-4">
+            <div className="grid gap-3 sm:gap-4">
               {texts.map((text) => (
-                <div key={text.id} className="bg-white shadow rounded-lg p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-medium text-gray-900">
+                <div key={text.id} className="bg-white dark:bg-slate-800 shadow rounded-lg p-4 sm:p-6 border border-gray-200 dark:border-slate-700">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between space-y-3 sm:space-y-0">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-slate-100 truncate">
                         {text.title}
                       </h3>
-                      <p className="text-sm text-gray-500 mt-1">
+                      <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
                         {text.grade === 0 ? 'Diğer' : `Sınıf ${text.grade}`} • {formatTurkishDate(text.created_at)}
                       </p>
-                      <p className="text-gray-700 mt-3 line-clamp-3">
+                      <p className="text-gray-700 dark:text-slate-300 mt-3 line-clamp-3">
                         {text.body}
                       </p>
                     </div>
-                    <div className="flex items-center space-x-2 ml-4">
+                    <div className="flex items-center space-x-2 sm:ml-4">
                       {hasPermission('text:update') && (
                         <button
                           onClick={() => handleEdit(text)}
-                          className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+                          className="px-3 py-1 text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
                         >
                           Düzenle
                         </button>
@@ -268,7 +268,7 @@ export default function TextsPage() {
                       {hasPermission('text:delete') && (
                         <button
                           onClick={() => handleDelete(text.id)}
-                          className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
+                          className="px-3 py-1 text-sm bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
                         >
                           Sil
                         </button>
@@ -284,49 +284,49 @@ export default function TextsPage() {
 
       {/* Add/Edit Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-slate-600">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-slate-100">
                 {editingText ? 'Metni Düzenle' : 'Yeni Metin Ekle'}
               </h2>
               <button
                 onClick={handleCloseModal}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 transition-colors"
               >
                 <span className="text-2xl">×</span>
               </button>
             </div>
 
             {/* Modal Body */}
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
               {/* Title */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                   Başlık <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className="block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
                   placeholder="Metin başlığını girin"
                 />
                 {formErrors.title && (
-                  <div className="text-red-600 text-sm mt-1">{formErrors.title}</div>
+                  <div className="text-red-600 dark:text-red-400 text-sm mt-1">{formErrors.title}</div>
                 )}
               </div>
 
               {/* Grade */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                   Sınıf Seviyesi <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={formData.grade}
                   onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  className="block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
                 >
                   <option value="">Sınıf seçin</option>
                   <option value="1">1. Sınıf</option>
@@ -338,40 +338,40 @@ export default function TextsPage() {
                   <option value="0">Diğer</option>
                 </select>
                 {formErrors.grade && (
-                  <div className="text-red-600 text-sm mt-1">{formErrors.grade}</div>
+                  <div className="text-red-600 dark:text-red-400 text-sm mt-1">{formErrors.grade}</div>
                 )}
               </div>
 
               {/* Body */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                   Metin İçeriği <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   value={formData.body}
                   onChange={(e) => setFormData({ ...formData, body: e.target.value })}
-                  rows={8}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  rows={6}
+                  className="block w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
                   placeholder="Okuma analizi yapılacak metni buraya yazın..."
                 />
                 {formErrors.body && (
-                  <div className="text-red-600 text-sm mt-1">{formErrors.body}</div>
+                  <div className="text-red-600 dark:text-red-400 text-sm mt-1">{formErrors.body}</div>
                 )}
               </div>
 
               {/* Modal Footer */}
-              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+              <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-4 border-t border-gray-200 dark:border-slate-600">
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  className="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
+                  className="w-full sm:w-auto px-6 py-2 text-sm font-medium text-gray-700 dark:text-slate-300 bg-gray-100 dark:bg-slate-700 rounded-md hover:bg-gray-200 dark:hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
                 >
                   İptal
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-6 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="w-full sm:w-auto px-6 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
                 >
                   {isSubmitting ? (
                     <div className="flex items-center">
