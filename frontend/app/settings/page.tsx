@@ -53,6 +53,8 @@ export default function SettingsPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordResetDialog, setShowPasswordResetDialog] = useState(false);
+  const [resetPasswordData, setResetPasswordData] = useState<{password: string; email: string; username: string} | null>(null);
 
   // User form state
   const [userForm, setUserForm] = useState({
@@ -195,14 +197,31 @@ export default function SettingsPage() {
   };
 
   const handleResetPassword = async (userId: string) => {
-    if (!confirm('Bu kullanıcının şifresini sıfırlamak istediğinizden emin misiniz?')) return;
+    if (!confirm('Bu kullanıcının şifresini sıfırlamak istediğinizden emin misiniz?\n\nYeni şifre otomatik oluşturulacak ve size bir kez gösterilecektir.')) return;
     
     try {
-      await apiClient.resetUserPassword(userId, 'password123');
-      alert('Şifre sıfırlandı: password123');
+      const response = await apiClient.resetUserPassword(userId, 'temp'); // password parameter not used anymore
+      
+      // Show the new password in a dialog
+      setResetPasswordData({
+        password: response.new_password,
+        email: response.user_email,
+        username: response.user_username
+      });
+      setShowPasswordResetDialog(true);
+      
+      // Reload users to show updated timestamp
+      await loadUsers();
     } catch (error) {
       console.error('Failed to reset password:', error);
       setError('Şifre sıfırlanırken hata oluştu');
+    }
+  };
+
+  const handleCopyPassword = () => {
+    if (resetPasswordData) {
+      navigator.clipboard.writeText(resetPasswordData.password);
+      alert('Şifre panoya kopyalandı!');
     }
   };
 
@@ -983,6 +1002,102 @@ export default function SettingsPage() {
                   {editingRole ? 'Güncelle' : 'Oluştur'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Password Reset Dialog */}
+      {showPasswordResetDialog && resetPasswordData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-lg w-full">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700 bg-green-50 dark:bg-green-900/20">
+              <h3 className="text-lg font-semibold text-green-900 dark:text-green-100 flex items-center">
+                <svg className="w-6 h-6 mr-2 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Şifre Başarıyla Sıfırlandı
+              </h3>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Warning */}
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 p-4 rounded">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200 font-medium">
+                      ⚠️ Bu şifre sadece bir kez görüntülenmektedir!
+                    </p>
+                    <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                      Lütfen şifreyi kopyalayın ve kullanıcıya güvenli bir şekilde iletin.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* User Info */}
+              <div className="bg-gray-50 dark:bg-slate-700 rounded-lg p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Kullanıcı:</span>
+                  <span className="text-sm text-gray-900 dark:text-white font-semibold">{resetPasswordData.username}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">E-posta:</span>
+                  <span className="text-sm text-gray-900 dark:text-white">{resetPasswordData.email}</span>
+                </div>
+              </div>
+
+              {/* New Password Display */}
+              <div className="bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-200 dark:border-indigo-700 rounded-lg p-6">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  Yeni Şifre (7 karakter):
+                </label>
+                <div className="flex items-center space-x-3">
+                  <div className="flex-1 bg-white dark:bg-slate-800 border-2 border-indigo-300 dark:border-indigo-600 rounded-lg px-4 py-3">
+                    <code className="text-2xl font-mono font-bold text-indigo-600 dark:text-indigo-400 tracking-wider">
+                      {resetPasswordData.password}
+                    </code>
+                  </div>
+                  <button
+                    onClick={handleCopyPassword}
+                    className="px-4 py-3 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center"
+                    title="Panoya Kopyala"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Instructions */}
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  <strong>📝 Sonraki Adımlar:</strong>
+                </p>
+                <ol className="list-decimal list-inside text-sm text-blue-700 dark:text-blue-300 mt-2 space-y-1">
+                  <li>Şifreyi kopyalayın (kopyala butonuna tıklayın)</li>
+                  <li>Kullanıcıya güvenli bir kanal ile iletin</li>
+                  <li>Kullanıcının ilk girişte şifresini değiştirmesini söyleyin</li>
+                </ol>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 bg-gray-50 dark:bg-slate-700 flex justify-end">
+              <button
+                onClick={() => {
+                  setShowPasswordResetDialog(false);
+                  setResetPasswordData(null);
+                }}
+                className="px-6 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                Anladım, Kapat
+              </button>
             </div>
           </div>
         </div>
