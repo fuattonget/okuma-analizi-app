@@ -1259,7 +1259,7 @@ export default function StudentsPage() {
               <button
                 onClick={() => setShowEditConfirmDialog(false)}
                 disabled={isSubmitting}
-                className="px-4 py-2 bg-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-gray-500 text-white font-medium rounded-md hover:bg-gray-600 dark:bg-slate-600 dark:hover:bg-slate-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 İptal
               </button>
