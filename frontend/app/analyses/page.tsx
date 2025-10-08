@@ -6,6 +6,7 @@ import { apiClient, AnalysisSummary, Student } from '@/lib/api';
 import { formatTurkishDate } from '@/lib/dateUtils';
 import { useAnalysisStore } from '@/lib/store';
 import { useAuth } from '@/lib/useAuth';
+import { useRoles } from '@/lib/useRoles';
 import classNames from 'classnames';
 import Navigation from '@/components/Navigation';
 import Breadcrumbs from '@/components/Breadcrumbs';
@@ -15,12 +16,20 @@ export default function AnalysesPage() {
   const router = useRouter();
   const { analyses, setAnalyses, updateAnalysis, startPolling, stopPolling, stopAllPolling } = useAnalysisStore();
   const { isAuthenticated, isAuthLoading } = useAuth();
+  const { hasPermission } = useRoles();
   
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'queued' | 'running' | 'done' | 'failed'>('all');
   const [students, setStudents] = useState<Student[]>([]);
 
   const loadAnalyses = useCallback(async () => {
+    // Check if user has permission to view all analyses
+    if (!hasPermission('analysis:read_all')) {
+      console.log('⚠️ User does not have permission to view all analyses');
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
       console.log('🔄 Loading analyses...');
@@ -50,10 +59,10 @@ export default function AnalysesPage() {
       });
     } catch (error) {
       console.error('Failed to load analyses:', error);
-    } finally {
+        } finally {
       setLoading(false);
     }
-  }, [setAnalyses, startPolling, updateAnalysis, stopPolling]);
+  }, [setAnalyses, startPolling, updateAnalysis, stopPolling, hasPermission]);
 
   const loadStudents = useCallback(async () => {
     try {
@@ -186,6 +195,44 @@ export default function AnalysesPage() {
     
     console.log('🔍 AnalysesPage: Not authenticated, redirecting to login');
     return null; // Will redirect via useEffect
+  }
+
+  // Check if user has permission to view all analyses
+  if (!hasPermission('analysis:read_all')) {
+    return (
+      <div className={combineThemeClasses('min-h-screen', themeColors.background.primary)}>
+        <Navigation />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <Breadcrumbs items={[{ label: 'Analizler', href: '/analyses' }]} />
+          
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-6 rounded-lg shadow-sm mt-6">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-6 w-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-lg font-medium text-yellow-800 mb-2">
+                  Yetki Gerekiyor
+                </h3>
+                <div className="text-yellow-700">
+                  <p className="mb-2">
+                    Tüm analizleri görüntülemek için <strong className="font-semibold">"Tüm Analizleri Görüntüle"</strong> yetkisine ihtiyacınız var.
+                  </p>
+                  <p className="text-sm text-yellow-600 mt-2">
+                    Öğrenci analizlerini görüntülemek için öğrenci detay sayfasını kullanabilirsiniz.
+                  </p>
+                  <p className="text-xs text-yellow-600 mt-2">
+                    Bu yetkiyi almak için sistem yöneticinizle iletişime geçin.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (loading) {

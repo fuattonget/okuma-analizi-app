@@ -95,8 +95,13 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       },
       {
         key: 'analysis:read',
-        label: 'Analiz Listele',
-        description: 'Analiz listesini görüntüleyebilir'
+        label: 'Öğrenci Analizlerini Görüntüle',
+        description: 'Öğrenci detay sayfasında analizleri görüntüleyebilir'
+      },
+      {
+        key: 'analysis:read_all',
+        label: 'Tüm Analizleri Görüntüle',
+        description: 'Analizler sayfasında tüm analizleri görüntüleyebilir'
       },
       {
         key: 'analysis:view',

@@ -191,13 +191,13 @@ class AnalyzeResponse(BaseModel):
 
 
 @router.get("/", response_model=List[AnalysisSummary])
-@require_permission("analysis:read")
+@require_permission("analysis:read_all")
 async def get_analyses(
     limit: int = Query(20, ge=1, le=100),
     student_id: Optional[str] = Query(None, description="Filter analyses by student ID"),
     current_user: UserDoc = Depends(get_current_user)
 ):
-    """Get analyses list with pagination and lookups"""
+    """Get all analyses list with pagination and lookups (requires analysis:read_all permission)"""
     
     from app.logging_config import app_logger
     app_logger.info(f"DEBUG: GET /analyses called with limit={limit}")

@@ -20,7 +20,8 @@ ALL_PERMISSIONS = [
     "text:update", 
     "text:delete",
     "analysis:create",
-    "analysis:read", # Alias for analysis:view
+    "analysis:read",     # View analyses in student detail page
+    "analysis:read_all", # NEW: View all analyses in analyses page (admin only)
     "analysis:view",
     "analysis:update",
     "analysis:delete",
@@ -45,13 +46,13 @@ DEFAULT_ROLE_PERMISSIONS = {
     "manager": [
         "student:create", "student:view", "student:update", "student:delete",
         "text:create", "text:view", "text:update", "text:delete", 
-        "analysis:create", "analysis:view", "analysis:update", "analysis:delete",
+        "analysis:create", "analysis:read", "analysis:read_all", "analysis:view", "analysis:update", "analysis:delete",
         "user:view"  # Can view users but not manage them
     ],
     "teacher": [
         "student:view",
         "text:view", 
-        "analysis:create", "analysis:view"
+        "analysis:create", "analysis:read", "analysis:view"  # Can view student's analyses, but NOT all analyses
     ]
 }
 
@@ -59,22 +60,28 @@ def get_permission_display_name(permission: str) -> str:
     """Get human-readable display name for permission"""
     permission_names = {
         "student:create": "Öğrenci Ekleme",
+        "student:read": "Öğrenci Listele",
         "student:view": "Öğrenci Görüntüleme", 
         "student:update": "Öğrenci Güncelleme",
         "student:delete": "Öğrenci Silme",
         "text:create": "Metin Ekleme",
+        "text:read": "Metin Listele",
         "text:view": "Metin Görüntüleme",
         "text:update": "Metin Güncelleme", 
         "text:delete": "Metin Silme",
         "analysis:create": "Analiz Oluşturma",
-        "analysis:view": "Analiz Görüntüleme",
+        "analysis:read": "Öğrenci Analizlerini Görüntüleme",
+        "analysis:read_all": "Tüm Analizleri Görüntüleme",
+        "analysis:view": "Analiz Detayını Görüntüleme",
         "analysis:update": "Analiz Güncelleme",
         "analysis:delete": "Analiz Silme",
         "user:create": "Kullanıcı Ekleme",
+        "user:read": "Kullanıcı Listele",
         "user:view": "Kullanıcı Görüntüleme",
         "user:update": "Kullanıcı Güncelleme",
         "user:delete": "Kullanıcı Silme",
         "role:create": "Rol Ekleme",
+        "role:read": "Rol Listele",
         "role:view": "Rol Görüntüleme", 
         "role:update": "Rol Güncelleme",
         "role:delete": "Rol Silme",
