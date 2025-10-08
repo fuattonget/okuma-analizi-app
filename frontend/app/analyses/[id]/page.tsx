@@ -543,117 +543,117 @@ export default function AnalysisDetailPage() {
   return (
     <div className={combineThemeClasses('min-h-screen', themeColors.background.secondary)}>
       <Navigation />
-      <div className="container mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
         {/* Breadcrumbs */}
         <Breadcrumbs />
         
         {/* Header */}
-        <div className="flex items-center justify-between">
-        <button
-          onClick={() => router.push('/analyses')}
-          className="px-4 py-2 bg-gray-200 text-gray-800 font-medium rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 dark:focus:ring-slate-400"
-        >
-          ← Geri
-        </button>
-        <div className="flex items-center space-x-3">
-          {analysis.status === 'done' && hasPermission('analysis:view') && (
-            <button
-              onClick={() => downloadAnalysisAsJSON(analysis.id)}
-              disabled={downloading}
-              className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-400"
-            >
-              {downloading ? 'İndiriliyor...' : 'Sonucu JSON Olarak İndir'}
-            </button>
-          )}
-          {getStatusBadge(analysis.status)}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-3 sm:space-y-0">
+          <button
+            onClick={() => router.push('/analyses')}
+            className="w-full sm:w-auto px-4 py-2 bg-gray-200 text-gray-800 font-medium rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 dark:focus:ring-slate-400 flex items-center justify-center"
+          >
+            ← Geri
+          </button>
+          <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+            {analysis.status === 'done' && hasPermission('analysis:view') && (
+              <button
+                onClick={() => downloadAnalysisAsJSON(analysis.id)}
+                disabled={downloading}
+                className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-400 flex items-center justify-center"
+              >
+                {downloading ? 'İndiriliyor...' : 'Sonucu JSON Olarak İndir'}
+              </button>
+            )}
+            {getStatusBadge(analysis.status)}
+          </div>
         </div>
-      </div>
 
       {/* Analysis Info */}
-      <div className="card">
+      <div className="bg-white dark:bg-slate-800 shadow rounded-lg border border-gray-200 dark:border-slate-700 p-4 sm:p-6">
         <div className="mb-4">
           {student ? (
             <div>
-              <h1 className="text-xl font-semibold mb-2 flex items-center space-x-3">
-                <span className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-sm font-bold text-blue-600">
+              <h1 className="text-lg sm:text-xl font-semibold mb-2 flex items-center space-x-3">
+                <span className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-sm font-bold text-blue-600 dark:text-blue-300">
                     {student.first_name.charAt(0)}{student.last_name.charAt(0)}
                   </span>
                 </span>
-                <span>{student.first_name} {student.last_name}</span>
+                <span className="truncate">{student.first_name} {student.last_name}</span>
               </h1>
-              <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
-                <div className="text-gray-500">
+              <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-4 text-sm text-gray-600 dark:text-slate-400 mb-3">
+                <div className="text-gray-500 dark:text-slate-400">
                   <GradeIcon size="sm" className="inline mr-1" />
                   {student.grade === 0 ? 'Diğer' : `${student.grade}. Sınıf`}
                 </div>
-                <div className="text-gray-500">
+                <div className="text-gray-500 dark:text-slate-400">
                   <BookIcon size="sm" className="inline mr-1" />
                   Kayıt No: #{student.registration_number}
                 </div>
               </div>
-              <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
+              <div className="bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-md p-3">
                 <h2 className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 flex items-center">
                   <BookIcon size="sm" className="inline mr-1" />
                   Metin Bilgileri
                 </h2>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600 dark:text-slate-400">
                   <span className="font-medium">Metin:</span> {analysis.text.title}
                 </p>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600 dark:text-slate-400">
                   <span className="font-medium">Sınıf:</span> {analysis.text.grade === 0 ? 'Diğer' : (analysis.text.grade ? `${analysis.text.grade}. Sınıf` : 'Belirtilmemiş')}
                 </p>
               </div>
             </div>
           ) : (
-            <h1 className="text-xl font-semibold mb-2">{analysis.text.title}</h1>
+            <h1 className="text-lg sm:text-xl font-semibold mb-2">{analysis.text.title}</h1>
           )}
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           <div>
-            <p className="text-sm text-gray-600">Oluşturulma</p>
-            <p className="font-medium">{formatTurkishDate(analysis.created_at)}</p>
+            <p className="text-sm text-gray-600 dark:text-slate-400">Oluşturulma</p>
+            <p className="font-medium text-gray-900 dark:text-slate-100">{formatTurkishDate(analysis.created_at)}</p>
           </div>
           {analysis.started_at && (
             <div>
-              <p className="text-sm text-gray-600">Başlama</p>
-              <p className="font-medium">{formatTurkishDate(analysis.started_at)}</p>
+              <p className="text-sm text-gray-600 dark:text-slate-400">Başlama</p>
+              <p className="font-medium text-gray-900 dark:text-slate-100">{formatTurkishDate(analysis.started_at)}</p>
             </div>
           )}
           {analysis.finished_at && (
             <div>
-              <p className="text-sm text-gray-600">Bitiş</p>
-              <p className="font-medium">{formatTurkishDate(analysis.finished_at)}</p>
+              <p className="text-sm text-gray-600 dark:text-slate-400">Bitiş</p>
+              <p className="font-medium text-gray-900 dark:text-slate-100">{formatTurkishDate(analysis.finished_at)}</p>
             </div>
           )}
         </div>
 
         {analysis.error && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
-            <p className="text-red-800 font-medium">Hata:</p>
-            <p className="text-red-700">{analysis.error}</p>
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4 mb-6">
+            <p className="text-red-800 dark:text-red-300 font-medium">Hata:</p>
+            <p className="text-red-700 dark:text-red-400">{analysis.error}</p>
           </div>
         )}
 
         {/* Audio Player */}
         <div className="mb-6">
-          <p className="text-sm font-medium text-gray-700 mb-2">Ses Dosyası</p>
+          <p className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Ses Dosyası</p>
           {audioUrl ? (
             <audio ref={audioRef} controls className="w-full">
               <source src={audioUrl} type="audio/mpeg" />
               Tarayıcınız ses dosyasını desteklemiyor.
             </audio>
           ) : (
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
               <button
                 onClick={() => loadAudioUrl(analysis.id)}
                 disabled={audioLoading}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+                className="w-full sm:w-auto px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 flex items-center justify-center"
               >
                 {audioLoading ? 'Yükleniyor...' : 'Ses Dosyasını Yükle'}
               </button>
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-gray-500 dark:text-slate-400 text-center sm:text-left">
                 (1 saat geçerli güvenli bağlantı)
               </span>
             </div>
@@ -663,32 +663,32 @@ export default function AnalysisDetailPage() {
         {/* Transcript Text - STT Sonucu */}
         {exportData?.transcript && (
           <div className="mb-6">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 space-y-2 sm:space-y-0">
               <p className="text-sm font-medium text-gray-700 dark:text-slate-300">
                 <BookIcon size="sm" className="inline mr-1" />
                 Okunan Metin (STT Sonucu)
               </p>
-              <div className="flex items-center space-x-2 text-xs">
-                <span className="bg-orange-100 text-orange-900 px-2 py-1 rounded flex items-center">
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="bg-orange-100 dark:bg-orange-900/30 text-orange-900 dark:text-orange-300 px-2 py-1 rounded flex items-center">
                   <RefreshIcon size="xs" className="inline mr-1" />
                   Değiştirme
                 </span>
-                <span className="bg-blue-100 text-blue-900 px-2 py-1 rounded flex items-center">
+                <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-300 px-2 py-1 rounded flex items-center">
                   <PlusIcon size="xs" className="inline mr-1" />
                   Fazla
                 </span>
-                <span className="bg-purple-100 text-purple-900 px-2 py-1 rounded flex items-center">
+                <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-900 dark:text-purple-300 px-2 py-1 rounded flex items-center">
                   <RefreshIcon size="xs" className="inline mr-1" />
                   Tekrar
                 </span>
-                <span className="bg-red-100 text-red-900 px-2 py-1 rounded opacity-50 italic line-through decoration-2 decoration-red-600 flex items-center">
+                <span className="bg-red-100 dark:bg-red-900/30 text-red-900 dark:text-red-300 px-2 py-1 rounded opacity-50 italic line-through decoration-2 decoration-red-600 flex items-center">
                   <CrossIcon size="xs" className="inline mr-1" />
                   Atlandı
                 </span>
               </div>
             </div>
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-              <div className="text-gray-800 leading-relaxed">
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-4">
+              <div className="text-gray-800 dark:text-slate-200 leading-relaxed">
                 {renderTranscriptWithAnalysis()}
               </div>
             </div>
