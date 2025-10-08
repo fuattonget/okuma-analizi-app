@@ -14,47 +14,221 @@
 
 ```
 okuma-analizi/
-├── backend/              # FastAPI Backend API
-│   ├── app/             # Ana uygulama kodu
-│   │   ├── main.py      # FastAPI entry point
-│   │   ├── config.py    # Konfigürasyon ayarları
-│   │   ├── db.py        # MongoDB ve Redis bağlantıları
-│   │   ├── models/      # Beanie ODM modelleri
-│   │   ├── routers/     # API endpoint'leri
-│   │   ├── services/    # İş mantığı servisleri
-│   │   └── storage/     # Google Cloud Storage entegrasyonu
-│   ├── scripts/         # Yardımcı scriptler
-│   ├── Dockerfile       # Backend container tanımı
-│   └── requirements.txt # Python bağımlılıkları
 │
-├── worker/              # Background Job Worker (RQ)
-│   ├── main.py          # Worker entry point
-│   ├── jobs.py          # Job tanımları
-│   ├── services/        # Alignment ve STT servisleri
-│   ├── Dockerfile       # Worker container tanımı
-│   └── requirements.txt # Worker bağımlılıkları
+├── 📂 backend/                    # FastAPI Backend API
+│   ├── 📂 app/                   # Ana uygulama kodu
+│   │   ├── __init__.py           # Package initializer
+│   │   ├── main.py               # 🚀 FastAPI entry point, router registration
+│   │   ├── config.py             # ⚙️  Environment settings (Pydantic Settings)
+│   │   ├── db.py                 # 🗄️  MongoDB & Redis connection management
+│   │   ├── db_init_guard.py      # Database initialization guard
+│   │   ├── logging_config.py     # Loguru configuration
+│   │   ├── middleware.py         # Custom middleware
+│   │   ├── schemas.py            # Pydantic schemas
+│   │   ├── crud.py               # Database CRUD operations
+│   │   │
+│   │   ├── 📂 models/            # Beanie ODM Models
+│   │   │   ├── __init__.py
+│   │   │   ├── documents.py      # TextDoc, AudioFileDoc, AnalysisDoc, etc.
+│   │   │   ├── user.py           # UserDoc, JWT functions
+│   │   │   ├── student.py        # StudentDoc
+│   │   │   ├── role.py           # RoleDoc (RBAC)
+│   │   │   ├── roles.py          # Role enum and permissions
+│   │   │   └── rbac.py           # RBAC constants and utilities
+│   │   │
+│   │   ├── 📂 routers/           # API Endpoints (FastAPI Routers)
+│   │   │   ├── __init__.py
+│   │   │   ├── auth.py           # POST /login, /logout
+│   │   │   ├── students.py       # CRUD /students
+│   │   │   ├── texts.py          # CRUD /texts
+│   │   │   ├── analyses.py       # CRUD /analyses
+│   │   │   ├── upload.py         # POST /upload/audio
+│   │   │   ├── audio.py          # GET /audio/{id}/url
+│   │   │   ├── sessions.py       # Session management
+│   │   │   ├── users.py          # CRUD /users (admin)
+│   │   │   ├── roles.py          # CRUD /roles (admin)
+│   │   │   └── profile.py        # GET/PUT /profile/me
+│   │   │
+│   │   ├── 📂 services/          # Business Logic Services
+│   │   │   ├── __init__.py
+│   │   │   ├── alignment.py      # Text-to-speech alignment algorithm
+│   │   │   └── scoring.py        # Reading accuracy scoring
+│   │   │
+│   │   ├── 📂 storage/           # Cloud Storage Integration
+│   │   │   ├── __init__.py
+│   │   │   └── gcs.py            # Google Cloud Storage operations
+│   │   │
+│   │   └── 📂 utils/             # Utility Functions
+│   │       ├── text_tokenizer.py # Text tokenization
+│   │       └── timezone.py       # Timezone utilities
+│   │
+│   ├── 📂 scripts/               # Management Scripts
+│   │   ├── __init__.py
+│   │   ├── create_admin.py       # ✅ Admin user creation
+│   │   ├── create_test_users.py  # Test user generation
+│   │   ├── reset_admin_password.py
+│   │   ├── update_all_passwords.py
+│   │   ├── check_indexes.py      # Database index verification
+│   │   ├── migrate_texts.py      # Text migration
+│   │   ├── recreate_texts.py
+│   │   ├── reset_texts.py
+│   │   ├── seed_texts.py         # Sample text seeding
+│   │   └── update_texts.py
+│   │
+│   ├── 📂 logs/                  # Application Logs
+│   │   └── app.log               # Rotating log files (5MB, 7 days)
+│   │
+│   ├── Dockerfile                # 🐳 Backend container definition
+│   ├── requirements.txt          # 📦 Python dependencies (24 packages)
+│   ├── env.example               # Environment variables template
+│   └── gcs-service-account.json  # GCS credentials (gitignored)
 │
-├── frontend/            # Next.js Frontend
-│   ├── app/            # Next.js App Router sayfaları
-│   │   ├── page.tsx    # Ana sayfa (upload)
-│   │   ├── layout.tsx  # Root layout
-│   │   ├── login/      # Login sayfası
-│   │   ├── students/   # Öğrenci yönetimi
-│   │   ├── texts/      # Metin yönetimi
-│   │   ├── analyses/   # Analiz görüntüleme
-│   │   ├── settings/   # Kullanıcı ve rol yönetimi
-│   │   └── profile/    # Kullanıcı profili
-│   ├── components/     # React bileşenleri
-│   ├── lib/           # Utility fonksiyonlar ve API client
-│   ├── middleware.ts  # Next.js middleware (auth check)
-│   ├── Dockerfile     # Frontend container tanımı
-│   └── package.json   # NPM bağımlılıkları
+├── 📂 worker/                    # Background Job Worker (RQ)
+│   ├── __init__.py
+│   ├── main.py                   # 🚀 RQ Worker entry point
+│   ├── config.py                 # Worker configuration
+│   ├── db.py                     # MongoDB connection
+│   ├── jobs.py                   # 📋 Job definitions (analyze_audio)
+│   ├── models.py                 # Worker-specific models
+│   │
+│   ├── 📂 services/              # Worker Services
+│   │   ├── __init__.py
+│   │   ├── elevenlabs_stt.py     # 🎤 ElevenLabs STT API integration
+│   │   ├── alignment.py          # Text alignment algorithm
+│   │   ├── pauses.py             # Pause detection
+│   │   └── scoring.py            # Accuracy scoring
+│   │
+│   ├── 📂 logs/                  # Worker logs
+│   │   └── worker.log
+│   │
+│   ├── Dockerfile                # 🐳 Worker container definition
+│   ├── requirements.txt          # Worker dependencies
+│   ├── env.example
+│   └── gcs-service-account.json
 │
-├── docker-compose.yml  # Servis orkestrasyon
-├── Makefile           # Hızlı komutlar
-├── start-mobile.sh    # Mobil erişim script
-└── logs/              # Uygulama logları
+├── 📂 frontend/                  # Next.js 14 Frontend (App Router)
+│   ├── 📂 app/                   # Next.js Pages (App Router)
+│   │   ├── layout.tsx            # 🎨 Root layout with providers
+│   │   ├── globals.css           # Global Tailwind styles
+│   │   ├── page.tsx              # 🏠 Home page (audio upload)
+│   │   │
+│   │   ├── 📂 login/
+│   │   │   └── page.tsx          # 🔐 Login page
+│   │   │
+│   │   ├── 📂 students/          # Öğrenci Yönetimi
+│   │   │   ├── page.tsx          # Student list with CRUD
+│   │   │   └── 📂 [id]/
+│   │   │       ├── page.tsx      # Student detail + analyses
+│   │   │       └── 📂 analysis/
+│   │   │           └── 📂 [analysisId]/
+│   │   │               └── page.tsx  # Analysis detail with transcript
+│   │   │
+│   │   ├── 📂 texts/             # Metin Yönetimi
+│   │   │   └── page.tsx          # Text list with CRUD
+│   │   │
+│   │   ├── 📂 analyses/          # Analiz Yönetimi
+│   │   │   ├── page.tsx          # All analyses (admin/manager only)
+│   │   │   └── 📂 [id]/
+│   │   │       └── page.tsx      # Analysis detail view
+│   │   │
+│   │   ├── 📂 settings/          # Sistem Ayarları
+│   │   │   └── page.tsx          # User & Role management (RBAC)
+│   │   │
+│   │   └── 📂 profile/           # Kullanıcı Profili
+│   │       └── page.tsx          # Profile view & password change
+│   │
+│   ├── 📂 components/            # Reusable React Components
+│   │   ├── Navigation.tsx        # 🧭 Main navigation with permissions
+│   │   ├── Breadcrumbs.tsx       # Breadcrumb navigation
+│   │   ├── Icon.tsx              # Icon components library
+│   │   ├── Loading.tsx           # Loading spinner
+│   │   ├── Error.tsx             # Error display
+│   │   ├── ConfirmationDialog.tsx # Modal dialogs
+│   │   ├── Tooltip.tsx           # Tooltip component
+│   │   ├── ThemeProvider.tsx     # Dark mode provider
+│   │   ├── ThemeToggle.tsx       # Theme switcher
+│   │   └── KeyboardShortcuts.tsx # Keyboard shortcuts
+│   │
+│   ├── 📂 lib/                   # Utilities & Hooks
+│   │   ├── api.ts                # 🔌 Axios API client with interceptors
+│   │   ├── useAuth.ts            # 🔐 Authentication hook (JWT, auto-logout)
+│   │   ├── useRoles.ts           # 👤 RBAC permissions hook
+│   │   ├── useTheme.ts           # 🎨 Dark mode hook
+│   │   ├── permissions.ts        # Permission groups & labels
+│   │   ├── theme.ts              # Theme configuration
+│   │   ├── store.ts              # Zustand state management
+│   │   ├── dateUtils.ts          # Date formatting (Turkish)
+│   │   └── tokenize.ts           # Text tokenization
+│   │
+│   ├── middleware.ts             # 🛡️  Auth middleware (JWT check)
+│   ├── next.config.js            # Next.js configuration
+│   ├── tailwind.config.js        # Tailwind CSS config
+│   ├── postcss.config.js         # PostCSS config
+│   ├── tsconfig.json             # TypeScript config
+│   ├── Dockerfile                # 🐳 Frontend container
+│   ├── package.json              # NPM dependencies
+│   ├── package-lock.json
+│   └── env.example
+│
+├── 📂 tests/                     # Test Suite
+│   ├── __init__.py
+│   ├── conftest.py               # Pytest configuration
+│   ├── run_tests.py              # Test runner
+│   ├── requirements.txt          # Test dependencies
+│   ├── README.md                 # Test documentation
+│   ├── test_alignment_*.py       # Alignment algorithm tests (5 files)
+│   ├── test_analysis_pipeline_events.py
+│   ├── test_api_sessions.py
+│   ├── test_filler_handling.py
+│   ├── test_migration_v2.py
+│   ├── test_models_indexes.py
+│   ├── test_normalization_functions.py
+│   ├── test_repetition_detection.py
+│   ├── test_stt_passthrough.py
+│   ├── test_sub_type_normalization.py
+│   └── test_ui_integration.py
+│
+├── 📂 scripts/                   # Root-level Utility Scripts
+│   ├── migrate_v2.py             # Database migration v2
+│   ├── recompute_analysis.py     # Recompute analysis results
+│   ├── verify_words.py           # Word verification
+│   └── 📂 _archive/
+│       └── fix_word_events.py
+│
+├── 📂 logs/                      # Application Logs (shared)
+│   ├── app.log                   # Current log
+│   ├── worker.log                # Worker log
+│   └── *.log.zip                 # Compressed old logs (7 days retention)
+│
+├── 📂 infra/                     # Infrastructure (empty placeholder)
+│
+├── 🐳 docker-compose.yml         # Docker Compose orchestration
+├── 📜 Makefile                   # Make commands for quick operations
+├── 🚀 start.sh                   # Start script (localhost)
+├── 📱 start-mobile.sh            # Start script (mobile access, auto-IP)
+├── 🧪 test-system.sh             # System test script
+├── 🔐 gcs-service-account.json   # GCS credentials (gitignored)
+│
+├── 📄 README.md                  # Project README
+├── 📊 PROJECT_REPORT.md          # This comprehensive report
+├── 📋 PROJECT_TECHNICAL_REPORT.md # Technical analysis report
+├── 📖 ALIGNMENT_SYSTEM_DOCUMENTATION.md # Alignment algorithm docs
+│
+└── .env                          # Environment variables (gitignored)
 ```
+
+### 📊 Dosya İstatistikleri
+
+| Kategori | Dosya Sayısı |
+|----------|--------------|
+| **Backend Python** | 34 dosya |
+| **Frontend TypeScript/TSX** | 28 dosya |
+| **Worker Python** | 10 dosya |
+| **Test Python** | 15 dosya |
+| **Script Python** | 16 dosya |
+| **Config/Docker** | 8 dosya |
+| **Documentation** | 4 dosya |
+| **TOPLAM** | ~115 dosya |
 
 ---
 
