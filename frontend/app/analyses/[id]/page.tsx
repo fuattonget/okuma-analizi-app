@@ -556,7 +556,7 @@ export default function AnalysisDetailPage() {
           ← Geri
         </button>
         <div className="flex items-center space-x-3">
-          {analysis.status === 'done' && hasPermission('analysis:read') && (
+          {analysis.status === 'done' && hasPermission('analysis:view') && (
             <button
               onClick={() => downloadAnalysisAsJSON(analysis.id)}
               disabled={downloading}
