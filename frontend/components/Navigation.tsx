@@ -45,8 +45,7 @@ export default function Navigation() {
   
   const canAccessAnalyses = () => {
     return hasPermission('analysis_management' as any) ||
-           hasPermission('analysis:read' as any) ||
-           hasPermission('analysis:view' as any);
+           hasPermission('analysis:read_all' as any);  // Only users with read_all can see the analyses page
   };
 
   // Filter menu items based on permissions
