@@ -54,8 +54,10 @@ export default function SettingsPage() {
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordResetDialog, setShowPasswordResetDialog] = useState(false);
+  const [showPasswordResetConfirm, setShowPasswordResetConfirm] = useState(false);
   const [resetPasswordData, setResetPasswordData] = useState<{password: string; email: string; username: string} | null>(null);
   const [passwordCopied, setPasswordCopied] = useState(false);
+  const [userToResetPassword, setUserToResetPassword] = useState<{id: string; username: string; email: string} | null>(null);
 
   // User form state
   const [userForm, setUserForm] = useState({
@@ -197,11 +199,22 @@ export default function SettingsPage() {
     }
   };
 
-  const handleResetPassword = async (userId: string) => {
-    if (!confirm('Bu kullanıcının şifresini sıfırlamak istediğinizden emin misiniz?\n\nYeni şifre otomatik oluşturulacak ve size bir kez gösterilecektir.')) return;
+  const handleResetPasswordClick = (user: User) => {
+    setUserToResetPassword({
+      id: user.id,
+      username: user.username,
+      email: user.email
+    });
+    setShowPasswordResetConfirm(true);
+  };
+
+  const handleResetPasswordConfirm = async () => {
+    if (!userToResetPassword) return;
+    
+    setShowPasswordResetConfirm(false);
     
     try {
-      const response = await apiClient.resetUserPassword(userId, 'temp'); // password parameter not used anymore
+      const response = await apiClient.resetUserPassword(userToResetPassword.id, 'temp'); // password parameter not used anymore
       
       // Show the new password in a dialog
       setResetPasswordData({
@@ -216,6 +229,8 @@ export default function SettingsPage() {
     } catch (error) {
       console.error('Failed to reset password:', error);
       setError('Şifre sıfırlanırken hata oluştu');
+    } finally {
+      setUserToResetPassword(null);
     }
   };
 
@@ -563,7 +578,7 @@ export default function SettingsPage() {
                                 )}
                                 {(hasPermission('user:update') || hasPermission('user_management')) && (
                                   <button
-                                    onClick={() => handleResetPassword(user.id)}
+                                    onClick={() => handleResetPasswordClick(user)}
                                     className="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300"
                                     title="Şifre Sıfırla"
                                   >
@@ -1004,6 +1019,54 @@ export default function SettingsPage() {
                   {editingRole ? 'Güncelle' : 'Oluştur'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Password Reset Confirmation Dialog */}
+      {showPasswordResetConfirm && userToResetPassword && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-md w-full">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+                <svg className="w-6 h-6 mr-2 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                Şifre Sıfırlama Onayı
+              </h3>
+            </div>
+
+            <div className="p-6">
+              <p className="text-gray-700 dark:text-gray-300 mb-4">
+                <strong>{userToResetPassword.username}</strong> kullanıcısının şifresini sıfırlamak istediğinizden emin misiniz?
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                {userToResetPassword.email}
+              </p>
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 p-3 rounded">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  Yeni şifre otomatik oluşturulacak ve size bir kez gösterilecektir.
+                </p>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 bg-gray-50 dark:bg-slate-700 flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowPasswordResetConfirm(false);
+                  setUserToResetPassword(null);
+                }}
+                className="px-4 py-2 bg-gray-500 text-white font-medium rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                İptal
+              </button>
+              <button
+                onClick={handleResetPasswordConfirm}
+                className="px-4 py-2 bg-yellow-600 text-white font-medium rounded-lg hover:bg-yellow-700 transition-colors"
+              >
+                Şifreyi Sıfırla
+              </button>
             </div>
           </div>
         </div>
