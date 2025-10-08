@@ -35,6 +35,8 @@ class Permission(str, Enum):
     # Analysis Management
     ANALYSIS_CREATE = "analysis:create"
     ANALYSIS_READ = "analysis:read"
+    ANALYSIS_READ_ALL = "analysis:read_all"
+    ANALYSIS_VIEW = "analysis:view"
     ANALYSIS_UPDATE = "analysis:update"
     ANALYSIS_DELETE = "analysis:delete"
     

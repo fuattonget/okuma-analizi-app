@@ -24,6 +24,7 @@ export interface Permission {
   'text:delete': boolean;
   'analysis:create': boolean;
   'analysis:read': boolean;
+  'analysis:read_all': boolean;
   'analysis:view': boolean;
   'analysis:update': boolean;
   'analysis:delete': boolean;
@@ -197,6 +198,9 @@ export function useRoles() {
       case 'analysis:view':
         return role === 'admin' || role === 'manager' || role === 'teacher';
       
+      case 'analysis:read_all':
+        return role === 'admin' || role === 'manager';  // Only admin and manager can see all analyses
+      
       case 'analysis:update':
         return role === 'admin' || role === 'manager';
       
@@ -256,6 +260,7 @@ export function useRoles() {
         'text:delete': false,
         'analysis:create': false,
         'analysis:read': false,
+        'analysis:read_all': false,
         'analysis:view': false,
         'analysis:update': false,
         'analysis:delete': false,
@@ -294,6 +299,7 @@ export function useRoles() {
       'text:delete': hasPermission('text:delete'),
       'analysis:create': hasPermission('analysis:create'),
       'analysis:read': hasPermission('analysis:read'),
+      'analysis:read_all': hasPermission('analysis:read_all'),
       'analysis:view': hasPermission('analysis:view'),
       'analysis:update': hasPermission('analysis:update'),
       'analysis:delete': hasPermission('analysis:delete'),
