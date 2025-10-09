@@ -757,11 +757,12 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
                     len(norm_ref) - len(norm_hyp) >= 4):  # At least 4 character difference
                     return True
                 
-                # Check for high similarity only for very similar tokens (80%+ similarity)
+                # Check for high similarity only for very similar tokens (95%+ similarity)
+                # Raised from 0.8 to 0.95 to avoid false positives like "ihtiyaçlar" vs "ihtiyaçları"
                 lev_dist = char_edit_stats(norm_hyp, norm_ref)[0]
                 max_len = max(len(norm_hyp), len(norm_ref), 1)
                 similarity = 1.0 - (lev_dist / max_len)
-                if similarity >= 0.8:  # 80% similarity threshold - much higher
+                if similarity >= 0.95:  # 95% similarity threshold - stricter to avoid false repetitions
                     return True
         
         return False
