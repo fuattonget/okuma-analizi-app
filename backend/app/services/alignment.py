@@ -798,7 +798,7 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
                         lev_dist = char_edit_stats(_norm_token(current_base), _norm_token(next_hyp))[0]
                         max_len = max(len(_norm_token(current_base)), len(_norm_token(next_hyp)), 1)
                         similarity = 1.0 - (lev_dist / max_len)
-                        if similarity >= 0.8:
+                        if similarity >= 0.95:  # Raised to 95% to avoid false positives
                             return True
         
         # Rule 2: Check for consecutive identical hyp_tokens that later match ref tokens
@@ -835,7 +835,7 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
                     lev_dist = char_edit_stats(_norm_token(op_hyp), _norm_token(future_ref))[0]
                     max_len = max(len(_norm_token(op_hyp)), len(_norm_token(future_ref)), 1)
                     similarity = 1.0 - (lev_dist / max_len)
-                    if similarity >= 0.8:
+                    if similarity >= 0.95:  # Raised to 95% to avoid false positives
                         return True
         
         return False
@@ -854,13 +854,13 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
             norm_current_ref = _norm_token(current_ref)
             norm_next_hyp = _norm_token(next_hyp)
             
-            # Check for high similarity (80%+ threshold)
+            # Check for high similarity (95%+ threshold)
             
             lev_dist = char_edit_stats(norm_current_ref, norm_next_hyp)[0]
             max_len = max(len(norm_current_ref), len(norm_next_hyp), 1)
             similarity = 1.0 - (lev_dist / max_len)
             
-            if similarity >= 0.8:  # 80% similarity threshold
+            if similarity >= 0.95:  # 95% similarity threshold - raised to avoid false positives
                 # Convert next extra to substitution by giving it the ref_token
                 alignment[i + 1] = ("replace", current_ref, next_hyp, current_ref_idx, next_hyp_idx)
                 # Make current repetition not consume ref_token
