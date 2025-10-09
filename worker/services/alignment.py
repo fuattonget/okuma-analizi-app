@@ -772,14 +772,26 @@ def build_word_events(alignment: List[Tuple[str, str, str, int, int]], word_time
         
         
         # Rule 4: Check if consecutive extra tokens later match ref tokens
-        # Look ahead for matching ref tokens - but be much more conservative
+        # Look ahead for matching ref tokens
+        # BUT: Only if this is clearly misaligned - the future position should NOT have a matching hyp
         for j in range(alignment_idx + 1, min(len(alignment), alignment_idx + 6)):
             future_op, future_ref, future_hyp, future_ref_idx, future_hyp_idx = alignment[j]
             if future_ref and future_hyp:
                 # Check if current hyp_token exactly matches future ref_token
                 norm_hyp = _norm_token(hyp_token)
                 norm_ref = _norm_token(future_ref)
-                if norm_hyp == norm_ref:  # Exact match only
+                norm_future_hyp = _norm_token(future_hyp)
+                
+                # Only mark as repetition if:
+                # 1. Current hyp matches future ref (exact)
+                # 2. Future hyp is DIFFERENT from future ref (misalignment indicator)
+                if norm_hyp == norm_ref:  # Exact match
+                    # If future position already has correct match, this is NOT a repetition
+                    # This is likely a substitution that should be aligned earlier
+                    if norm_future_hyp == norm_ref:
+                        # Future position already has the correct word, so current is NOT a repetition
+                        return False
+                    # Only mark as repetition if future position is clearly misaligned
                     return True
                 
                 # Only check for substring relationships if there's a clear repetition pattern
