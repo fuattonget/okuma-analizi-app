@@ -12,9 +12,6 @@ RUN npm install
 # Copy source code
 COPY frontend/ .
 
-# Set environment variable
-ENV NEXT_PUBLIC_API_BASE=http://localhost:8000
-
 # Expose port
 EXPOSE 3000
 
