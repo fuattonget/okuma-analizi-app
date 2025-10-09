@@ -47,6 +47,7 @@ export default function AnalysisDetailPage() {
   
   // Interactive highlighting state
   const [hoveredWord, setHoveredWord] = useState<string | null>(null);
+  const [hoveredWordType, setHoveredWordType] = useState<'transcript' | 'reference' | null>(null);
 
   useEffect(() => {
     if (isAuthenticated && params.id) {
@@ -296,8 +297,10 @@ export default function AnalysisDetailPage() {
 
       const tooltipId = `ref-tooltip-${tokenIndex}`;
       
-      // Check if this word should be highlighted
-      const isHighlighted = hoveredWord && token.content.toLowerCase() === hoveredWord.toLowerCase();
+      // Check if this word should be highlighted (only if hovering from transcript)
+      const isHighlighted = hoveredWord && 
+        hoveredWordType === 'transcript' && 
+        token.content.toLowerCase() === hoveredWord.toLowerCase();
       const highlightClass = isHighlighted ? 'bg-yellow-200 dark:bg-yellow-800/50' : '';
 
       return (
@@ -306,6 +309,10 @@ export default function AnalysisDetailPage() {
           className={`${className} ${event?.type === 'missing' ? 'line-through decoration-2 decoration-red-600' : ''} ${highlightClass}`}
           onClick={() => event && handleWordClick(event)}
           onMouseEnter={() => {
+            // Set hovered word for highlighting (from reference)
+            setHoveredWord(token.content);
+            setHoveredWordType('reference');
+            
             if (title) {
               const tooltip = document.getElementById(tooltipId);
               console.log('Tooltip hover (reference):', tooltipId, tooltip);
@@ -317,6 +324,10 @@ export default function AnalysisDetailPage() {
             }
           }}
           onMouseLeave={() => {
+            // Clear hovered word
+            setHoveredWord(null);
+            setHoveredWordType(null);
+            
             if (title) {
               const tooltip = document.getElementById(tooltipId);
               if (tooltip) {
@@ -409,8 +420,10 @@ export default function AnalysisDetailPage() {
       if (displayText) {
         const tooltipId = `tooltip-${eventIdx}`;  // eventIdx kullan, wordIndex değil
         
-        // Check if this word should be highlighted
-        const isHighlighted = hoveredWord && displayText.toLowerCase() === hoveredWord.toLowerCase();
+        // Check if this word should be highlighted (only if hovering from reference)
+        const isHighlighted = hoveredWord && 
+          hoveredWordType === 'reference' && 
+          displayText.toLowerCase() === hoveredWord.toLowerCase();
         const highlightClass = isHighlighted ? 'bg-yellow-200 dark:bg-yellow-800/50' : '';
         
         rendered.push(
@@ -419,8 +432,9 @@ export default function AnalysisDetailPage() {
             className={`${className} ${title ? 'cursor-help relative' : ''} ${isMissing ? 'line-through decoration-2 decoration-red-600' : ''} ${event.timing?.start_ms ? 'cursor-pointer hover:bg-yellow-100' : ''} ${highlightClass}`}
             onClick={() => handleWordClick(event)}
             onMouseEnter={() => {
-              // Set hovered word for highlighting
+              // Set hovered word for highlighting (from transcript)
               setHoveredWord(displayText);
+              setHoveredWordType('transcript');
               
               if (title) {
                 const tooltip = document.getElementById(tooltipId);
@@ -435,6 +449,7 @@ export default function AnalysisDetailPage() {
             onMouseLeave={() => {
               // Clear hovered word
               setHoveredWord(null);
+              setHoveredWordType(null);
               
               if (title) {
                 const tooltip = document.getElementById(tooltipId);
