@@ -45,6 +45,15 @@ export default function StudentAnalysisDetailPage() {
   const [eventsLoading, setEventsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'summary' | 'words' | 'pauses'>('summary');
   const [downloading, setDownloading] = useState(false);
+  
+  // Interactive highlighting state
+  const [hoveredWord, setHoveredWord] = useState<string | null>(null);
+  const [hoveredWordType, setHoveredWordType] = useState<'transcript' | 'reference' | null>(null);
+  
+  // Helper function to normalize word (remove punctuation and lowercase)
+  const normalizeWord = (word: string): string => {
+    return word.toLowerCase().replace(/[.,;:!?"""'()[\]{}]/g, '').trim();
+  };
 
   useEffect(() => {
     if (isAuthenticated && params.analysisId) {
@@ -294,12 +303,22 @@ export default function StudentAnalysisDetailPage() {
 
       const tooltipId = `ref-tooltip-${tokenIndex}`;
       
+      // Check if this word should be highlighted (only if hovering from transcript)
+      const isHighlighted = hoveredWord && 
+        hoveredWordType === 'transcript' && 
+        normalizeWord(token.content) === normalizeWord(hoveredWord);
+      const highlightClass = isHighlighted ? 'bg-yellow-200 dark:bg-yellow-800/50' : '';
+      
       return (
         <span 
           key={tokenIndex}
-          className={`${className} ${event?.type === 'missing' ? 'line-through decoration-2 decoration-red-600' : ''}`}
+          className={`${className} ${event?.type === 'missing' ? 'line-through decoration-2 decoration-red-600' : ''} ${highlightClass}`}
           onClick={() => event && handleWordClick(event)}
           onMouseEnter={() => {
+            // Set hovered word for highlighting (from reference)
+            setHoveredWord(token.content);
+            setHoveredWordType('reference');
+            
             if (title) {
               const tooltip = document.getElementById(tooltipId);
               console.log('Tooltip hover (reference):', tooltipId, tooltip);
@@ -311,6 +330,10 @@ export default function StudentAnalysisDetailPage() {
             }
           }}
           onMouseLeave={() => {
+            // Clear hovered word
+            setHoveredWord(null);
+            setHoveredWordType(null);
+            
             if (title) {
               const tooltip = document.getElementById(tooltipId);
               if (tooltip) {
@@ -403,12 +426,22 @@ export default function StudentAnalysisDetailPage() {
       if (displayText) {
         const tooltipId = `tooltip-${eventIdx}`;  // eventIdx kullan, wordIndex değil
         
+        // Check if this word should be highlighted (only if hovering from reference)
+        const isHighlighted = hoveredWord && 
+          hoveredWordType === 'reference' && 
+          normalizeWord(displayText) === normalizeWord(hoveredWord);
+        const highlightClass = isHighlighted ? 'bg-yellow-200 dark:bg-yellow-800/50' : '';
+        
         rendered.push(
           <span 
             key={`word-${eventIdx}`}
-            className={`${className} ${title ? 'cursor-help relative' : ''} ${isMissing ? 'line-through decoration-2 decoration-red-600' : ''} ${event.timing?.start_ms ? 'cursor-pointer hover:bg-yellow-100' : ''}`}
+            className={`${className} ${title ? 'cursor-help relative' : ''} ${isMissing ? 'line-through decoration-2 decoration-red-600' : ''} ${event.timing?.start_ms ? 'cursor-pointer hover:bg-yellow-100' : ''} ${highlightClass}`}
             onClick={() => handleWordClick(event)}
             onMouseEnter={() => {
+              // Set hovered word for highlighting (from transcript)
+              setHoveredWord(displayText);
+              setHoveredWordType('transcript');
+              
               if (title) {
                 const tooltip = document.getElementById(tooltipId);
                 console.log('Tooltip hover (transcript):', tooltipId, tooltip);
@@ -420,6 +453,10 @@ export default function StudentAnalysisDetailPage() {
               }
             }}
             onMouseLeave={() => {
+              // Clear hovered word
+              setHoveredWord(null);
+              setHoveredWordType(null);
+              
               if (title) {
                 const tooltip = document.getElementById(tooltipId);
                 if (tooltip) {
