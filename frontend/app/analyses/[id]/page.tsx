@@ -44,6 +44,9 @@ export default function AnalysisDetailPage() {
   const [eventsLoading, setEventsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'summary' | 'words' | 'pauses'>('summary');
   const [downloading, setDownloading] = useState(false);
+  
+  // Interactive highlighting state
+  const [hoveredWord, setHoveredWord] = useState<string | null>(null);
 
   useEffect(() => {
     if (isAuthenticated && params.id) {
@@ -293,10 +296,14 @@ export default function AnalysisDetailPage() {
 
       const tooltipId = `ref-tooltip-${tokenIndex}`;
       
+      // Check if this word should be highlighted
+      const isHighlighted = hoveredWord && token.content.toLowerCase() === hoveredWord.toLowerCase();
+      const highlightClass = isHighlighted ? 'bg-yellow-200 dark:bg-yellow-800/50' : '';
+
       return (
         <span 
           key={tokenIndex}
-          className={`${className} ${event?.type === 'missing' ? 'line-through decoration-2 decoration-red-600' : ''}`}
+          className={`${className} ${event?.type === 'missing' ? 'line-through decoration-2 decoration-red-600' : ''} ${highlightClass}`}
           onClick={() => event && handleWordClick(event)}
           onMouseEnter={() => {
             if (title) {
@@ -402,12 +409,19 @@ export default function AnalysisDetailPage() {
       if (displayText) {
         const tooltipId = `tooltip-${eventIdx}`;  // eventIdx kullan, wordIndex değil
         
+        // Check if this word should be highlighted
+        const isHighlighted = hoveredWord && displayText.toLowerCase() === hoveredWord.toLowerCase();
+        const highlightClass = isHighlighted ? 'bg-yellow-200 dark:bg-yellow-800/50' : '';
+        
         rendered.push(
           <span 
             key={`word-${eventIdx}`}
-            className={`${className} ${title ? 'cursor-help relative' : ''} ${isMissing ? 'line-through decoration-2 decoration-red-600' : ''} ${event.timing?.start_ms ? 'cursor-pointer hover:bg-yellow-100' : ''}`}
+            className={`${className} ${title ? 'cursor-help relative' : ''} ${isMissing ? 'line-through decoration-2 decoration-red-600' : ''} ${event.timing?.start_ms ? 'cursor-pointer hover:bg-yellow-100' : ''} ${highlightClass}`}
             onClick={() => handleWordClick(event)}
             onMouseEnter={() => {
+              // Set hovered word for highlighting
+              setHoveredWord(displayText);
+              
               if (title) {
                 const tooltip = document.getElementById(tooltipId);
                 console.log('Tooltip hover (transcript):', tooltipId, tooltip);
@@ -419,6 +433,9 @@ export default function AnalysisDetailPage() {
               }
             }}
             onMouseLeave={() => {
+              // Clear hovered word
+              setHoveredWord(null);
+              
               if (title) {
                 const tooltip = document.getElementById(tooltipId);
                 if (tooltip) {
