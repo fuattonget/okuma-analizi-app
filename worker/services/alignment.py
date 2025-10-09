@@ -607,7 +607,11 @@ def classify_replace(ref: str, hyp: str) -> str:
             return "hece_ekleme"
         elif len_diff >= 2:  # ref much longer, hyp much shorter
             return "hece_eksiltme"
-        else:
+        elif len_diff == 1:  # ref longer by 1, hyp shorter by 1, but ed >= 2
+            return "hece_eksiltme"  # More complex than simple harf_eksiltme
+        elif len_diff == -1:  # ref shorter by 1, hyp longer by 1, but ed >= 2
+            return "hece_ekleme"  # More complex than simple harf_ekleme
+        else:  # len_diff == 0, ed >= 2
             return "harf_değiştirme"
 
 
