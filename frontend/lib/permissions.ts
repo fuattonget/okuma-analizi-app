@@ -261,10 +261,10 @@ export const GROUP_COLORS = {
     badge: 'bg-green-100 text-green-800 dark:bg-green-600 dark:text-white'
   },
   purple: {
-    bg: 'bg-purple-50 dark:bg-purple-900/30',
-    border: 'border-purple-200 dark:border-purple-700',
-    text: 'text-purple-900 dark:text-purple-200',
-    badge: 'bg-purple-300 text-purple-900 dark:bg-purple-700 dark:text-white'
+    bg: 'bg-indigo-50 dark:bg-indigo-900/30',
+    border: 'border-indigo-200 dark:border-indigo-700',
+    text: 'text-indigo-900 dark:text-indigo-200',
+    badge: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-600 dark:text-white'
   },
   yellow: {
     bg: 'bg-yellow-50 dark:bg-yellow-900/30',
