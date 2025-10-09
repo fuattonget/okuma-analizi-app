@@ -264,7 +264,7 @@ export const GROUP_COLORS = {
     bg: 'bg-purple-50 dark:bg-purple-900/30',
     border: 'border-purple-200 dark:border-purple-700',
     text: 'text-purple-900 dark:text-purple-200',
-    badge: 'bg-purple-200 text-purple-900 dark:bg-purple-700 dark:text-white'
+    badge: 'bg-purple-300 text-purple-900 dark:bg-purple-700 dark:text-white'
   },
   yellow: {
     bg: 'bg-yellow-50 dark:bg-yellow-900/30',
