@@ -48,6 +48,11 @@ export default function AnalysisDetailPage() {
   // Interactive highlighting state
   const [hoveredWord, setHoveredWord] = useState<string | null>(null);
   const [hoveredWordType, setHoveredWordType] = useState<'transcript' | 'reference' | null>(null);
+  
+  // Helper function to normalize word (remove punctuation and lowercase)
+  const normalizeWord = (word: string): string => {
+    return word.toLowerCase().replace(/[.,;:!?"""'()[\]{}]/g, '').trim();
+  };
 
   useEffect(() => {
     if (isAuthenticated && params.id) {
@@ -300,7 +305,7 @@ export default function AnalysisDetailPage() {
       // Check if this word should be highlighted (only if hovering from transcript)
       const isHighlighted = hoveredWord && 
         hoveredWordType === 'transcript' && 
-        token.content.toLowerCase() === hoveredWord.toLowerCase();
+        normalizeWord(token.content) === normalizeWord(hoveredWord);
       const highlightClass = isHighlighted ? 'bg-yellow-200 dark:bg-yellow-800/50' : '';
 
       return (
@@ -423,7 +428,7 @@ export default function AnalysisDetailPage() {
         // Check if this word should be highlighted (only if hovering from reference)
         const isHighlighted = hoveredWord && 
           hoveredWordType === 'reference' && 
-          displayText.toLowerCase() === hoveredWord.toLowerCase();
+          normalizeWord(displayText) === normalizeWord(hoveredWord);
         const highlightClass = isHighlighted ? 'bg-yellow-200 dark:bg-yellow-800/50' : '';
         
         rendered.push(
