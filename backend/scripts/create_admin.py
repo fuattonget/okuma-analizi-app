@@ -13,9 +13,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from motor.motor_asyncio import AsyncIOMotorClient
 from beanie import init_beanie
-import bcrypt
 from app.config import settings
-from app.models.user import UserDoc
+from app.models.user import UserDoc, get_password_hash
 from app.models.role import RoleDoc
 from app.models.student import StudentDoc
 from app.models.documents import (
@@ -59,8 +58,8 @@ async def create_admin_user(email: str, username: str, password: str):
         print(f"❌ Admin role not found! Please run database initialization first.")
         return False
     
-    # Create new admin user with bcrypt hashed password
-    hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    # Create new admin user with passlib hashed password (same as UserDoc uses)
+    hashed_password = get_password_hash(password)
     admin_user = UserDoc(
         email=email,
         username=username,

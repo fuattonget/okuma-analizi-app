@@ -249,40 +249,40 @@ export function getIconComponent(iconName: string): any {
 // Grup renklerini tanımla
 export const GROUP_COLORS = {
   blue: {
-    bg: 'bg-blue-50 dark:bg-blue-900/20',
-    border: 'border-blue-200 dark:border-blue-800',
-    text: 'text-blue-900 dark:text-blue-100',
-    badge: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+    bg: 'bg-blue-50 dark:bg-blue-900/30',
+    border: 'border-blue-200 dark:border-blue-700',
+    text: 'text-blue-900 dark:text-blue-200',
+    badge: 'bg-blue-100 text-blue-800 dark:bg-blue-800/40 dark:text-blue-100'
   },
   green: {
-    bg: 'bg-green-50 dark:bg-green-900/20',
-    border: 'border-green-200 dark:border-green-800',
-    text: 'text-green-900 dark:text-green-100',
-    badge: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+    bg: 'bg-green-50 dark:bg-green-900/30',
+    border: 'border-green-200 dark:border-green-700',
+    text: 'text-green-900 dark:text-green-200',
+    badge: 'bg-green-100 text-green-800 dark:bg-green-800/40 dark:text-green-100'
   },
   purple: {
-    bg: 'bg-purple-50 dark:bg-purple-900/20',
-    border: 'border-purple-200 dark:border-purple-800',
-    text: 'text-purple-900 dark:text-purple-100',
-    badge: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+    bg: 'bg-purple-50 dark:bg-purple-900/30',
+    border: 'border-purple-200 dark:border-purple-700',
+    text: 'text-purple-900 dark:text-purple-200',
+    badge: 'bg-purple-100 text-purple-800 dark:bg-purple-800/40 dark:text-purple-100'
   },
   yellow: {
-    bg: 'bg-yellow-50 dark:bg-yellow-900/20',
-    border: 'border-yellow-200 dark:border-yellow-800',
-    text: 'text-yellow-900 dark:text-yellow-100',
-    badge: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+    bg: 'bg-yellow-50 dark:bg-yellow-900/30',
+    border: 'border-yellow-200 dark:border-yellow-700',
+    text: 'text-yellow-900 dark:text-yellow-200',
+    badge: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800/40 dark:text-yellow-100'
   },
   red: {
-    bg: 'bg-red-50 dark:bg-red-900/20',
-    border: 'border-red-200 dark:border-red-800',
-    text: 'text-red-900 dark:text-red-100',
-    badge: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+    bg: 'bg-red-50 dark:bg-red-900/30',
+    border: 'border-red-200 dark:border-red-700',
+    text: 'text-red-900 dark:text-red-200',
+    badge: 'bg-red-100 text-red-800 dark:bg-red-800/40 dark:text-red-100'
   },
   gray: {
-    bg: 'bg-gray-50 dark:bg-gray-900/20',
-    border: 'border-gray-200 dark:border-gray-800',
-    text: 'text-gray-900 dark:text-gray-100',
-    badge: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+    bg: 'bg-gray-50 dark:bg-gray-800/40',
+    border: 'border-gray-200 dark:border-gray-600',
+    text: 'text-gray-900 dark:text-gray-200',
+    badge: 'bg-gray-100 text-gray-800 dark:bg-gray-700/50 dark:text-gray-100'
   }
 };
 
