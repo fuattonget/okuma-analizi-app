@@ -84,6 +84,7 @@ export interface AnalysisSummary {
   wer?: number;
   accuracy?: number;
   wpm?: number;
+  audio_duration_sec?: number;
   counts?: {
     correct: number;
     diff: number;
@@ -286,6 +287,18 @@ export interface AnalysisExport {
       substitution: number;
       repetition: number;
       total_words: number;
+      diff: number;
+      // Detailed sub-type counts
+      harf_eksiltme: number;
+      harf_ekleme: number;
+      harf_değiştirme: number;
+      hece_eksiltme: number;
+      hece_ekleme: number;
+      kelime_eksiltme: number;
+      kelime_ekleme: number;
+      kelime_değiştirme: number;
+      tekrarlama: number;
+      uzun_duraksama: number;
     };
     wer: number;
     accuracy: number;
@@ -300,6 +313,69 @@ export interface AnalysisExport {
       substitution: number;
       repetition: number;
       pause_long: number;
+    };
+    grade_score?: {
+      grade: string | number;
+      total_score: number;
+      max_score: number;
+      score_percentage: number;
+      breakdown: {
+        doğru_kelime: {
+          count: number;
+          score: number;
+          max_score: number;
+        };
+        harf_eksiltme: {
+          count: number;
+          score: number;
+          max_score: number;
+        };
+        harf_ekleme: {
+          count: number;
+          score: number;
+          max_score: number;
+        };
+        harf_değiştirme: {
+          count: number;
+          score: number;
+          max_score: number;
+        };
+        hece_eksiltme: {
+          count: number;
+          score: number;
+          max_score: number;
+        };
+        hece_ekleme: {
+          count: number;
+          score: number;
+          max_score: number;
+        };
+        kelime_eksiltme: {
+          count: number;
+          score: number;
+          max_score: number;
+        };
+        kelime_ekleme: {
+          count: number;
+          score: number;
+          max_score: number;
+        };
+        kelime_değiştirme: {
+          count: number;
+          score: number;
+          max_score: number;
+        };
+        uzun_duraksama: {
+          count: number;
+          score: number;
+          max_score: number;
+        };
+        tekrarlama: {
+          count: number;
+          score: number;
+          max_score: number;
+        };
+      };
     };
   };
   metrics: Record<string, any>;
@@ -726,6 +802,138 @@ export const apiClient = {
     const response = await api.post('/v1/profile/me/change-password', passwordData);
     return response.data;
   },
+
+  // Score Feedback Management
+  async getScoreFeedbackConfigs(activeOnly: boolean = true): Promise<{
+    id: string;
+    name: string;
+    description?: string;
+    is_active: boolean;
+    score_ranges: {
+      min_score: number;
+      max_score: number;
+      color: string;
+      feedback: string;
+    }[];
+    created_at: string;
+    updated_at: string;
+  }[]> {
+    const response = await api.get(`/v1/score-feedback/?active_only=${activeOnly}`);
+    return response.data;
+  },
+
+  async getScoreFeedbackConfig(configId: string): Promise<{
+    id: string;
+    name: string;
+    description?: string;
+    is_active: boolean;
+    score_ranges: {
+      min_score: number;
+      max_score: number;
+      color: string;
+      feedback: string;
+    }[];
+    created_at: string;
+    updated_at: string;
+  }> {
+    const response = await api.get(`/v1/score-feedback/${configId}`);
+    return response.data;
+  },
+
+  async createScoreFeedbackConfig(configData: {
+    name: string;
+    description?: string;
+    score_ranges?: {
+      min_score: number;
+      max_score: number;
+      color: string;
+      feedback: string;
+    }[];
+  }): Promise<{
+    id: string;
+    name: string;
+    description?: string;
+    is_active: boolean;
+    score_ranges: {
+      min_score: number;
+      max_score: number;
+      color: string;
+      feedback: string;
+    }[];
+    created_at: string;
+    updated_at: string;
+  }> {
+    const response = await api.post('/v1/score-feedback/', configData);
+    return response.data;
+  },
+
+  async updateScoreFeedbackConfig(configId: string, configData: {
+    name?: string;
+    description?: string;
+    score_ranges?: {
+      min_score: number;
+      max_score: number;
+      color: string;
+      feedback: string;
+    }[];
+    is_active?: boolean;
+  }): Promise<{
+    id: string;
+    name: string;
+    description?: string;
+    is_active: boolean;
+    score_ranges: {
+      min_score: number;
+      max_score: number;
+      color: string;
+      feedback: string;
+    }[];
+    created_at: string;
+    updated_at: string;
+  }> {
+    const response = await api.put(`/v1/score-feedback/${configId}`, configData);
+    return response.data;
+  },
+
+  async deleteScoreFeedbackConfig(configId: string): Promise<void> {
+    await api.delete(`/v1/score-feedback/${configId}`);
+  },
+
+  async getFeedbackForScore(score: number, configName?: string): Promise<{
+    score: number;
+    feedback: string;
+    color: string;
+    range: string;
+    config_name: string;
+  }> {
+    const params = new URLSearchParams({ score: score.toString() });
+    if (configName) {
+      params.append('config_name', configName);
+    }
+    const response = await api.get(`/v1/score-feedback/score/${score}/feedback?${params}`);
+    return response.data;
+  },
+
+  // Detailed Comments
+  async getAnalysisDetailedComments(analysisId: string, configName?: string): Promise<{
+    analysis_id: string;
+    config_name: string;
+    error_scores: Record<string, number>;
+    error_comments: Record<string, {
+      score: number;
+      comment: string;
+      error_type_display: string;
+    }>;
+    total_score: number;
+    max_possible_score: number;
+  }> {
+    const params = new URLSearchParams();
+    if (configName) {
+      params.append('config_name', configName);
+    }
+    const response = await api.get(`/v1/score-feedback/analysis/${analysisId}/detailed-comments?${params}`);
+    return response.data;
+  }
 };
 
 export default api;

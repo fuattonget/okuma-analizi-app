@@ -300,11 +300,19 @@ async def _analyze_audio_async(analysis_id: str):
         # Aggregate counts from WordEventDoc
         counts = scoring.recompute_counts(word_events)
         
+        # Add pause counts to the detailed counts
+        counts["uzun_duraksama"] = len(pause_events)
+        
+        # Compute grade-based scoring
+        text_grade = text.grade if hasattr(text, 'grade') and text.grade else 1
+        grade_score = scoring.compute_grade_score(text_grade, counts, len(ref_tokens))
+        
         summary = {
             "counts": counts,
             "wer": metrics["wer"],
             "accuracy": metrics["accuracy"],
             "wpm": wpm,
+            "grade_score": grade_score,  # Add grade-based scoring
             "long_pauses": {
                 "count": len(pause_events),
                 "threshold_ms": settings.long_pause_ms
@@ -338,6 +346,8 @@ async def _analyze_audio_async(analysis_id: str):
         analysis.summary = summary
         analysis.status = "done"
         analysis.finished_at = datetime.utcnow()
+        # Calculate audio duration from last word timestamp
+        analysis.audio_duration_sec = round(last_ms / 1000, 2)
         await analysis.save()
         
         # Update session status to completed

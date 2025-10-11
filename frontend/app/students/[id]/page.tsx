@@ -81,6 +81,7 @@ export default function StudentProfilePage() {
           const studentAnalyses = await apiClient.getAnalyses(50, studentId);
           setAnalyses(studentAnalyses);
           console.log('📊 Student analyses loaded:', studentAnalyses);
+          console.log('🔍 First analysis audio_duration_sec:', studentAnalyses[0]?.audio_duration_sec);
           
           // Start polling for running/queued analyses
           studentAnalyses.forEach(analysis => {
@@ -336,6 +337,19 @@ export default function StudentProfilePage() {
 
   const getGradeText = (grade: number) => {
     return grade === 0 ? 'Diğer' : `${grade}. Sınıf`;
+  };
+
+  const formatDuration = (seconds?: number) => {
+    if (!seconds) return '-';
+    
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    
+    if (minutes > 0) {
+      return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    } else {
+      return `${remainingSeconds}s`;
+    }
   };
 
   const getStatusBadge = (isActive: boolean) => {
@@ -608,7 +622,7 @@ export default function StudentProfilePage() {
                         {formatTurkishDate(analysis.created_at)}
                       </td>
                       <td className="hidden md:table-cell px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-slate-400">
-                        -
+                        {formatDuration(analysis.audio_duration_sec)}
                       </td>
                       <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
                         {analysis.status === 'done' ? (

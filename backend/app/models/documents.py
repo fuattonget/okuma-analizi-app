@@ -155,6 +155,7 @@ class AnalysisDoc(Document):
     finished_at: Optional[datetime] = None
     summary: Dict[str, Any] = {}
     error: Optional[str] = None
+    audio_duration_sec: Optional[float] = None
     created_at: datetime = Field(default_factory=get_turkish_now)
     
     # No timezone conversion needed - keep Turkish timezone

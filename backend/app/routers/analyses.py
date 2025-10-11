@@ -304,14 +304,13 @@ async def get_analyses(
             "counts": counts,
             "audio_id": str(session.audio_id),
             "audio_name": audio.original_name if audio else None,
-            "audio_duration_sec": getattr(audio, 'duration_sec', None) if audio else None,
+            "audio_duration_sec": analysis.audio_duration_sec,
             "audio_size_bytes": getattr(audio, 'size_bytes', None) if audio else None
         }
         
-        # Debug text field
-        app_logger.info(f"DEBUG: text object: {text}")
-        app_logger.info(f"DEBUG: text field in response: {response_data.get('text')}")
-        app_logger.info(f"DEBUG: analysis.student_id: {analysis.student_id}")
+        # Debug audio duration
+        app_logger.info(f"DEBUG: audio object: {audio}")
+        app_logger.info(f"DEBUG: audio_duration_sec: {response_data.get('audio_duration_sec')}")
         app_logger.info(f"DEBUG: response_data.student_id: {response_data.get('student_id')}")
         
         # Add DEBUG fields if enabled
