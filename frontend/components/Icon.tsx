@@ -8,6 +8,7 @@ interface IconProps {
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
   color?: string;
+  style?: React.CSSProperties;
 }
 
 // SVG Icon Components
@@ -252,6 +253,12 @@ const LightbulbIconSVG = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const MessageCircleIconSVG = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </svg>
+);
+
 const MusicIconSVG = ({ className }: { className?: string }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
@@ -273,6 +280,24 @@ const ChevronRightIconSVG = ({ className }: { className?: string }) => (
 const InfoIconSVG = ({ className }: { className?: string }) => (
   <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
+const PauseIconSVG = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
+const SpeedIconSVG = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+  </svg>
+);
+
+const ChartIconSVG = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
   </svg>
 );
 
@@ -400,15 +425,19 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   'globe': GlobeIconSVG,
   'shield': ShieldIconSVG,
   'bell': BellIconSVG,
-    'eye': EyeIconSVG,
-    'eye-off': EyeOffIconSVG,
-    'target': TargetIconSVG,
-    'lightbulb': LightbulbIconSVG,
-    'music': MusicIconSVG,
-    'plus': PlusIconSVG,
-    'chevron-right': ChevronRightIconSVG,
-    'info': InfoIconSVG,
-  };
+  'eye': EyeIconSVG,
+  'eye-off': EyeOffIconSVG,
+  'target': TargetIconSVG,
+  'lightbulb': LightbulbIconSVG,
+  'music': MusicIconSVG,
+  'plus': PlusIconSVG,
+  'chevron-right': ChevronRightIconSVG,
+  'info': InfoIconSVG,
+  'pause': PauseIconSVG,
+  'speed': SpeedIconSVG,
+  'chart': ChartIconSVG,
+  'message-circle': MessageCircleIconSVG,
+};
 
 const sizeClasses = {
   xs: 'w-3 h-3',
@@ -422,13 +451,14 @@ export default function Icon({
   name, 
   size = 'md', 
   className,
-  color 
+  color,
+  style 
 }: IconProps) {
   const IconComponent = iconMap[name];
   
   if (!IconComponent) {
     console.warn(`Icon "${name}" not found.`);
-    return <span className="text-red-500">❓</span>;
+    return <span className="text-red-500">?</span>;
   }
 
   return (
@@ -439,6 +469,7 @@ export default function Icon({
         className
       )}
       {...(color && { style: { color } })}
+      {...(style && { style: { ...style, ...(color && { color }) } })}
     />
   );
 }

@@ -11,6 +11,7 @@ import classNames from 'classnames';
 import Navigation from '@/components/Navigation';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import { themeColors, combineThemeClasses, componentClasses } from '@/lib/theme';
+import Icon from '@/components/Icon';
 import {
   BookIcon,
   CrossIcon,
@@ -26,6 +27,7 @@ import {
 export default function StudentAnalysisDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const analysisId = params.analysisId as string;
   const { isAuthenticated, isAuthLoading } = useAuth();
   const { hasPermission } = useRoles();
   const [analysis, setAnalysis] = useState<AnalysisDetail | null>(null);
@@ -43,8 +45,29 @@ export default function StudentAnalysisDetailPage() {
   const [pauseEvents, setPauseEvents] = useState<PauseEvent[]>([]);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [eventsLoading, setEventsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'summary' | 'words' | 'pauses'>('summary');
+  const [activeTab, setActiveTab] = useState<'summary' | 'words' | 'pauses' | 'comments'>('summary');
   const [downloading, setDownloading] = useState(false);
+  
+  // Score feedback state
+  const [scoreFeedback, setScoreFeedback] = useState<{
+    feedback: string;
+    color: string;
+    range: string;
+  } | null>(null);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  
+  // Detailed comments state
+  const [detailedComments, setDetailedComments] = useState<{
+    error_scores: Record<string, number>;
+    error_comments: Record<string, {
+      score: number;
+      comment: string;
+      error_type_display: string;
+    }>;
+    total_score: number;
+    max_possible_score: number;
+  } | null>(null);
+  const [commentsLoading, setCommentsLoading] = useState(false);
   
   // Interactive highlighting state
   const [hoveredWord, setHoveredWord] = useState<string | null>(null);
@@ -117,6 +140,11 @@ export default function StudentAnalysisDetailPage() {
         error_types: exportData.summary.error_types
       };
       setMetrics(metricsData);
+      
+      // Load score feedback if grade score exists
+      if (exportData.summary.grade_score?.total_score !== undefined) {
+        await loadScoreFeedback(exportData.summary.grade_score.total_score);
+      }
     } catch (err) {
       console.error('Failed to load export data:', err);
       // Fallback to individual API calls if export fails
@@ -142,6 +170,41 @@ export default function StudentAnalysisDetailPage() {
       console.error('Failed to load events:', err);
     } finally {
       setEventsLoading(false);
+    }
+  };
+
+  const loadScoreFeedback = async (score: number) => {
+    try {
+      setFeedbackLoading(true);
+      const feedback = await apiClient.getFeedbackForScore(score);
+      setScoreFeedback({
+        feedback: feedback.feedback,
+        color: feedback.color,
+        range: feedback.range
+      });
+    } catch (err) {
+      console.error('Failed to load score feedback:', err);
+      // Don't set error for feedback loading failure
+    } finally {
+      setFeedbackLoading(false);
+    }
+  };
+
+  const loadDetailedComments = async (analysisId: string) => {
+    try {
+      setCommentsLoading(true);
+      const comments = await apiClient.getAnalysisDetailedComments(analysisId);
+      setDetailedComments({
+        error_scores: comments.error_scores,
+        error_comments: comments.error_comments,
+        total_score: comments.total_score,
+        max_possible_score: comments.max_possible_score
+      });
+    } catch (err) {
+      console.error('Failed to load detailed comments:', err);
+      // Don't set error for comments loading failure
+    } finally {
+      setCommentsLoading(false);
     }
   };
 
@@ -810,35 +873,195 @@ export default function StudentAnalysisDetailPage() {
             >
               Duraksama Olayları ({exportData?.pauses?.length || pauseEvents.length})
             </button>
+            <button
+              onClick={() => {
+                setActiveTab('comments');
+                if (!detailedComments && !commentsLoading) {
+                  loadDetailedComments(analysisId);
+                }
+              }}
+              className={classNames(
+                'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+                activeTab === 'comments'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              )}
+            >
+              Yorumlar
+            </button>
           </div>
 
           {/* Tab Content */}
           {activeTab === 'summary' && (
             <>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-blue-600">
-                    {exportData?.summary?.wer?.toFixed(3) || '—'}
-                  </p>
-                  <p className="text-sm text-gray-600">WER</p>
+              {/* Main Metrics Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                {/* Grade Score - Highlighted Card */}
+                {exportData?.summary?.grade_score && (
+                  <div className="col-span-1 md:col-span-2 lg:col-span-3 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl p-6 border-2 border-indigo-200 dark:border-indigo-700">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 bg-indigo-600 dark:bg-indigo-500 rounded-full flex items-center justify-center">
+                          <Icon name="target" size="xl" className="text-white" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                            Okuma Analizi Puanı
+                          </h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-300">
+                            {(typeof exportData.summary.grade_score.grade === 'number' && exportData.summary.grade_score.grade >= 6 && exportData.summary.grade_score.grade <= 7) || exportData.summary.grade_score.grade === '6-7'
+                              ? `${exportData.summary.grade_score.grade}. Sınıf (Diğer)`
+                              : `${exportData.summary.grade_score.grade}. Sınıf`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-5xl font-bold text-indigo-600 dark:text-indigo-400">
+                          {exportData.summary.grade_score.total_score}
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                          / {exportData.summary.grade_score.max_score} puan
+                        </div>
+                       
+                      </div>
+                    </div>
+                    
+                    {/* Score Feedback */}
+                    {scoreFeedback && (
+                      <div className="mt-6 relative overflow-hidden">
+                        {/* Background gradient */}
+                        <div 
+                          className="absolute inset-0 rounded-2xl opacity-10"
+                          style={{ 
+                            background: `linear-gradient(135deg, ${scoreFeedback.color}20, ${scoreFeedback.color}05)`
+                          }}
+                        />
+                        
+                        {/* Main card */}
+                        <div 
+                          className="relative p-6 rounded-2xl border-2 shadow-lg backdrop-blur-sm"
+                          style={{ 
+                            backgroundColor: scoreFeedback.color + '15',
+                            borderColor: scoreFeedback.color + '30',
+                            boxShadow: `0 8px 32px ${scoreFeedback.color}20`
+                          }}
+                        >
+                          {/* Header */}
+                          <div className="flex items-center gap-4 mb-4">
+                            <div 
+                              className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg"
+                              style={{ 
+                                backgroundColor: scoreFeedback.color + '25',
+                                boxShadow: `0 4px 16px ${scoreFeedback.color}30`
+                              }}
+                            >
+                              <Icon name="message-circle" size="lg" style={{ color: scoreFeedback.color }} />
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3">
+                                <h4 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                                  Puan Dönütü
+                                </h4>
+                                <span 
+                                  className="px-3 py-1 rounded-full text-sm font-medium"
+                                  style={{ 
+                                    backgroundColor: scoreFeedback.color + '20',
+                                    color: scoreFeedback.color
+                                  }}
+                                >
+                                  {scoreFeedback.range} puan
+                                </span>
+                                {feedbackLoading && (
+                                  <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Feedback content */}
+                          <div className="relative">
+                            <div 
+                              className="absolute left-0 top-0 w-1 h-full rounded-full"
+                              style={{ backgroundColor: scoreFeedback.color }}
+                            />
+                            <div className="pl-4">
+                              <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-base">
+                                {scoreFeedback.feedback}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          {/* Decorative elements */}
+                          <div className="absolute top-4 right-4 opacity-20">
+                            <div 
+                              className="w-16 h-16 rounded-full"
+                              style={{ backgroundColor: scoreFeedback.color }}
+                            />
+                          </div>
+                          <div className="absolute bottom-4 right-8 opacity-10">
+                            <div 
+                              className="w-8 h-8 rounded-full"
+                              style={{ backgroundColor: scoreFeedback.color }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Accuracy Card */}
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-5 border border-green-200 dark:border-green-700 hover:shadow-lg transition-shadow">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 bg-green-600 dark:bg-green-500 rounded-full flex items-center justify-center">
+                      <Icon name="check" size="lg" className="text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Doğruluk Oranı</h4>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Doğru okunan kelimeler</p>
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-4xl font-bold text-green-600 dark:text-green-400">
+                      {exportData?.summary?.accuracy?.toFixed(1) || '—'}%
+                    </div>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-green-600">
-                    {exportData?.summary?.accuracy?.toFixed(1) || '—'}%
-                  </p>
-                  <p className="text-sm text-gray-600">Doğruluk</p>
+
+                {/* WER Card */}
+                <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-xl p-5 border border-blue-200 dark:border-blue-700 hover:shadow-lg transition-shadow">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 bg-blue-600 dark:bg-blue-500 rounded-full flex items-center justify-center">
+                      <Icon name="chart" size="lg" className="text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Hata Oranı</h4>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Yanlış okunan kelimeler</p>
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-4xl font-bold text-blue-600 dark:text-blue-400">
+                      {exportData?.summary?.wer ? `%${(exportData.summary.wer * 100).toFixed(1)}` : '—'}
+                    </div>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-purple-600">
-                    {exportData?.summary?.wpm?.toFixed(1) || '—'}
-                  </p>
-                  <p className="text-sm text-gray-600">WPM</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-orange-600">
-                    {exportData?.summary?.long_pauses?.count || 0}
-                  </p>
-                  <p className="text-sm text-gray-600">Uzun Duraksama</p>
+
+                {/* WPM Card */}
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl p-5 border border-purple-200 dark:border-purple-700 hover:shadow-lg transition-shadow">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 bg-purple-600 dark:bg-purple-500 rounded-full flex items-center justify-center">
+                      <Icon name="speed" size="lg" className="text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Okuma Hızı</h4>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Dakikada kelime</p>
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-4xl font-bold text-purple-600 dark:text-purple-400">
+                      {exportData?.summary?.wpm?.toFixed(0) || '—'}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -866,29 +1089,92 @@ export default function StudentAnalysisDetailPage() {
                     
                     {summaryExpanded && (
                       <div className="mt-4 space-y-4">
+                        {/* Grade Score Breakdown */}
+                        {exportData?.summary?.grade_score && (
+                          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+                            <div className="flex items-center gap-3 mb-4">
+                              <div className="w-8 h-8 bg-gray-600 dark:bg-gray-400 rounded-full flex items-center justify-center">
+                                <Icon name="chart" size="sm" className="text-white dark:text-gray-800" />
+                              </div>
+                              <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                {(typeof exportData.summary.grade_score.grade === 'number' && exportData.summary.grade_score.grade >= 6 && exportData.summary.grade_score.grade <= 7) || exportData.summary.grade_score.grade === '6-7'
+                                  ? `${exportData.summary.grade_score.grade}. Sınıf (Diğer) Detaylı Puanlama`
+                                  : `${exportData.summary.grade_score.grade}. Sınıf Detaylı Puanlama`}
+                              </h4>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                              {Object.entries(exportData.summary.grade_score.breakdown).map(([key, value]) => {
+                                const getScoreColor = (score: number, maxScore: number) => {
+                                  const percentage = (score / maxScore) * 100;
+                                  if (percentage >= 80) return 'text-green-600 dark:text-green-400';
+                                  if (percentage >= 60) return 'text-blue-600 dark:text-blue-400';
+                                  if (percentage >= 40) return 'text-orange-600 dark:text-orange-400';
+                                  return 'text-red-600 dark:text-red-400';
+                                };
+
+                                return (
+                                  <div key={key} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+                                    <div className="text-center">
+                                      <p className={`text-lg font-bold ${getScoreColor(value.score, value.max_score)}`}>
+                                        {value.score}/{value.max_score}
+                                      </p>
+                                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                        {key === 'doğru_kelime' ? 'Doğru Kelime' :
+                                         key === 'harf_eksiltme' ? 'Harf Eksiltme' :
+                                         key === 'harf_ekleme' ? 'Harf Ekleme' :
+                                         key === 'harf_değiştirme' ? 'Harf Değiştirme' :
+                                         key === 'hece_eksiltme' ? 'Hece Eksiltme' :
+                                         key === 'hece_ekleme' ? 'Hece Ekleme' :
+                                         key === 'kelime_eksiltme' ? 'Kelime Eksiltme' :
+                                         key === 'kelime_ekleme' ? 'Kelime Ekleme' :
+                                         key === 'kelime_değiştirme' ? 'Kelime Değiştirme' :
+                                         key === 'uzun_duraksama' ? 'Uzun Duraksama' :
+                                         key === 'tekrarlama' ? 'Tekrarlama' : key}
+                                      </p>
+                                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        {value.count} adet
+                                      </p>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                        
                         {/* Error Breakdown */}
-                        <div>
-                          <h4 className="text-sm font-medium text-gray-700 mb-2">Hata Detayları</h4>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div className="text-center">
-                              <p className="text-lg font-semibold text-red-600">{breakdown.missing}</p>
-                              <p className="text-xs text-gray-600">Eksik</p>
+                        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="w-8 h-8 bg-gray-600 dark:bg-gray-400 rounded-full flex items-center justify-center">
+                              <Icon name="alert-circle" size="sm" className="text-white dark:text-gray-800" />
                             </div>
-                            <div className="text-center">
-                              <p className="text-lg font-semibold text-blue-600">{breakdown.extra}</p>
-                              <p className="text-xs text-gray-600">Fazla</p>
+                            <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Hata Detayları</h4>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+                            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600 text-center">
+                              <p className="text-xl font-bold text-red-600 dark:text-red-400">{breakdown.missing}</p>
+                              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Eksik</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">Kelime atlandı</p>
                             </div>
-                            <div className="text-center">
-                              <p className="text-lg font-semibold text-orange-600">{breakdown.substitution}</p>
-                              <p className="text-xs text-gray-600">Kelimede Farklılık</p>
+                            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600 text-center">
+                              <p className="text-xl font-bold text-blue-600 dark:text-blue-400">{breakdown.extra}</p>
+                              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Fazla</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">Ekstra kelime</p>
                             </div>
-                            <div className="text-center">
-                              <p className="text-lg font-semibold text-purple-600">{breakdown.repetition}</p>
-                              <p className="text-xs text-gray-600">Tekrarlama</p>
+                            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600 text-center">
+                              <p className="text-xl font-bold text-orange-600 dark:text-orange-400">{breakdown.substitution}</p>
+                              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Değiştirme</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">Kelime farklı</p>
                             </div>
-                            <div className="text-center">
-                              <p className="text-lg font-semibold text-orange-600">{breakdown.longPauses}</p>
-                              <p className="text-xs text-gray-600">Uzun Duraksama</p>
+                            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600 text-center">
+                              <p className="text-xl font-bold text-purple-600 dark:text-purple-400">{breakdown.repetition}</p>
+                              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Tekrarlama</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">Kelime tekrarı</p>
+                            </div>
+                            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600 text-center">
+                              <p className="text-xl font-bold text-yellow-600 dark:text-yellow-400">{breakdown.longPauses}</p>
+                              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Uzun Duraksama</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">3+ saniye</p>
                             </div>
                           </div>
                         </div>
@@ -981,6 +1267,79 @@ export default function StudentAnalysisDetailPage() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'comments' && (
+            <div>
+              {commentsLoading ? (
+                <div className="text-center py-8">
+                  <div className="text-gray-500">Detaylı yorumlar yükleniyor...</div>
+                </div>
+              ) : !detailedComments ? (
+                <div className="text-center py-8">
+                  <div className="text-gray-500">Detaylı yorumlar yüklenemedi</div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Toplam Puan */}
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-800">Toplam Detaylı Puan</h3>
+                        <p className="text-sm text-gray-600">Hata türlerine göre hesaplanan toplam puan</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-3xl font-bold text-blue-600">
+                          {exportData?.summary?.grade_score?.total_score || detailedComments.total_score}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          / {exportData?.summary?.grade_score?.max_score || detailedComments.max_possible_score} puan
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Hata Türü Yorumları */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-800">Hata Türü Analizleri</h3>
+                    <div className="grid gap-4">
+                      {Object.entries(detailedComments.error_comments).map(([errorType, data]) => {
+                        // Get the actual score from grade_score breakdown if available
+                        const actualScore = exportData?.summary?.grade_score?.breakdown?.[errorType]?.score || data.score;
+                        const actualMaxScore = errorType === 'correct_words' ? 50 : 5;
+                        
+                        return (
+                          <div key={errorType} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                            <div className="flex items-start justify-between mb-3">
+                              <div>
+                                <h4 className="font-medium text-gray-800">{data.error_type_display}</h4>
+                                <div className="flex items-center space-x-2 mt-1">
+                                  <span className="text-sm text-gray-500">Puan:</span>
+                                  <span className={classNames(
+                                    'px-2 py-1 rounded text-sm font-medium',
+                                    actualScore >= 4 ? 'bg-green-100 text-green-800' :
+                                    actualScore >= 3 ? 'bg-yellow-100 text-yellow-800' :
+                                    actualScore >= 2 ? 'bg-orange-100 text-orange-800' :
+                                    'bg-red-100 text-red-800'
+                                  )}>
+                                    {actualScore}/{actualMaxScore}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="bg-gray-50 p-3 rounded border-l-4 border-blue-200">
+                              <p className="text-sm text-gray-700 leading-relaxed">
+                                {data.comment}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

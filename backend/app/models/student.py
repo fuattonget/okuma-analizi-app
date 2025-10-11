@@ -39,9 +39,15 @@ class StudentDoc(Document):
     @classmethod
     async def generate_registration_number(cls) -> int:
         """Generate next registration number starting from 0"""
-        # Count total students to get next registration number
-        total_students = await cls.find().count()
-        return total_students  # 0-based indexing: 0, 1, 2, 3, ...
+        # Find the highest existing registration number
+        last_student = await cls.find().sort("-registration_number").limit(1).to_list()
+        
+        if last_student:
+            # Return next number after the highest
+            return last_student[0].registration_number + 1
+        else:
+            # No students exist, start from 0
+            return 0
     
     @classmethod
     async def generate_student_number(cls) -> str:
