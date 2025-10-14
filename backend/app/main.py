@@ -200,8 +200,7 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
     docs_url="/docs",
-    redoc_url="/redoc",
-    redirect_slashes=False  # Disable automatic trailing slash redirects
+    redoc_url="/redoc"
 )
 
 # Add rate limiter
@@ -244,6 +243,37 @@ class ProductionCORSMiddleware(CORSMiddleware):
                 return True
         
         return False
+    
+    async def __call__(self, scope, receive, send):
+        # Handle redirect responses to prevent CORS issues
+        if scope["type"] == "http":
+            # Store original send function
+            original_send = send
+            
+            async def send_wrapper(message):
+                # If it's a redirect response (307), add CORS headers
+                if message["type"] == "http.response.start" and message.get("status") == 307:
+                    # Add CORS headers to redirect response
+                    headers = dict(message.get("headers", []))
+                    origin = None
+                    for header_name, header_value in scope.get("headers", []):
+                        if header_name == b"origin":
+                            origin = header_value.decode()
+                            break
+                    
+                    if origin and self.is_allowed_origin(origin):
+                        headers[b"access-control-allow-origin"] = origin.encode()
+                        headers[b"access-control-allow-credentials"] = b"true"
+                        headers[b"access-control-allow-methods"] = b"GET, POST, PUT, DELETE, OPTIONS, PATCH"
+                        headers[b"access-control-allow-headers"] = b"*"
+                    
+                    message["headers"] = list(headers.items())
+                
+                await original_send(message)
+            
+            await super().__call__(scope, receive, send_wrapper)
+        else:
+            await super().__call__(scope, receive, send)
 
 app.add_middleware(
     ProductionCORSMiddleware,
