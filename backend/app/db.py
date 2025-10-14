@@ -38,9 +38,16 @@ async def connect_to_mongo():
         print("🔗 Creating MongoDB client...")
         logger.info("Starting MongoDB connection process")
         
-        # Create MongoDB client
+        # Create MongoDB client with SSL settings for Railway/Atlas
         try:
-            db.client = AsyncIOMotorClient(settings.mongo_uri)
+            # SSL/TLS options for MongoDB Atlas compatibility
+            db.client = AsyncIOMotorClient(
+                settings.mongo_uri,
+                tls=True,
+                tlsAllowInvalidCertificates=True,  # For Railway SSL compatibility
+                serverSelectionTimeoutMS=10000,
+                connectTimeoutMS=10000
+            )
             logger.info(f"MongoDB client created with URI: {settings.mongo_uri}")
         except Exception as e:
             logger.error(f"Failed to create MongoDB client: {e}")
@@ -153,9 +160,19 @@ def connect_to_redis():
         print("🔗 Connecting to Redis...")
         logger.info("Starting Redis connection process")
         
+        # Get Redis URL from settings or environment
+        redis_url = settings.redis_url if settings.redis_url else "redis://redis:6379/0"
+        
         try:
-            redis_conn.connection = redis.from_url("redis://redis:6379/0")
-            logger.info("Redis connection created successfully")
+            redis_conn.connection = redis.from_url(
+                redis_url,
+                decode_responses=False,  # RQ needs bytes
+                socket_connect_timeout=5,
+                socket_timeout=5
+            )
+            # Test connection
+            redis_conn.connection.ping()
+            logger.info(f"Redis connection created successfully: {redis_url}")
         except Exception as e:
             logger.error(f"Failed to create Redis connection: {e}")
             raise
