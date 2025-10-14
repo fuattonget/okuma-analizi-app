@@ -3,7 +3,7 @@ builder = "dockerfile"
 dockerfilePath = "./worker/Dockerfile.railway"
 
 [deploy]
-startCommand = "rq worker -u $REDIS_URL main --with-scheduler"
+startCommand = "sh -c 'rq worker -u $REDIS_URL main --with-scheduler'"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
 
