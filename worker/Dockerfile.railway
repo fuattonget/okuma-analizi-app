@@ -31,5 +31,5 @@ ENV PYTHONPATH=/app
 
 # Start RQ worker
 # Railway will provide REDIS_URL via environment variable
-CMD rq worker -u ${REDIS_URL} main --with-scheduler
+CMD ["sh", "-c", "rq worker -u $REDIS_URL main --with-scheduler"]
 
