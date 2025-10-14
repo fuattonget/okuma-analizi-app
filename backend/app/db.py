@@ -42,12 +42,7 @@ async def connect_to_mongo():
         
         # Create MongoDB client with SSL settings for Railway/Atlas
         try:
-            # Create custom SSL context for Railway environment
-            ssl_context = ssl.create_default_context(cafile=certifi.where())
-            ssl_context.check_hostname = False
-            ssl_context.verify_mode = ssl.CERT_NONE
-            
-            # SSL/TLS options for MongoDB Atlas compatibility
+            # SSL/TLS options for MongoDB Atlas compatibility with Railway
             db.client = AsyncIOMotorClient(
                 settings.mongo_uri,
                 tls=True,
@@ -55,8 +50,7 @@ async def connect_to_mongo():
                 tlsAllowInvalidCertificates=True,
                 tlsAllowInvalidHostnames=True,
                 serverSelectionTimeoutMS=10000,
-                connectTimeoutMS=10000,
-                ssl_context=ssl_context
+                connectTimeoutMS=10000
             )
             logger.info(f"MongoDB client created with URI: {settings.mongo_uri}")
         except Exception as e:
