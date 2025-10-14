@@ -52,6 +52,11 @@ def setup_logging():
 # Setup logging
 setup_logging()
 
+# Setup GCS credentials (for Railway/Production)
+from gcs_setup import setup_gcs_credentials
+logger.info("🔐 Setting up GCS credentials...")
+setup_gcs_credentials()
+
 from db import connect_to_mongo, close_mongo_connection
 from models import (
     AnalysisDoc, AudioFileDoc, TextDoc, ReadingSessionDoc,

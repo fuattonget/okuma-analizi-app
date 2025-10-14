@@ -14,6 +14,7 @@ from loguru import logger
 from app.config import settings
 from app.db import connect_to_mongo, close_mongo_connection, connect_to_redis, redis_conn
 from app.routers import texts, analyses, upload, audio, sessions, auth, students, users, roles, profile, score_feedback
+from app.utils.gcs_setup import setup_gcs_credentials
 
 
 # Configure loguru based on settings
@@ -134,6 +135,13 @@ async def lifespan(app: FastAPI):
     # Startup
     try:
         logger.info("🚀 Starting application")
+        
+        # GCS Credentials setup (for Railway/Production)
+        try:
+            logger.info("🔐 Setting up GCS credentials...")
+            setup_gcs_credentials()
+        except Exception as e:
+            logger.warning(f"⚠️ GCS credentials setup failed (non-critical): {e}")
         
         # MongoDB connection
         try:
