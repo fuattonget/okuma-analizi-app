@@ -42,13 +42,10 @@ async def connect_to_mongo():
         
         # Create MongoDB client with SSL settings for Railway/Atlas
         try:
-            # SSL/TLS options for MongoDB Atlas compatibility with Railway
+            # Simplified SSL/TLS options for Railway compatibility
+            # Railway handles SSL/TLS at infrastructure level
             db.client = AsyncIOMotorClient(
                 settings.mongo_uri,
-                tls=True,
-                tlsCAFile=certifi.where(),
-                tlsAllowInvalidCertificates=True,
-                tlsAllowInvalidHostnames=True,
                 serverSelectionTimeoutMS=10000,
                 connectTimeoutMS=10000
             )
