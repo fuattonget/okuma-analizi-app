@@ -219,6 +219,8 @@ origins_patterns = [
     re.compile(r"^http://localhost:\d+$"),
     re.compile(r"^http://127\.0\.0\.1:\d+$"),
     re.compile(r"^http://192\.168\.\d{1,3}\.\d{1,3}:\d+$"),  # Allow any 192.168.x.x IP
+    re.compile(r"^https://.*\.vercel\.app$"),  # Allow all Vercel domains
+    re.compile(r"^https://.*\.railway\.app$"),  # Allow Railway domains
 ]
 
 class CORSMiddlewareWithRegex(CORSMiddleware):
@@ -236,7 +238,9 @@ class CORSMiddlewareWithRegex(CORSMiddleware):
 
 app.add_middleware(
     CORSMiddlewareWithRegex,
-    allow_origins=[],  # Empty because we use patterns
+    allow_origins=[
+        "https://okuma-analizi-app-production.up.railway.app",  # Backend URL
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
