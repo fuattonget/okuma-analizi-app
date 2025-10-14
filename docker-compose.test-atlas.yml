@@ -1,0 +1,44 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: okuma-analizi-api-atlas-test
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # MongoDB Atlas (Production)
+      - MONGO_URI=mongodb+srv://software:TBhH74AYRO89yIIF@doky.03ad3jj.mongodb.net/?retryWrites=true&w=majority&appName=doky
+      - MONGO_DB=okuma_analizi
+      # Upstash Redis (Production)
+      - REDIS_URL=redis://default:ATfsAAIncDJiYThhNTExZGEzODI0NDY5OTkxZTA4ODA5YWY2NmE5ZXAyMTQzMTY@model-monarch-14316.upstash.io:6379
+      # GCS
+      - GCS_CREDENTIALS_PATH=./gcs-service-account.json
+      - GCS_BUCKET=doky_ai_audio_storage
+      - GCS_BUCKET_NAME=doky_ai_audio_storage
+      - GCS_PROJECT_ID=evident-airline-467110-m1
+      # ElevenLabs
+      - ELEVENLABS_API_KEY=sk_b3f8dd913a905ad2d0bd615b85043b5bc03c41c48465594c
+      - ELEVENLABS_MODEL=scribe_v1_experimental
+      - ELEVENLABS_LANGUAGE=tr
+      - ELEVENLABS_TEMPERATURE=0.0
+      - ELEVENLABS_SEED=12456
+      - ELEVENLABS_REMOVE_FILLER_WORDS=false
+      - ELEVENLABS_REMOVE_DISFLUENCIES=false
+      # Security
+      - SECRET_KEY=test_secret_key
+      # Debug
+      - DEBUG=true
+      - ENVIRONMENT=development
+      - LOG_LEVEL=DEBUG
+    volumes:
+      - ./gcs-service-account.json:/app/gcs-service-account.json
+      - ./logs:/app/logs
+      - ./backend:/app
+
+networks:
+  default:
+    name: okuma-network-atlas-test
+
+
