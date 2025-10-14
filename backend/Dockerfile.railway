@@ -5,7 +5,6 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     build-essential \
     ca-certificates \
-    libssl-dev \
     && rm -rf /var/lib/apt/lists/* \
     && update-ca-certificates
 
