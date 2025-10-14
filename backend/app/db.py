@@ -3,6 +3,8 @@ from beanie import init_beanie
 import redis
 from rq import Queue
 from pymongo import ASCENDING, DESCENDING, IndexModel
+import ssl
+import certifi
 from app.config import settings
 from app.models.documents import (
     TextDoc, AudioFileDoc, AnalysisDoc,
@@ -40,13 +42,21 @@ async def connect_to_mongo():
         
         # Create MongoDB client with SSL settings for Railway/Atlas
         try:
+            # Create custom SSL context for Railway environment
+            ssl_context = ssl.create_default_context(cafile=certifi.where())
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            
             # SSL/TLS options for MongoDB Atlas compatibility
             db.client = AsyncIOMotorClient(
                 settings.mongo_uri,
                 tls=True,
-                tlsAllowInvalidCertificates=True,  # For Railway SSL compatibility
+                tlsCAFile=certifi.where(),
+                tlsAllowInvalidCertificates=True,
+                tlsAllowInvalidHostnames=True,
                 serverSelectionTimeoutMS=10000,
-                connectTimeoutMS=10000
+                connectTimeoutMS=10000,
+                ssl_context=ssl_context
             )
             logger.info(f"MongoDB client created with URI: {settings.mongo_uri}")
         except Exception as e:
