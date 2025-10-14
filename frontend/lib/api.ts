@@ -2,6 +2,9 @@ import axios from 'axios';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+console.log('🔧 DEBUG: API_BASE from env:', process.env.NEXT_PUBLIC_API_URL);
+console.log('🔧 DEBUG: Final API_BASE:', API_BASE);
+
 const api = axios.create({
   baseURL: API_BASE,
   headers: {
@@ -13,25 +16,57 @@ const api = axios.create({
 // Add request interceptor to include JWT token
 api.interceptors.request.use(
   (config) => {
+    console.log('🔧 DEBUG: API Request:', {
+      method: config.method?.toUpperCase(),
+      url: config.url,
+      baseURL: config.baseURL,
+      fullURL: `${config.baseURL}${config.url}`,
+      headers: config.headers
+    });
+    
     const token = localStorage.getItem('auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log('🔧 DEBUG: Token added to request');
+    } else {
+      console.log('🔧 DEBUG: No token found in localStorage');
     }
     return config;
   },
   (error) => {
+    console.error('🔧 DEBUG: Request interceptor error:', error);
     return Promise.reject(error);
   }
 );
 
 // Add response interceptor for error handling
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('🔧 DEBUG: API Response Success:', {
+      status: response.status,
+      statusText: response.statusText,
+      url: response.config.url,
+      baseURL: response.config.baseURL,
+      fullURL: `${response.config.baseURL}${response.config.url}`,
+      data: response.data
+    });
+    return response;
+  },
   (error) => {
-    console.error('API Error:', error);
+    console.error('🔧 DEBUG: API Response Error:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url,
+      baseURL: error.config?.baseURL,
+      fullURL: error.config ? `${error.config.baseURL}${error.config.url}` : 'unknown',
+      message: error.message,
+      data: error.response?.data,
+      headers: error.response?.headers
+    });
     
     // Handle token expiration
     if (error.response?.status === 401) {
+      console.log('🔧 DEBUG: 401 Unauthorized, clearing auth data');
       // Clear stored auth data
       if (typeof window !== 'undefined') {
         localStorage.removeItem('auth_token');
