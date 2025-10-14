@@ -10,11 +10,11 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy requirements and install Python dependencies
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY . .
+COPY backend/ .
 
 # GCS credentials will be created from environment variable at startup
 # Set via Railway: GCS_SERVICE_ACCOUNT_JSON
