@@ -211,38 +211,44 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_exception_handler(Exception, global_exception_handler)
 
 # Add CORS middleware
-# Note: Using regex pattern to allow any local network IP (192.168.x.x)
-# For production, specify exact domains instead
+# Production-ready CORS configuration
 import re
 
-origins_patterns = [
-    re.compile(r"^http://localhost:\d+$"),
-    re.compile(r"^http://127\.0\.0\.1:\d+$"),
-    re.compile(r"^http://192\.168\.\d{1,3}\.\d{1,3}:\d+$"),  # Allow any 192.168.x.x IP
-    re.compile(r"^https://.*\.vercel\.app$"),  # Allow all Vercel domains
-    re.compile(r"^https://.*\.railway\.app$"),  # Allow Railway domains
+# Define allowed origins for production
+allowed_origins = [
+    "https://okuma-analizi-app-production.up.railway.app",  # Backend URL
+    "http://localhost:3000",  # Local development
+    "http://localhost:3001",  # Local development alternative port
+    "http://127.0.0.1:3000",  # Local development
+    "http://127.0.0.1:3001",  # Local development alternative port
 ]
 
-class CORSMiddlewareWithRegex(CORSMiddleware):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.allow_origin_patterns = origins_patterns
-    
+# Add Vercel domains pattern
+vercel_pattern = re.compile(r"^https://.*\.vercel\.app$")
+railway_pattern = re.compile(r"^https://.*\.railway\.app$")
+localhost_pattern = re.compile(r"^http://localhost:\d+$")
+localip_pattern = re.compile(r"^http://127\.0\.0\.1:\d+$")
+local_network_pattern = re.compile(r"^http://192\.168\.\d{1,3}\.\d{1,3}:\d+$")
+
+class ProductionCORSMiddleware(CORSMiddleware):
     def is_allowed_origin(self, origin: str) -> bool:
+        # Check exact matches first
         if origin in self.allow_origins:
             return True
-        for pattern in self.allow_origin_patterns:
+        
+        # Check patterns
+        patterns = [vercel_pattern, railway_pattern, localhost_pattern, localip_pattern, local_network_pattern]
+        for pattern in patterns:
             if pattern.match(origin):
                 return True
+        
         return False
 
 app.add_middleware(
-    CORSMiddlewareWithRegex,
-    allow_origins=[
-        "https://okuma-analizi-app-production.up.railway.app",  # Backend URL
-    ],
+    ProductionCORSMiddleware,
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
 )
 
