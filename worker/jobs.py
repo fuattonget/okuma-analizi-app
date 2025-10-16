@@ -363,7 +363,8 @@ async def _analyze_audio_async(analysis_id: str):
         logger.info(f"Analysis {analysis_id} completed successfully in {total_time:.2f}ms")
         
     except Exception as e:
-        logger.error(f"Analysis {analysis_id} failed: {str(e)}", exc_info=True)
+        error_msg = str(e).replace("{", "{{").replace("}", "}}")
+        logger.error(f"Analysis {analysis_id} failed: {error_msg}", exc_info=True)
         
         # Update analysis with error
         try:
