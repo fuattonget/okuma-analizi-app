@@ -13,9 +13,26 @@ const api = axios.create({
   timeout: 30000, // 30 second timeout
 });
 
-// Add request interceptor to include JWT token
+// Add request interceptor to include JWT token and handle trailing slashes
 api.interceptors.request.use(
   (config) => {
+    // Add trailing slash to prevent 307 redirects from Railway
+    // Only for /v1/* endpoints that don't already have trailing slash and don't have path parameters
+    if (config.url && config.url.startsWith('/v1/')) {
+      // Check if URL has path parameters (contains '/' after /v1/resource)
+      const urlWithoutQuery = config.url.split('?')[0];
+      const pathSegments = urlWithoutQuery.split('/').filter(s => s);
+      
+      // If URL is just /v1/resource (2 segments) and doesn't end with '/', add trailing slash
+      // Don't add if it has more segments (like /v1/students/123) or already has trailing slash
+      if (pathSegments.length === 2 && !urlWithoutQuery.endsWith('/')) {
+        const [beforeQuery] = config.url.split('?');
+        const query = config.url.includes('?') ? '?' + config.url.split('?')[1] : '';
+        config.url = beforeQuery + '/' + query;
+        console.log('🔧 DEBUG: Added trailing slash to URL:', config.url);
+      }
+    }
+    
     console.log('🔧 DEBUG: API Request:', {
       method: config.method?.toUpperCase(),
       url: config.url,
