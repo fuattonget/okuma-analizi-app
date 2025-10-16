@@ -347,6 +347,41 @@ async def debug_info():
     }
 
 
+# GCS Test endpoint
+@app.get("/v1/_test-gcs", tags=["debug"])
+async def test_gcs():
+    """
+    Test GCS connection and credentials
+    """
+    import os
+    from app.storage.gcs import get_client
+    
+    gcs_status = {
+        "gcs_json_env": bool(os.getenv('GCS_SERVICE_ACCOUNT_JSON')),
+        "gcs_bucket": os.getenv('GCS_BUCKET', 'doky_ai_audio_storage'),
+        "gcs_credentials_path": os.getenv('GCS_CREDENTIALS_PATH', './gcs-service-account.json'),
+        "credentials_file_exists": False,
+        "gcs_client_ok": False,
+        "gcs_error": None
+    }
+    
+    # Check if credentials file exists
+    credentials_path = gcs_status["gcs_credentials_path"]
+    if os.path.exists(credentials_path):
+        gcs_status["credentials_file_exists"] = True
+    
+    # Test GCS client
+    try:
+        client = get_client()
+        # Try to list buckets to test connection
+        list(client.list_buckets())
+        gcs_status["gcs_client_ok"] = True
+    except Exception as e:
+        gcs_status["gcs_error"] = str(e)
+    
+    return gcs_status
+
+
 # Note: Media files are now served from GCS, no local static file mounting needed
 
 # Include routers
