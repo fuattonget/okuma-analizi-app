@@ -42,7 +42,7 @@ def setup_gcs_credentials():
                 credentials['private_key'] = credentials['private_key'].replace('\\n', '\n')
                 logger.info("🔧 Fixed private key newlines")
             
-            # Write to file
+            # Write to file - json.dump will properly escape the newlines for us
             with open(gcs_path, 'w') as f:
                 json.dump(credentials, f, indent=2)
             
