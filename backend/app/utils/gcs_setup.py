@@ -4,6 +4,7 @@ Creates GCS service account JSON file from environment variable
 """
 import os
 import json
+import base64
 from loguru import logger
 
 
@@ -20,8 +21,16 @@ def setup_gcs_credentials():
             # Clean up the JSON string - remove extra quotes if present
             gcs_json = gcs_json.strip()
             
-            # Try to parse JSON to validate
-            credentials = json.loads(gcs_json)
+            # Check if it's Base64 encoded
+            try:
+                # Try to decode as Base64 first
+                decoded_json = base64.b64decode(gcs_json).decode('utf-8')
+                logger.info("🔓 GCS credentials detected as Base64 encoded")
+                credentials = json.loads(decoded_json)
+            except Exception:
+                # If Base64 decode fails, try as regular JSON
+                logger.info("📄 GCS credentials detected as plain JSON")
+                credentials = json.loads(gcs_json)
             
             # Validate it's a service account JSON
             if 'type' not in credentials or credentials.get('type') != 'service_account':
