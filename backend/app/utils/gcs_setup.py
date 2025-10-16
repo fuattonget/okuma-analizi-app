@@ -36,6 +36,12 @@ def setup_gcs_credentials():
             if 'type' not in credentials or credentials.get('type') != 'service_account':
                 logger.warning("⚠️ GCS JSON might not be a valid service account file")
             
+            # Fix private key newlines if present
+            if 'private_key' in credentials and credentials['private_key']:
+                # Replace literal \n with actual newlines
+                credentials['private_key'] = credentials['private_key'].replace('\\n', '\n')
+                logger.info("🔧 Fixed private key newlines")
+            
             # Write to file
             with open(gcs_path, 'w') as f:
                 json.dump(credentials, f, indent=2)
