@@ -351,8 +351,6 @@ async def _analyze_audio_async(analysis_id: str):
         analysis.summary = summary
         analysis.status = "done"
         analysis.finished_at = datetime.utcnow()
-        # Calculate audio duration from last word timestamp
-        analysis.audio_duration_sec = round(last_ms / 1000, 2)
         await analysis.save()
         
         # Update session status to completed
