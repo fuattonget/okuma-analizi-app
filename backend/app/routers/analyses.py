@@ -782,7 +782,7 @@ async def get_analysis_audio_url(analysis_id: str, expiration_hours: int = Query
         
         # Generate signed URL
         signed_url = generate_signed_url(
-            bucket_name=settings.gcs_bucket_name,
+            bucket_name=settings.gcs_bucket,
             blob_name=audio.storage_name,
             expiration_hours=expiration_hours
         )
