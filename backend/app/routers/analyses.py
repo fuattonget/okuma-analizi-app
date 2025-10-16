@@ -872,9 +872,9 @@ async def get_analysis(analysis_id: str, current_user: UserDoc = Depends(get_cur
             "session_id": str(session.id),
             "text_id": str(text.id),
             "audio_id": str(audio.id),
-            "audio_filename": audio.filename,
-            "audio_size": audio.size,
-            "audio_duration": audio.duration
+            "audio_filename": audio.original_name,
+            "audio_size": audio.size_bytes,
+            "audio_duration": audio.duration_sec
         }
     
     return AnalysisDetail(**response_data)
