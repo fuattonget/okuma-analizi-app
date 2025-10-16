@@ -362,13 +362,21 @@ async def test_gcs():
         "gcs_credentials_path": os.getenv('GCS_CREDENTIALS_PATH', './gcs-service-account.json'),
         "credentials_file_exists": False,
         "gcs_client_ok": False,
-        "gcs_error": None
+        "gcs_error": None,
+        "credentials_file_content": None
     }
     
     # Check if credentials file exists
     credentials_path = gcs_status["gcs_credentials_path"]
     if os.path.exists(credentials_path):
         gcs_status["credentials_file_exists"] = True
+        # Read first 200 chars of credentials file for debugging
+        try:
+            with open(credentials_path, 'r') as f:
+                content = f.read()
+                gcs_status["credentials_file_content"] = content[:200] + "..." if len(content) > 200 else content
+        except Exception as e:
+            gcs_status["credentials_file_content"] = f"Error reading file: {e}"
     
     # Test GCS client
     try:
