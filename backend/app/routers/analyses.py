@@ -6,7 +6,7 @@ from typing import Union
 import tempfile
 import os
 from datetime import datetime, timezone, timedelta
-from app.utils.timezone import to_turkish_isoformat, get_utc_now
+from app.utils.timezone import get_utc_now
 import soundfile as sf
 from bson import ObjectId
 from app.models.documents import AnalysisDoc, TextDoc, AudioFileDoc, WordEventDoc, PauseEventDoc, ReadingSessionDoc
@@ -290,7 +290,7 @@ async def get_analyses(
         # Build base response
         response_data = {
             "id": str(analysis.id),
-            "created_at": to_turkish_isoformat(analysis.created_at),
+            "created_at": analysis.created_at.isoformat() if analysis.created_at else None,
             "status": analysis.status,
             "text_title": text.title if text else "Unknown",
             "student_id": str(analysis.student_id) if analysis.student_id else None,
@@ -318,11 +318,11 @@ async def get_analyses(
             # Add timings
             timings = {}
             if analysis.created_at:
-                timings["queued_at"] = to_turkish_isoformat(analysis.created_at)
+                timings["queued_at"] = analysis.created_at.isoformat()
             if analysis.started_at:
-                timings["started_at"] = to_turkish_isoformat(analysis.started_at)
+                timings["started_at"] = analysis.started_at.isoformat()
             if analysis.finished_at:
-                timings["finished_at"] = to_turkish_isoformat(analysis.finished_at)
+                timings["finished_at"] = analysis.finished_at.isoformat()
                 if analysis.started_at:
                     total_ms = (analysis.finished_at - analysis.started_at).total_seconds() * 1000
                     timings["total_ms"] = round(total_ms, 2)
@@ -842,10 +842,10 @@ async def get_analysis(analysis_id: str, current_user: UserDoc = Depends(get_cur
     # Build base response
     response_data = {
         "id": str(analysis.id),
-        "created_at": to_turkish_isoformat(analysis.created_at),
+        "created_at": analysis.created_at.isoformat() if analysis.created_at else None,
         "status": analysis.status,
-        "started_at": to_turkish_isoformat(analysis.started_at),
-        "finished_at": to_turkish_isoformat(analysis.finished_at),
+        "started_at": analysis.started_at.isoformat() if analysis.started_at else None,
+        "finished_at": analysis.finished_at.isoformat() if analysis.finished_at else None,
         "error": analysis.error,
         "student_id": str(analysis.student_id) if analysis.student_id else None,
         "summary": analysis.summary or {},
@@ -861,11 +861,11 @@ async def get_analysis(analysis_id: str, current_user: UserDoc = Depends(get_cur
         # Add timings
         timings = {}
         if analysis.created_at:
-            timings["queued_at"] = to_turkish_isoformat(analysis.created_at)
+            timings["queued_at"] = analysis.created_at.isoformat()
         if analysis.started_at:
-            timings["started_at"] = to_turkish_isoformat(analysis.started_at)
+            timings["started_at"] = analysis.started_at.isoformat()
         if analysis.finished_at:
-            timings["finished_at"] = to_turkish_isoformat(analysis.finished_at)
+            timings["finished_at"] = analysis.finished_at.isoformat()
         
         response_data["debug"] = {
             "timings": timings,
