@@ -178,6 +178,7 @@ class AnalysisDetail(BaseModel):
     student_id: Optional[str] = None
     summary: Dict[str, Any]
     text: TextInfo
+    audio_duration_sec: Optional[float] = None  # Audio file duration
     # DEBUG fields
     timings: Optional[Dict[str, Any]] = None
     counts_direct: Optional[Dict[str, int]] = None
@@ -853,7 +854,8 @@ async def get_analysis(analysis_id: str, current_user: UserDoc = Depends(get_cur
             "title": text.title,
             "body": text.body,
             "grade": text.grade
-        }
+        },
+        "audio_duration_sec": analysis.audio_duration_sec
     }
     
     # Add DEBUG fields if enabled
