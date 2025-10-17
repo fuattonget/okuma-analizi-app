@@ -39,7 +39,7 @@ class TextDoc(Document):
     body: str  # metin içeriği
     canonical: CanonicalTokens = Field(default_factory=lambda: CanonicalTokens())  # canonical tokenization
     comment: Optional[str] = None  # metin hakkında oluşturan kişinin yorumu
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone(timedelta(hours=3))))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     active: bool = True  # metin silinmiş yada aktif metin mi
     
     class Settings:
@@ -62,7 +62,7 @@ class AudioFileDoc(Document):
     original_name: str
     duration_ms: Optional[int] = None
     sr: Optional[int] = None
-    uploaded_at: datetime = Field(default_factory=lambda: datetime.now(timezone(timedelta(hours=3))))
+    uploaded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # GCS metadata fields
     text_id: Optional[ObjectId] = None
@@ -110,7 +110,7 @@ class AnalysisDoc(Document):
     finished_at: Optional[datetime] = None
     summary: Dict[str, Any] = {}
     error: Optional[str] = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone(timedelta(hours=3))))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     class Settings:
         name = "analyses"
@@ -131,7 +131,7 @@ class ReadingSessionDoc(Document):
     audio_id: ObjectId  # reference to AudioFileDoc
     reader_id: Optional[str] = None
     status: Literal["active", "completed", "cancelled"] = "active"
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone(timedelta(hours=3))))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     completed_at: Optional[datetime] = None
     
     class Settings:
@@ -213,7 +213,7 @@ class SttResultDoc(Document):
     language: str  # detected language code
     transcript: str  # full transcript text
     words: List[WordData] = Field(default_factory=list)  # word-level data
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone(timedelta(hours=3))))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     class Settings:
         name = "stt_results"

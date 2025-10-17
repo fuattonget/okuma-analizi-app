@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { apiClient, Student } from '@/lib/api';
 import { useAuth } from '@/lib/useAuth';
 import { useRoles } from '@/lib/useRoles';
+import { formatTurkishDateOnly } from '@/lib/dateUtils';
 import Navigation from '@/components/Navigation';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import Tooltip, { InfoTooltip, ActionTooltip } from '@/components/Tooltip';
@@ -31,7 +32,6 @@ import {
   CrossIcon
 } from '@/components/Icon';
 import classNames from 'classnames';
-import { formatTurkishDate } from '@/lib/dateUtils';
 import { themeColors, combineThemeClasses, componentClasses } from '@/lib/theme';
 
 export default function StudentsPage() {
@@ -907,7 +907,7 @@ export default function StudentsPage() {
                           {student.grade === 0 ? 'Diğer' : `${student.grade}. Sınıf`}
                         </td>
                         <td className="hidden md:table-cell px-2 sm:px-4 py-4 text-sm text-gray-500 dark:text-slate-400 border-r border-gray-100 dark:border-slate-600">
-                          {new Date(student.created_at).toLocaleDateString('tr-TR')}
+                          {formatTurkishDateOnly(student.created_at)}
                         </td>
                         <td className="hidden lg:table-cell px-2 sm:px-4 py-4 text-sm text-gray-500 dark:text-slate-400 border-r border-gray-100 dark:border-slate-600">
                           <div className="truncate max-w-32" title={student.created_by}>

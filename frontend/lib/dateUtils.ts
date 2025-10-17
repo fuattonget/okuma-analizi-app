@@ -1,45 +1,16 @@
 /**
  * Date utility functions for handling timezone conversions
+ * 
+ * Backend sends all dates in UTC format (ISO 8601).
+ * Frontend converts UTC to Turkish timezone (UTC+3) for display.
  */
-
-/**
- * Converts a date string to Turkish timezone
- * @param dateString - The date string to convert (already in Turkish timezone from backend)
- * @returns Date string with Turkish timezone (+03:00)
- */
-export function toTurkishTime(dateString: string): string {
-  if (!dateString) return '';
-  
-  // Parse the date - backend already sends Turkish timezone
-  const date = new Date(dateString);
-  
-  // If the date string already has timezone info, use it as is
-  if (dateString.includes('+03:00') || dateString.includes('+03')) {
-    return dateString;
-  }
-  
-  // Otherwise, assume it's UTC and convert to Turkish timezone
-  const turkishTime = new Date(date.getTime() + (3 * 60 * 60 * 1000));
-  return turkishTime.toISOString().replace('Z', '+03:00');
-}
-
-/**
- * Converts a date string to Turkish timezone and returns a Date object
- * @param dateString - The date string to convert
- * @returns Date object with Turkish timezone
- */
-export function toTurkishDate(dateString: string): Date {
-  if (!dateString) return new Date();
-  
-  const turkishTime = toTurkishTime(dateString);
-  return new Date(turkishTime);
-}
 
 /**
  * Formats a date string for display in Turkish locale
- * @param dateString - The date string to format
- * @param options - Intl.DateTimeFormatOptions
- * @returns Formatted date string
+ * Converts UTC time from backend to Turkish timezone (UTC+3)
+ * @param dateString - The UTC date string from backend (ISO 8601 format)
+ * @param options - Intl.DateTimeFormatOptions for formatting
+ * @returns Formatted date string in Turkish locale and timezone
  */
 export function formatTurkishDate(
   dateString: string, 
@@ -48,20 +19,17 @@ export function formatTurkishDate(
     month: 'long',
     day: 'numeric',
     hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'Europe/Istanbul'
+    minute: '2-digit'
   }
 ): string {
   if (!dateString) return '';
   
-  const turkishTime = toTurkishTime(dateString);
-  const date = new Date(turkishTime);
+  // Parse UTC date and convert to Turkish timezone (+3 hours)
+  const date = new Date(dateString);
+  const turkishDate = new Date(date.getTime() + (3 * 60 * 60 * 1000));
   
-  // Ensure we're using Turkish timezone
-  return date.toLocaleString('tr-TR', {
-    ...options,
-    timeZone: 'Europe/Istanbul'
-  });
+  // Format in Turkish locale
+  return turkishDate.toLocaleString('tr-TR', options);
 }
 
 /**
@@ -73,8 +41,7 @@ export function formatTurkishDateOnly(dateString: string): string {
   return formatTurkishDate(dateString, {
     year: 'numeric',
     month: 'long',
-    day: 'numeric',
-    timeZone: 'Europe/Istanbul'
+    day: 'numeric'
   });
 }
 
@@ -87,8 +54,7 @@ export function formatTurkishTimeOnly(dateString: string): string {
   return formatTurkishDate(dateString, {
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit',
-    timeZone: 'Europe/Istanbul'
+    second: '2-digit'
   });
 }
 
@@ -104,8 +70,24 @@ export function formatTurkishDateTime(dateString: string): string {
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit',
-    timeZone: 'Europe/Istanbul'
+    second: '2-digit'
   });
 }
 
+/**
+ * USAGE GUIDE:
+ * 
+ * All date functions in this file follow the same pattern:
+ * 1. Backend sends UTC dates in ISO 8601 format: "2025-10-17T08:42:00"
+ * 2. Frontend adds +3 hours to convert to Turkish timezone
+ * 3. Result is formatted in Turkish locale (tr-TR)
+ * 
+ * Examples:
+ * - formatTurkishDate("2025-10-17T08:42:00") → "17 Ekim 2025 11:42"
+ * - formatTurkishDateOnly("2025-10-17T08:42:00") → "17 Ekim 2025"
+ * - formatTurkishTimeOnly("2025-10-17T08:42:00") → "11:42:00"
+ * - formatTurkishDateTime("2025-10-17T08:42:00") → "17 Ekim 2025 11:42:00"
+ * 
+ * IMPORTANT: Always use these functions for displaying dates from the API.
+ * Never use new Date().toLocaleString() directly without timezone conversion.
+ */
