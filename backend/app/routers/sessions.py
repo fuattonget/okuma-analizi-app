@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
-from app.utils.timezone import to_turkish_isoformat, get_utc_now
+from app.utils.timezone import get_utc_now
 from app.models.documents import ReadingSessionDoc, AnalysisDoc, TextDoc, AudioFileDoc
 from app.schemas import SessionSummary, SessionDetail
 from app.logging_config import app_logger
@@ -39,8 +39,8 @@ async def get_sessions(
             "audio_id": str(session.audio_id),
             "reader_id": session.reader_id,
             "status": session.status,
-            "created_at": to_turkish_isoformat(session.created_at),
-            "completed_at": to_turkish_isoformat(session.completed_at)
+            "created_at": session.created_at.isoformat() if session.created_at else None,
+            "completed_at": session.completed_at.isoformat() if session.completed_at else None
         }
         result.append(SessionSummary(**session_data))
     
@@ -76,8 +76,8 @@ async def get_session(session_id: str):
         "audio_id": str(session.audio_id),
         "reader_id": session.reader_id,
         "status": session.status,
-        "created_at": to_turkish_isoformat(session.created_at),
-        "completed_at": to_turkish_isoformat(session.completed_at),
+        "created_at": session.created_at.isoformat() if session.created_at else None,
+        "completed_at": session.completed_at.isoformat() if session.completed_at else None,
         "text": {
             "title": text.title,
             "body": text.body
@@ -123,10 +123,10 @@ async def get_session_analyses(
     for analysis in analyses:
         analysis_data = {
             "id": str(analysis.id),
-            "created_at": to_turkish_isoformat(analysis.created_at),
+            "created_at": analysis.created_at.isoformat() if analysis.created_at else None,
             "status": analysis.status,
-            "started_at": to_turkish_isoformat(analysis.started_at),
-            "finished_at": to_turkish_isoformat(analysis.finished_at),
+            "started_at": analysis.started_at.isoformat() if analysis.started_at else None,
+            "finished_at": analysis.finished_at.isoformat() if analysis.finished_at else None,
             "error": analysis.error,
             "summary": analysis.summary or {}
         }
