@@ -2,19 +2,18 @@ from beanie import Document
 from pydantic import Field, BaseModel
 from typing import Optional
 from datetime import datetime, timezone
-from app.utils.timezone import get_turkish_now
 from pymongo import IndexModel, ASCENDING, DESCENDING
 import asyncio
 
 class StudentDoc(Document):
-    """Student document model"""
+    """Student document model - All dates stored in UTC"""
     first_name: str = Field(..., min_length=1, max_length=50)
     last_name: str = Field(..., min_length=1, max_length=50)
     grade: int = Field(..., ge=0, le=6)  # 0=Diğer, 1-6 sınıf aralığı
     registration_number: int = Field(..., ge=0)  # Kayıt numarası (0'dan başlar)
     created_by: str = Field(..., max_length=100)  # Kayıt eden kişi
     is_active: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=get_turkish_now)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: Optional[datetime] = None
     
     class Settings:

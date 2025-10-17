@@ -2,7 +2,6 @@ from beanie import Document
 from pydantic import Field, BaseModel
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
-from app.utils.timezone import get_turkish_now
 
 
 class ScoreRange(BaseModel):
@@ -31,14 +30,14 @@ class ErrorTypeComment(BaseModel):
 
 
 class ScoreFeedbackDoc(Document):
-    """Score feedback configuration document"""
+    """Score feedback configuration document - All dates stored in UTC"""
     name: str = Field(description="Name of this feedback configuration")
     description: Optional[str] = Field(None, description="Description of this configuration")
     is_active: bool = Field(True, description="Whether this configuration is active")
     score_ranges: List[ScoreRange] = Field(description="List of score ranges and their feedback")
     detailed_comments: Optional[List[ErrorTypeComment]] = Field(None, description="Detailed comments for error types")
-    created_at: datetime = Field(default_factory=get_turkish_now)
-    updated_at: datetime = Field(default_factory=get_turkish_now)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     class Settings:
         name = "score_feedback"
@@ -87,7 +86,7 @@ class ScoreFeedbackDoc(Document):
     
     def save_with_timestamp(self):
         """Save with updated timestamp"""
-        self.updated_at = get_turkish_now()
+        self.updated_at = datetime.now(timezone.utc)
         return self.save()
 
 
