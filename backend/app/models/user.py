@@ -25,7 +25,7 @@ def get_password_hash(password: str) -> str:
 # JWT settings
 JWT_SECRET = "your-secret-key-change-in-production"  # TODO: Move to environment
 JWT_ALGORITHM = "HS256"
-JWT_EXPIRATION_HOURS = 3  # 3 hours for auto-logout
+JWT_EXPIRATION_HOURS = 4  # 4 hours (longer than inactivity timeout for safety)
 
 # HTTP Bearer for JWT
 security = HTTPBearer()

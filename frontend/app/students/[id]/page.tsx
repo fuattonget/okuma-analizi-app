@@ -713,7 +713,7 @@ export default function StudentProfilePage() {
                   >
                     <input
                       type="file"
-                      accept="audio/*"
+                      accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac , "
                       onChange={handleFileSelect}
                       className="hidden"
                       id="audio-upload"

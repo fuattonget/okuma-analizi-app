@@ -50,9 +50,9 @@ async def login(login_data: LoginRequest):
     # Create JWT token
     access_token = create_access_token(str(user.id), role_name)
     
-    # Calculate expiration timestamp (3 hours from now)
+    # Calculate expiration timestamp (4 hours from now - must match JWT_EXPIRATION_HOURS)
     from datetime import datetime, timezone, timedelta
-    expires_at = (datetime.now(timezone.utc) + timedelta(hours=3)).timestamp()
+    expires_at = (datetime.now(timezone.utc) + timedelta(hours=4)).timestamp()
     
     return LoginResponse(
         access_token=access_token,

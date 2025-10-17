@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
 const INACTIVITY_TIMEOUT = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
+const INACTIVITY_CHECK_INTERVAL = 60 * 1000; // Check every 1 minute
 
 export function useAuth() {
   const router = useRouter();
@@ -102,7 +103,7 @@ export function useAuth() {
 
     const interval = setInterval(() => {
       checkInactivity();
-    }, 60000); // Check every minute
+    }, INACTIVITY_CHECK_INTERVAL);
 
     return () => clearInterval(interval);
   }, [isAuthenticated, checkInactivity]);
