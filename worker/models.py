@@ -105,11 +105,13 @@ class AnalysisDoc(Document):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     
     session_id: ObjectId  # reference to ReadingSessionDoc
+    student_id: Optional[ObjectId] = None  # reference to StudentDoc
     status: Literal["queued", "running", "done", "failed"] = "queued"
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None
     summary: Dict[str, Any] = {}
     error: Optional[str] = None
+    audio_duration_sec: Optional[float] = None  # Audio file duration in seconds
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     class Settings:
