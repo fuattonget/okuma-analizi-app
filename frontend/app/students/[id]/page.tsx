@@ -98,12 +98,8 @@ export default function StudentProfilePage() {
                       ...a,
                       status: updatedAnalysis.status,
                       audio_duration_sec: updatedAnalysis.audio_duration_sec,
-                      // Update summary and other fields if they exist
-                      ...(updatedAnalysis.summary && { summary: updatedAnalysis.summary }),
-                      ...(updatedAnalysis.wer !== undefined && { wer: updatedAnalysis.wer }),
-                      ...(updatedAnalysis.accuracy !== undefined && { accuracy: updatedAnalysis.accuracy }),
-                      ...(updatedAnalysis.wpm !== undefined && { wpm: updatedAnalysis.wpm }),
-                      ...(updatedAnalysis.counts && { counts: updatedAnalysis.counts })
+                      // Update summary object (contains wer, accuracy, wpm, counts)
+                      ...(updatedAnalysis.summary && { summary: updatedAnalysis.summary })
                     } : a
                   ));
                   
