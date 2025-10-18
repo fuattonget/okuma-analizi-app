@@ -6,7 +6,7 @@ from typing import Union
 import tempfile
 import os
 from datetime import datetime, timezone, timedelta
-from app.utils.timezone import to_turkish_isoformat, get_utc_now
+from app.utils.timezone import get_utc_now
 import soundfile as sf
 from bson import ObjectId
 from app.models.documents import AnalysisDoc, TextDoc, AudioFileDoc, WordEventDoc, PauseEventDoc, ReadingSessionDoc
@@ -178,6 +178,7 @@ class AnalysisDetail(BaseModel):
     student_id: Optional[str] = None
     summary: Dict[str, Any]
     text: TextInfo
+    audio_duration_sec: Optional[float] = None  # Audio file duration
     # DEBUG fields
     timings: Optional[Dict[str, Any]] = None
     counts_direct: Optional[Dict[str, int]] = None
@@ -290,7 +291,7 @@ async def get_analyses(
         # Build base response
         response_data = {
             "id": str(analysis.id),
-            "created_at": to_turkish_isoformat(analysis.created_at),
+            "created_at": analysis.created_at.isoformat() if analysis.created_at else None,
             "status": analysis.status,
             "text_title": text.title if text else "Unknown",
             "student_id": str(analysis.student_id) if analysis.student_id else None,
@@ -318,11 +319,11 @@ async def get_analyses(
             # Add timings
             timings = {}
             if analysis.created_at:
-                timings["queued_at"] = to_turkish_isoformat(analysis.created_at)
+                timings["queued_at"] = analysis.created_at.isoformat()
             if analysis.started_at:
-                timings["started_at"] = to_turkish_isoformat(analysis.started_at)
+                timings["started_at"] = analysis.started_at.isoformat()
             if analysis.finished_at:
-                timings["finished_at"] = to_turkish_isoformat(analysis.finished_at)
+                timings["finished_at"] = analysis.finished_at.isoformat()
                 if analysis.started_at:
                     total_ms = (analysis.finished_at - analysis.started_at).total_seconds() * 1000
                     timings["total_ms"] = round(total_ms, 2)
@@ -842,10 +843,10 @@ async def get_analysis(analysis_id: str, current_user: UserDoc = Depends(get_cur
     # Build base response
     response_data = {
         "id": str(analysis.id),
-        "created_at": to_turkish_isoformat(analysis.created_at),
+        "created_at": analysis.created_at.isoformat() if analysis.created_at else None,
         "status": analysis.status,
-        "started_at": to_turkish_isoformat(analysis.started_at),
-        "finished_at": to_turkish_isoformat(analysis.finished_at),
+        "started_at": analysis.started_at.isoformat() if analysis.started_at else None,
+        "finished_at": analysis.finished_at.isoformat() if analysis.finished_at else None,
         "error": analysis.error,
         "student_id": str(analysis.student_id) if analysis.student_id else None,
         "summary": analysis.summary or {},
@@ -853,7 +854,8 @@ async def get_analysis(analysis_id: str, current_user: UserDoc = Depends(get_cur
             "title": text.title,
             "body": text.body,
             "grade": text.grade
-        }
+        },
+        "audio_duration_sec": analysis.audio_duration_sec
     }
     
     # Add DEBUG fields if enabled
@@ -861,20 +863,20 @@ async def get_analysis(analysis_id: str, current_user: UserDoc = Depends(get_cur
         # Add timings
         timings = {}
         if analysis.created_at:
-            timings["queued_at"] = to_turkish_isoformat(analysis.created_at)
+            timings["queued_at"] = analysis.created_at.isoformat()
         if analysis.started_at:
-            timings["started_at"] = to_turkish_isoformat(analysis.started_at)
+            timings["started_at"] = analysis.started_at.isoformat()
         if analysis.finished_at:
-            timings["finished_at"] = to_turkish_isoformat(analysis.finished_at)
+            timings["finished_at"] = analysis.finished_at.isoformat()
         
         response_data["debug"] = {
             "timings": timings,
             "session_id": str(session.id),
             "text_id": str(text.id),
             "audio_id": str(audio.id),
-            "audio_filename": audio.filename,
-            "audio_size": audio.size,
-            "audio_duration": audio.duration
+            "audio_filename": audio.original_name,
+            "audio_size": audio.size_bytes,
+            "audio_duration": audio.duration_sec
         }
     
     return AnalysisDetail(**response_data)

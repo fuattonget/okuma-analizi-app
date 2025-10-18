@@ -90,11 +90,17 @@ export default function StudentProfilePage() {
               startPolling(analysis.id, async () => {
                 try {
                   const updatedAnalysis = await apiClient.getAnalysis(analysis.id);
-                  console.log('📊 Polling update for analysis:', analysis.id, 'new status:', updatedAnalysis.status);
+                  console.log('📊 Polling update for analysis:', analysis.id, 'new status:', updatedAnalysis.status, 'duration:', updatedAnalysis.audio_duration_sec);
                   
-                  // Update local state
+                  // Update local state with all fields from API
                   setAnalyses(prev => prev.map(a => 
-                    a.id === analysis.id ? { ...a, status: updatedAnalysis.status } : a
+                    a.id === analysis.id ? {
+                      ...a,
+                      status: updatedAnalysis.status,
+                      audio_duration_sec: updatedAnalysis.audio_duration_sec,
+                      // Update summary object (contains wer, accuracy, wpm, counts)
+                      ...(updatedAnalysis.summary && { summary: updatedAnalysis.summary })
+                    } : a
                   ));
                   
                   if (updatedAnalysis.status === 'done' || updatedAnalysis.status === 'failed') {

@@ -195,6 +195,7 @@ export interface AnalysisDetail {
   finished_at?: string;
   error?: string;
   student_id?: string;
+  audio_duration_sec?: number;  // Audio file duration in seconds
   summary: {
     counts?: {
       correct: number;

@@ -2,7 +2,6 @@ from beanie import Document
 from pydantic import Field, BaseModel, ConfigDict, field_serializer, field_validator
 from typing import Optional, Literal, Dict, Any, List
 from datetime import datetime, timezone, timedelta
-from app.utils.timezone import get_turkish_now, to_utc
 from pymongo import IndexModel, ASCENDING, DESCENDING
 from bson import ObjectId
 import pytz
@@ -64,7 +63,7 @@ class OwnerInfo(BaseModel):
 
 
 class TextDoc(Document):
-    """Text document model with slug-based identification"""
+    """Text document model with slug-based identification - All dates stored in UTC"""
     model_config = ConfigDict(arbitrary_types_allowed=True)
     
     slug: str  # unique slug identifier
@@ -73,14 +72,8 @@ class TextDoc(Document):
     body: str  # metin içeriği
     canonical: CanonicalTokens = Field(default_factory=lambda: CanonicalTokens())  # canonical tokenization
     comment: Optional[str] = None  # metin hakkında oluşturan kişinin yorumu
-    created_at: datetime = Field(default_factory=get_turkish_now)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     active: bool = True  # metin silinmiş yada aktif metin mi
-    
-    @field_validator('created_at', mode='before')
-    @classmethod
-    def ensure_utc_timezone(cls, value: Optional[datetime]) -> Optional[datetime]:
-        """Ensure datetime is in UTC timezone before saving"""
-        return to_utc(value)
     
     
     class Settings:
@@ -96,16 +89,14 @@ print("✅ TextDoc model loaded")
 
 
 class AudioFileDoc(Document):
-    """Audio file document model with privacy controls"""
+    """Audio file document model with privacy controls - All dates stored in UTC"""
     model_config = ConfigDict(arbitrary_types_allowed=True)
     
     # Core fields
     original_name: str
     duration_ms: Optional[int] = None
     sr: Optional[int] = None
-    uploaded_at: datetime = Field(default_factory=get_turkish_now)
-    
-    # No timezone conversion needed - keep Turkish timezone
+    uploaded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # GCS metadata fields
     text_id: Optional[ObjectId] = None
@@ -156,9 +147,7 @@ class AnalysisDoc(Document):
     summary: Dict[str, Any] = {}
     error: Optional[str] = None
     audio_duration_sec: Optional[float] = None
-    created_at: datetime = Field(default_factory=get_turkish_now)
-    
-    # No timezone conversion needed - keep Turkish timezone
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     
     class Settings:
@@ -173,17 +162,15 @@ print("✅ AnalysisDoc model loaded")
 
 
 class ReadingSessionDoc(Document):
-    """Reading session document model"""
+    """Reading session document model - All dates stored in UTC"""
     model_config = ConfigDict(arbitrary_types_allowed=True)
     
     text_id: ObjectId  # reference to TextDoc
     audio_id: ObjectId  # reference to AudioFileDoc
     reader_id: Optional[str] = None
     status: Literal["active", "completed", "cancelled"] = "active"
-    created_at: datetime = Field(default_factory=get_turkish_now)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     completed_at: Optional[datetime] = None
-    
-    # No timezone conversion needed - keep Turkish timezone
     
     
     class Settings:
@@ -265,7 +252,7 @@ class SttResultDoc(Document):
     language: str  # detected language code
     transcript: str  # full transcript text
     words: List[WordData] = Field(default_factory=list)  # word-level data
-    created_at: datetime = Field(default_factory=get_turkish_now)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     class Settings:
         name = "stt_results"
