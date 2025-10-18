@@ -351,6 +351,13 @@ async def _analyze_audio_async(analysis_id: str):
         analysis.summary = summary
         analysis.status = "done"
         analysis.finished_at = datetime.utcnow()
+        
+        # Set audio duration from AudioFileDoc
+        audio = await AudioFileDoc.get(session.audio_id)
+        if audio and audio.duration_sec:
+            analysis.audio_duration_sec = audio.duration_sec
+            logger.info(f"Audio duration set: {audio.duration_sec:.2f} seconds")
+        
         await analysis.save()
         
         # Update session status to completed

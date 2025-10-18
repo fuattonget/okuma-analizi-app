@@ -267,7 +267,7 @@ export default function HomePage() {
       let textId = selectedTextId;
       if (!selectedTextId && sanitizedText.trim()) {
         const tempText = await apiClient.createText({
-          title: `Geçici Metin - ${new Date().toLocaleString('tr-TR')}`,
+          title: `Geçici Metin - ${new Date().toLocaleString('tr-TR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}`,
           grade: parseInt(grade),
           body: sanitizedText.trim(),
         });

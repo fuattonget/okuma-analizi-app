@@ -165,15 +165,39 @@ async def upload_audio(
                     temp_file_path=temp_file_path
                 ).info("Extracting audio metadata")
                 
-                data, sr = sf.read(temp_file_path)
-                duration_sec = len(data) / sr  # Duration in seconds
-                duration_ms = int(duration_sec * 1000)  # Convert to milliseconds
-                sample_rate = sr
-                app_logger.bind(
-                    request_id=request_id,
-                    duration_sec=duration_sec,
-                    sample_rate=sample_rate
-                ).info("Audio metadata extracted successfully")
+                # Try soundfile first (works for WAV, FLAC, OGG)
+                try:
+                    data, sr = sf.read(temp_file_path)
+                    duration_sec = len(data) / sr  # Duration in seconds
+                    duration_ms = int(duration_sec * 1000)  # Convert to milliseconds
+                    sample_rate = sr
+                    app_logger.bind(
+                        request_id=request_id,
+                        duration_sec=duration_sec,
+                        sample_rate=sample_rate,
+                        method="soundfile"
+                    ).info("Audio metadata extracted with soundfile")
+                except Exception as sf_error:
+                    # Fallback to ffprobe for M4A, MP3, AAC, etc.
+                    app_logger.bind(
+                        request_id=request_id,
+                        error=str(sf_error)
+                    ).info("Soundfile failed, trying ffprobe...")
+                    
+                    import subprocess
+                    result = subprocess.run([
+                        'ffprobe', '-v', 'error', '-show_entries',
+                        'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1',
+                        temp_file_path
+                    ], capture_output=True, text=True, check=True)
+                    
+                    duration_sec = float(result.stdout.strip())
+                    duration_ms = int(duration_sec * 1000)
+                    app_logger.bind(
+                        request_id=request_id,
+                        duration_sec=duration_sec,
+                        method="ffprobe"
+                    ).info("Audio metadata extracted with ffprobe")
             except Exception as e:
                 app_logger.bind(
                     request_id=request_id,
@@ -487,8 +511,30 @@ async def upload_standalone_audio(
         # Calculate duration (optional)
         duration_sec = None
         try:
-            data, sr = sf.read(temp_file_path)
-            duration_sec = len(data) / sr
+            # Try soundfile first (for WAV, FLAC, OGG)
+            try:
+                data, sr = sf.read(temp_file_path)
+                duration_sec = len(data) / sr
+                app_logger.bind(
+                    request_id=request_id,
+                    duration_sec=duration_sec,
+                    method="soundfile"
+                ).info("Duration calculated with soundfile")
+            except Exception as sf_error:
+                # Fallback to ffprobe for M4A, MP3, AAC, etc.
+                import subprocess
+                result = subprocess.run([
+                    'ffprobe', '-v', 'error', '-show_entries',
+                    'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1',
+                    temp_file_path
+                ], capture_output=True, text=True, check=True)
+                
+                duration_sec = float(result.stdout.strip())
+                app_logger.bind(
+                    request_id=request_id,
+                    duration_sec=duration_sec,
+                    method="ffprobe"
+                ).info("Duration calculated with ffprobe")
         except Exception as e:
             app_logger.bind(
                 request_id=request_id,
