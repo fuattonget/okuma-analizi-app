@@ -951,160 +951,37 @@ Sistem production'da stabil çalışmaktadır. ✅
 
 ### ÖNCEL İK: DÜŞÜK (6-12 Ay)
 
-#### 4.16 Mobile App (React Native)
-**Süre:** 60 gün  
-**Öncelik:** 🟢 Düşük
-
-**Yapılacaklar:**
-- [ ] React Native setup
-- [ ] iOS app
-- [ ] Android app
-- [ ] Audio recording
-- [ ] Push notifications
-- [ ] Offline mode
-- [ ] App store deployment
-
-**Bağımlılıklar:** React Native, Expo
-
----
-
-#### 4.17 Kubernetes Deployment
-**Süre:** 21 gün  
-**Öncelik:** 🟢 Düşük
-
-**Yapılacaklar:**
-- [ ] Kubernetes cluster setup (GKE/EKS)
-- [ ] Helm charts
-- [ ] Service mesh (Istio)
-- [ ] Auto-scaling
-- [ ] Load balancing
-- [ ] Rolling updates
-- [ ] Blue-green deployment
-
-**Bağımlılıklar:** Kubernetes, Helm, Istio
-
----
-
-#### 4.18 Real-time Collaboration
-**Süre:** 14 gün  
-**Öncelik:** 🟢 Düşük
-
-**Yapılacaklar:**
-- [ ] WebSocket server
-- [ ] Real-time analysis updates (Socket.io)
-- [ ] Multi-user editing
-- [ ] Presence indicators
-- [ ] Collaborative comments
-- [ ] Activity feed
-
-**Bağımlılıklar:** Socket.io, FastAPI WebSockets
-
----
-
-#### 4.19 AI-powered Recommendations
-**Süre:** 21 gün  
-**Öncelik:** 🟢 Düşük
-
-**Yapılacaklar:**
-- [ ] ML model training (error prediction)
-- [ ] Personalized text recommendations
-- [ ] Adaptive difficulty levels
-- [ ] Learning path suggestions
-- [ ] OpenAI GPT integration (feedback generation)
-
-**Bağımlılıklar:** scikit-learn, TensorFlow, OpenAI API
-
----
-
-#### 4.20 Voice Cloning Integration
-**Süre:** 14 gün  
-**Öncelik:** 🟢 Düşük
-
-**Yapılacaklar:**
-- [ ] ElevenLabs Voice Cloning API
-- [ ] Custom voice profiles
-- [ ] Text-to-speech with custom voice
-- [ ] Voice library management
-
-**Bağımlılıklar:** ElevenLabs Voice API
-
----
-
-#### 4.21 Gamification Features
-**Süre:** 14 gün  
-**Öncelik:** 🟢 Düşük
-
-**Yapılacaklar:**
-- [ ] Achievement system
-- [ ] Badges & rewards
-- [ ] Leaderboards
-- [ ] Streaks
-- [ ] Points system
-- [ ] Progress bars
-
-**Bağımlılıklar:** Frontend UI
-
----
-
-#### 4.22 Social Sharing
-**Süre:** 5 gün  
-**Öncelik:** 🟢 Düşük
-
-**Yapılacaklar:**
-- [ ] Share analysis results (Twitter, Facebook, WhatsApp)
-- [ ] Public profile pages
-- [ ] Achievement sharing
-- [ ] Og:image generation
-
-**Bağımlılıklar:** Social media APIs
-
----
-
-#### 4.23 Admin Dashboard
+#### 4.16 Admin Dashboard
 **Süre:** 14 gün  
 **Öncelik:** 🟡 Orta
 
 **Yapılacaklar:**
 - [ ] System metrics dashboard
 - [ ] User management (ban, delete)
-- [ ] Content moderation
 - [ ] System logs viewer
 - [ ] Database stats
-- [ ] Revenue tracking (if premium tier)
+- [ ] User activity monitoring
 
 **Bağımlılıklar:** Frontend UI, Backend APIs
 
 ---
 
-#### 4.24 Premium Tier & Billing
-**Süre:** 21 gün  
-**Öncelik:** 🟢 Düşük
-
-**Yapılacaklar:**
-- [ ] Stripe integration
-- [ ] Subscription plans (Free, Pro, Enterprise)
-- [ ] Payment processing
-- [ ] Invoice generation
-- [ ] Billing portal
-- [ ] Usage tracking
-
-**Bağımlılıklar:** Stripe API
-
----
-
-#### 4.25 API Documentation Website
+#### 4.17 API Documentation Website
 **Süre:** 7 gün  
 **Öncelik:** 🟡 Orta
 
 **Yapılacaklar:**
-- [ ] Docusaurus/GitBook setup
-- [ ] API reference docs
+- [ ] API reference docs iyileştirme
 - [ ] Code examples (Python, JavaScript, cURL)
 - [ ] Tutorials
 - [ ] Changelog
 - [ ] FAQ
 
-**Bağımlılıklar:** Docusaurus, Redoc
+**Bağımlılıklar:** FastAPI OpenAPI
+
+---
+
+**Not:** Uzun vadeli planlar, kullanıcı geri bildirimleri ve ihtiyaçlar doğrultusunda güncellenecektir.
 
 ---
 
@@ -1470,16 +1347,8 @@ Sistem production'da stabil çalışmaktadır. ✅
 
 | Task ID | Task Name | Category | Start Date | End Date | Duration (Days) | Status | Priority | Assigned To | Dependencies |
 |---------|-----------|----------|------------|----------|----------------|--------|----------|-------------|--------------|
-| TASK-047 | Mobile App (React Native) | Mobile | 2025-02-01 | 2025-04-01 | 60 | 📋 Planned | Low | - | TASK-036 |
-| TASK-048 | Kubernetes Deployment | DevOps | 2025-03-01 | 2025-03-22 | 21 | 📋 Planned | Low | - | TASK-034 |
-| TASK-049 | Real-time Collaboration | Backend/Frontend | 2025-03-15 | 2025-03-29 | 14 | 📋 Planned | Low | - | TASK-009 |
-| TASK-050 | AI Recommendations | Backend | 2025-04-01 | 2025-04-22 | 21 | 📋 Planned | Low | - | TASK-009 |
-| TASK-051 | Voice Cloning | Worker | 2025-04-10 | 2025-04-24 | 14 | 📋 Planned | Low | - | TASK-005 |
-| TASK-052 | Gamification | Frontend | 2025-05-01 | 2025-05-15 | 14 | 📋 Planned | Low | - | TASK-008 |
-| TASK-053 | Social Sharing | Frontend | 2025-05-10 | 2025-05-15 | 5 | 📋 Planned | Low | - | TASK-009 |
-| TASK-054 | Admin Dashboard | Frontend | 2025-05-15 | 2025-05-29 | 14 | 📋 Planned | Medium | - | TASK-014 |
-| TASK-055 | Premium Tier & Billing | Backend/Frontend | 2025-06-01 | 2025-06-22 | 21 | 📋 Planned | Low | - | TASK-014 |
-| TASK-056 | API Documentation Site | Docs | 2025-06-15 | 2025-06-22 | 7 | 📋 Planned | Medium | - | TASK-001 |
+| TASK-047 | Admin Dashboard | Frontend | 2025-02-01 | 2025-02-15 | 14 | 📋 Planned | Medium | - | TASK-014 |
+| TASK-048 | API Documentation Site | Docs | 2025-02-10 | 2025-02-17 | 7 | 📋 Planned | Medium | - | TASK-001 |
 
 ---
 
@@ -1529,7 +1398,7 @@ Sistem production'da stabil çalışmaktadır. ✅
 | **Tamamlanan Task** | 31 |
 | **Planlanan Task (Kısa Vadeli)** | 8 |
 | **Planlanan Task (Orta Vadeli)** | 7 |
-| **Planlanan Task (Uzun Vadeli)** | 10 |
+| **Planlanan Task (Uzun Vadeli)** | 2 |
 | **Teknik Borç** | 7 |
 | **Toplam Commit** | 150+ |
 | **Kod Satırı** | ~25,000 |
@@ -1569,13 +1438,13 @@ DOKY - Okuma Analizi Sistemi **production ortamında stabil çalışan, tam fonk
 
 başarıyla gerçekleştirilmiştir.
 
-**Gelecek 12 ay** için **roadmap'te 25+ yeni özellik** planlanmıştır:
+**Gelecek 12 ay** için **roadmap'te 17 yeni özellik** planlanmıştır:
 - Monitoring & Observability
 - CI/CD Pipeline
 - Multi-language support
 - Advanced analytics
-- Mobile app
-- AI-powered features
+- Admin dashboard
+- API documentation
 
 Sistem **skalabilir, güvenli ve sürdürülebilir** bir yapıya sahiptir.
 
