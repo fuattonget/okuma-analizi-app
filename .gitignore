@@ -32,3 +32,6 @@ dist/
 build/
 .next/
 gcs-service-account.json
+
+docker-compose.test.yml
+docker-compose.yml
