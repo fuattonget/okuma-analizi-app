@@ -191,9 +191,12 @@ export default function HomePage() {
     }
     
     // File type check
-    const allowedTypes = ['audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/m4a', 'audio/x-m4a'];
+    const allowedTypes = [
+      'audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/m4a', 'audio/x-m4a',
+      'audio/aac', 'audio/ogg', 'audio/flac', 'audio/webm'
+    ];
     if (!allowedTypes.includes(file.type)) {
-      errors.file = 'Desteklenmeyen dosya türü. MP3, WAV, M4A dosyaları kabul edilir.';
+      errors.file = 'Desteklenmeyen dosya türü. MP3, WAV, M4A, AAC, OGG, FLAC, WebM dosyaları kabul edilir.';
       setFormErrors(errors);
       return;
     }
