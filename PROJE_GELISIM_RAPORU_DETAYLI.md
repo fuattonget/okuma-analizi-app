@@ -610,17 +610,6 @@
 
 ## 3. GELECEK GELİŞTİRMELER
 
-### 3.1 KISA VADELİ (Öncelikli)
-
-#### 3.1.1 Monitoring & Observability 🔴 YÜKSEK
-**Yapılacaklar:**
-- [ ] Prometheus entegrasyonu
-- [ ] Grafana dashboard'ları
-- [ ] Metrics collection (API response time, error rate)
-- [ ] Alert management (email/Slack)
-- [ ] Custom dashboards (API health, Worker performance, Database metrics)
-
-**Bağımlılıklar:** Prometheus, Grafana, AlertManager
 
 ---
 

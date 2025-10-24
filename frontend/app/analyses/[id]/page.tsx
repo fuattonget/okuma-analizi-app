@@ -236,7 +236,7 @@ export default function AnalysisDetailPage() {
     }
 
     const startTime = event.timing.start_ms / 1000; // Convert ms to seconds
-    const endTime = event.timing.end_ms ? event.timing.end_ms / 1000 : null; // Convert ms to seconds
+    const endTime = event.timing.end_ms ? (event.timing.end_ms - 210) / 1000 : null; // Convert ms to seconds
     
     // Önceki event listener'ı temizle (varsa)
     if (audioRef.current.wordEndHandler) {
