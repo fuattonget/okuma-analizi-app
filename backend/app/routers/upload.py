@@ -212,46 +212,23 @@ async def upload_audio(
                     request_id=request_id,
                     text_id=text_id,
                     temp_file_path=temp_file_path,
-                    content_type=file.content_type,
-                    environment=os.getenv('ENVIRONMENT', 'production')
+                    content_type=file.content_type
                 ).info("Starting GCS upload")
                 
-                # Skip GCS upload in development/localhost
-                if os.getenv('ENVIRONMENT') == 'development' or 'localhost' in str(request.url):
-                    app_logger.info("Development mode detected, skipping GCS upload")
-                    # Read file to get size
-                    with open(temp_file_path, 'rb') as f:
-                        file_content = f.read()
-                        file_size = len(file_content)
-                    
-                    gcs_result = {
-                        "gs_uri": f"local://{temp_file_path}",
-                        "size_bytes": file_size,
-                        "storage_name": f"local_{text_id}_{file.filename}"
-                    }
-                    
-                    app_logger.bind(
-                        request_id=request_id,
-                        text_id=text_id,
-                        original_filename=file.filename,
-                        gcs_uri=gcs_result["gs_uri"],
-                        size_bytes=gcs_result["size_bytes"]
-                    ).info("File processed locally (GCS bypassed)")
-                else:
-                    gcs_result = upload_audio_file(
-                        text_id=text_id,
-                        original_name=file.filename or "audio",
-                        file_path=temp_file_path,
-                        content_type=file.content_type
-                    )
-                    
-                    app_logger.bind(
-                        request_id=request_id,
-                        text_id=text_id,
-                        original_filename=file.filename,
-                        gcs_uri=gcs_result["gs_uri"],
-                        size_bytes=gcs_result["size_bytes"]
-                    ).info("Audio file uploaded to GCS successfully")
+                gcs_result = upload_audio_file(
+                    text_id=text_id,
+                    original_name=file.filename or "audio",
+                    file_path=temp_file_path,
+                    content_type=file.content_type
+                )
+                
+                app_logger.bind(
+                    request_id=request_id,
+                    text_id=text_id,
+                    original_filename=file.filename,
+                    gcs_uri=gcs_result["gs_uri"],
+                    size_bytes=gcs_result["size_bytes"]
+                ).info("Audio file uploaded to GCS successfully")
                 
             except Exception as e:
                 app_logger.bind(
