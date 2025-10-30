@@ -1,6 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+
+// Extended audio element interface for word timing functionality
+interface AudioElementWithWordHandler extends HTMLAudioElement {
+  wordEndHandler?: () => void;
+}
 import { useParams, useRouter } from 'next/navigation';
 import { apiClient, AnalysisDetail, WordEvent, PauseEvent, Metrics, AnalysisExport, Student } from '@/lib/api';
 import { tokenizeWithSeparators } from '@/lib/tokenize';
@@ -37,7 +42,7 @@ export default function AnalysisDetailPage() {
   const [summaryExpanded, setSummaryExpanded] = useState(false);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioLoading, setAudioLoading] = useState(false);
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const audioRef = useRef<AudioElementWithWordHandler>(null);
   
   // Event data states
   const [wordEvents, setWordEvents] = useState<WordEvent[]>([]);
@@ -231,10 +236,37 @@ export default function AnalysisDetailPage() {
     }
 
     const startTime = event.timing.start_ms / 1000; // Convert ms to seconds
+    const endTime = event.timing.end_ms ? (event.timing.end_ms - 210) / 1000 : null; // Convert ms to seconds
+    
+    // Önceki event listener'ı temizle (varsa)
+    if (audioRef.current.wordEndHandler) {
+      audioRef.current.removeEventListener('timeupdate', audioRef.current.wordEndHandler);
+      audioRef.current.wordEndHandler = null;
+    }
+    
+    // Kelimenin başından başla
     audioRef.current.currentTime = startTime;
     audioRef.current.play();
     
-    console.log(`Jumped to word "${event.hyp_token || event.ref_token}" at ${startTime}s`);
+    // Eğer end_ms varsa, kelime bitince durdur
+    if (endTime) {
+      const wordEndHandler = () => {
+        if (audioRef.current && audioRef.current.currentTime >= endTime) {
+          audioRef.current.pause();
+          audioRef.current.removeEventListener('timeupdate', wordEndHandler);
+          audioRef.current.wordEndHandler = null;
+          console.log(`Stopped at word end: "${event.hyp_token || event.ref_token}" (${startTime}s - ${endTime}s)`);
+        }
+      };
+      
+      // Handler'ı audio element'e kaydet (temizlik için)
+      audioRef.current.wordEndHandler = wordEndHandler;
+      audioRef.current.addEventListener('timeupdate', wordEndHandler);
+      
+      console.log(`Playing word "${event.hyp_token || event.ref_token}" from ${startTime}s to ${endTime}s`);
+    } else {
+      console.log(`Jumped to word "${event.hyp_token || event.ref_token}" at ${startTime}s (no end time)`);
+    }
   };
 
   const downloadAnalysisAsJSON = async (analysisId: string) => {

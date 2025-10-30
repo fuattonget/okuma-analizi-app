@@ -11,6 +11,7 @@ import Navigation from '@/components/Navigation';
 import Loading, { SkeletonCard, SkeletonList } from '@/components/Loading';
 import Error, { ErrorToast, SuccessToast } from '@/components/Error';
 import { AudioIcon, UserIcon, GradeIcon, BookIcon, AnalysisIcon } from '@/components/Icon';
+import AudioInputSelector from '@/components/AudioInputSelector';
 import { themeColors, combineThemeClasses } from '@/lib/theme';
 
 export default function HomePage() {
@@ -190,9 +191,12 @@ export default function HomePage() {
     }
     
     // File type check
-    const allowedTypes = ['audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/m4a', 'audio/x-m4a'];
+    const allowedTypes = [
+      'audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/m4a', 'audio/x-m4a',
+      'audio/aac', 'audio/ogg', 'audio/flac', 'audio/webm'
+    ];
     if (!allowedTypes.includes(file.type)) {
-      errors.file = 'Desteklenmeyen dosya türü. MP3, WAV, M4A dosyaları kabul edilir.';
+      errors.file = 'Desteklenmeyen dosya türü. MP3, WAV, M4A, AAC, OGG, FLAC, WebM dosyaları kabul edilir.';
       setFormErrors(errors);
       return;
     }
@@ -396,52 +400,27 @@ export default function HomePage() {
               </div>
         
               <div className="space-y-6 sm:space-y-8">
-                {/* File Upload */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-3 sm:mb-4">
-                    <AudioIcon size="sm" className="mr-2" />
-                    Ses Dosyası <span className="text-red-500">*</span>
-                  </label>
-                  <div
-                    className={classNames(
-                      'border-2 border-dashed rounded-lg p-4 sm:p-6 lg:p-8 text-center cursor-pointer transition-colors',
-                      dragActive ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-slate-600',
-                      selectedFile ? 'border-green-400 bg-green-50 dark:bg-green-900/20' : '',
-                      formErrors.file ? 'border-red-400 bg-red-50 dark:bg-red-900/20' : ''
-                    )}
-                    onDragEnter={handleDrag}
-                    onDragLeave={handleDrag}
-                    onDragOver={handleDrag}
-                    onDrop={handleDrop}
-                    onClick={() => document.getElementById('file-upload')?.click()}
-                  >
-                    <input
-                      id="file-upload"
-                      type="file"
-                      accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac"
-                      onChange={handleFileSelect}
-                      className="hidden"
-                    />
-                    <div className="space-y-2">
-                      <AudioIcon size="xl" />
-                      <div className="text-base sm:text-lg font-medium text-gray-900 dark:text-slate-100">
-                        {selectedFile ? selectedFile.name : 'Ses dosyasını buraya sürükleyin veya tıklayın'}
-                      </div>
-                      <div className="text-xs sm:text-sm text-gray-500 dark:text-slate-400">
-                        MP3, WAV, M4A, AAC, OGG, FLAC formatları desteklenir
-                      </div>
-                      <div className="text-xs text-blue-600 dark:text-blue-400 mt-2">🤙</div>
-                      {formErrors.file && (
-                        <Error 
-                          message={formErrors.file} 
-                          type="warning" 
-                          size="sm" 
-                          showIcon={true}
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
+                {/* Audio Input Selector */}
+                <AudioInputSelector
+                  onFileSelect={validateAndSetFile}
+                  onError={(error) => {
+                    const errors = { ...formErrors };
+                    errors.file = error;
+                    setFormErrors(errors);
+                  }}
+                  selectedFile={selectedFile}
+                  disabled={isUploading}
+                />
+                
+                {/* File Error Display */}
+                {formErrors.file && (
+                  <Error 
+                    message={formErrors.file} 
+                    type="warning" 
+                    size="sm" 
+                    showIcon={true}
+                  />
+                )}
 
                 {/* Text Selection */}
                 <div>

@@ -29,6 +29,7 @@ import {
   EditIcon,
   LockIcon
 } from '@/components/Icon';
+import AudioInputSelector from '@/components/AudioInputSelector';
 
 export default function StudentProfilePage() {
   const params = useParams();
@@ -293,12 +294,9 @@ export default function StudentProfilePage() {
     }
   };
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      setUploadError(null);
-    }
+  const handleFileSelect = (file: File) => {
+    setSelectedFile(file);
+    setUploadError(null);
   };
 
   const handleTextSelect = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -707,47 +705,13 @@ export default function StudentProfilePage() {
 
               {/* Modal Content */}
               <div className="space-y-6">
-                {/* File Upload */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                    <AudioIcon size="sm" className="inline mr-1" />
-                    Ses Dosyası *
-                  </label>
-                  <div 
-                    className="border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-lg p-6 text-center hover:border-gray-400 dark:hover:border-slate-500 transition-colors cursor-pointer bg-white dark:bg-slate-800"
-                    onClick={() => document.getElementById('audio-upload')?.click()}
-                  >
-                    <input
-                      type="file"
-                      accept="audio/*"
-                      onChange={handleFileSelect}
-                      className="hidden"
-                      id="audio-upload"
-                      disabled={isUploading}
-                    />
-                    <div className="cursor-pointer">
-                      {selectedFile ? (
-                        <div className="text-green-600">
-                          <div className="mb-2">
-                            <AudioIcon size="lg" className="text-gray-400" />
-                          </div>
-                          <div className="font-medium">{selectedFile.name}</div>
-                          <div className="text-sm text-gray-500">
-                            {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-gray-500 dark:text-slate-400">
-                          <div className="mb-2">
-                            <AudioIcon size="lg" className="text-gray-400 dark:text-slate-500" />
-                          </div>
-                          <div className="font-medium">Ses dosyasını seçin</div>
-                          <div className="text-sm">MP3, WAV, M4A, AAC, OGG, FLAC</div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                {/* Audio Input Selector */}
+                <AudioInputSelector
+                  onFileSelect={handleFileSelect}
+                  onError={setUploadError}
+                  selectedFile={selectedFile}
+                  disabled={isUploading}
+                />
 
                 {/* Grade Selection */}
                 <div>
