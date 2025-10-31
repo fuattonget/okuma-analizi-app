@@ -1,0 +1,123 @@
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: okuma-analizi-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: okuma_analizi
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - okuma-network
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: okuma-analizi-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - okuma-network
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: okuma-analizi-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017
+      - MONGO_DB=okuma_analizi
+      - REDIS_URL=redis://redis:6379
+      # ElevenLabs Configuration
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      - ELEVENLABS_LANGUAGE=${ELEVENLABS_LANGUAGE:-tr}
+      - ELEVENLABS_MODEL=${ELEVENLABS_MODEL:-scribe_v1_experimental}
+      - ELEVENLABS_REMOVE_DISFLUENCIES=${ELEVENLABS_REMOVE_DISFLUENCIES:-false}
+      - ELEVENLABS_REMOVE_FILLER_WORDS=${ELEVENLABS_REMOVE_FILLER_WORDS:-false}
+      - ELEVENLABS_SEED=${ELEVENLABS_SEED:-12456}
+      - ELEVENLABS_TEMPERATURE=${ELEVENLABS_TEMPERATURE:-0.0}
+      # Google Cloud Storage Configuration
+      - GCS_BUCKET=${GCS_BUCKET}
+      - GCS_BUCKET_NAME=${GCS_BUCKET_NAME}
+      - GCS_PROJECT_ID=${GCS_PROJECT_ID}
+      - GCS_CREDENTIALS_PATH=./gcs-service-account.json
+      - GCS_SERVICE_ACCOUNT_JSON=${GCS_SERVICE_ACCOUNT_JSON}
+      # Security
+      - SECRET_KEY=${SECRET_KEY}
+      # Environment
+      - DEBUG=${DEBUG:-true}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+
+    depends_on:
+      - mongodb
+      - redis
+    volumes:
+      - ./gcs-service-account.json:/app/gcs-service-account.json
+      - ./logs:/app/logs
+      - ./backend:/app
+    networks:
+      - okuma-network
+
+  worker:
+    build:
+      context: .
+      dockerfile: worker/Dockerfile
+    container_name: okuma-analizi-worker
+    restart: unless-stopped
+    environment:
+      - MONGO_URI=mongodb://mongodb:27017
+      - MONGO_DB=okuma_analizi
+      - REDIS_URL=redis://redis:6379
+      # ElevenLabs Configuration
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      - ELEVENLABS_LANGUAGE=${ELEVENLABS_LANGUAGE:-tr}
+      - ELEVENLABS_MODEL=${ELEVENLABS_MODEL:-scribe_v1_experimental}
+      - ELEVENLABS_REMOVE_DISFLUENCIES=${ELEVENLABS_REMOVE_DISFLUENCIES:-false}
+      - ELEVENLABS_REMOVE_FILLER_WORDS=${ELEVENLABS_REMOVE_FILLER_WORDS:-false}
+      - ELEVENLABS_SEED=${ELEVENLABS_SEED:-12456}
+      - ELEVENLABS_TEMPERATURE=${ELEVENLABS_TEMPERATURE:-0.0}
+    depends_on:
+      - mongodb
+      - redis
+      - api
+    volumes:
+      - ./logs:/app/logs
+      - ./worker:/app
+      - ./gcs-service-account.json:/app/gcs-service-account.json
+    networks:
+      - okuma-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: okuma-analizi-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Use HOST_IP environment variable, fallback to localhost
+      # Set HOST_IP before running: export HOST_IP=$(ipconfig getifaddr en0)
+      - NEXT_PUBLIC_API_URL=http://${HOST_IP:-localhost}:8000
+    depends_on:
+      - api
+    volumes:
+      - ./frontend:/app
+    networks:
+      - okuma-network
+
+volumes:
+  mongodb_data:
+  redis_data:
+
+networks:
+  okuma-network:
+    driver: bridge
+

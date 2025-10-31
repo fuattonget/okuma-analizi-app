@@ -34,4 +34,5 @@ build/
 gcs-service-account.json
 
 docker-compose.test.yml
+docker-compose.test-atlas.yml
 docker-compose.yml

@@ -1,0 +1,43 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: okuma-analizi-api-atlas-test
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # MongoDB Atlas (Production)
+      - MONGO_URI=${MONGO_URI}
+      - MONGO_DB=${MONGO_DB:-okuma_analizi}
+      # Upstash Redis (Production)
+      - REDIS_URL=${REDIS_URL}
+      # GCS
+      - GCS_CREDENTIALS_PATH=./gcs-service-account.json
+      - GCS_BUCKET=${GCS_BUCKET}
+      - GCS_BUCKET_NAME=${GCS_BUCKET_NAME}
+      - GCS_PROJECT_ID=${GCS_PROJECT_ID}
+      # ElevenLabs
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      - ELEVENLABS_MODEL=${ELEVENLABS_MODEL:-scribe_v1_experimental}
+      - ELEVENLABS_LANGUAGE=${ELEVENLABS_LANGUAGE:-tr}
+      - ELEVENLABS_TEMPERATURE=${ELEVENLABS_TEMPERATURE:-0.0}
+      - ELEVENLABS_SEED=${ELEVENLABS_SEED:-12456}
+      - ELEVENLABS_REMOVE_FILLER_WORDS=${ELEVENLABS_REMOVE_FILLER_WORDS:-false}
+      - ELEVENLABS_REMOVE_DISFLUENCIES=${ELEVENLABS_REMOVE_DISFLUENCIES:-false}
+      # Security
+      - SECRET_KEY=${SECRET_KEY}
+      # Debug
+      - DEBUG=${DEBUG:-true}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
+    volumes:
+      - ./gcs-service-account.json:/app/gcs-service-account.json
+      - ./logs:/app/logs
+      - ./backend:/app
+
+networks:
+  default:
+    name: okuma-network-atlas-test
+
